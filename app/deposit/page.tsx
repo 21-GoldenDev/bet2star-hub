@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import clsx from "clsx";
 import {
   ArrowLeft,
   CreditCard,
@@ -13,6 +12,9 @@ import {
   Check,
   Plus,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const Deposit = () => {
   const [amount, setAmount] = useState("");
@@ -92,11 +94,12 @@ const Deposit = () => {
               <button
                 key={quickAmount}
                 onClick={() => setAmount(quickAmount.toString())}
-                className={`py-3 rounded-lg font-medium transition-all ${
+                className={clsx(
+                  "py-3 rounded-lg font-medium transition-all",
                   amount === quickAmount.toString()
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-foreground hover:bg-muted/80"
-                }`}
+                )}
               >
                 ${quickAmount}
               </button>
@@ -132,18 +135,20 @@ const Deposit = () => {
               <button
                 key={method.id}
                 onClick={() => setSelectedMethod(method.id)}
-                className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                className={clsx(
+                  "w-full flex items-center gap-4 p-4 rounded-xl border transition-all",
                   selectedMethod === method.id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-border/80 hover:bg-muted/50"
-                }`}
+                )}
               >
                 <div
-                  className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  className={clsx(
+                    "w-12 h-12 rounded-xl flex items-center justify-center",
                     selectedMethod === method.id
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
-                  }`}
+                  )}
                 >
                   <method.icon className="w-6 h-6" />
                 </div>

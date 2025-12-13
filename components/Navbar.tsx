@@ -1,16 +1,28 @@
 "use client";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet, User, Menu, X, LogIn } from "lucide-react";
+import { Wallet, User, Menu, X, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import clsx from "clsx";
 
-// Mock auth state - will be replaced with real auth later
-const isLoggedIn = false;
+import useSupabaseUser from "@/hooks/use-supabase-user";
+import { signOut } from "@/lib/auth";
+import { toast } from "@/components/ui/use-toast";
 
 const Navbar = () => {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user } = useSupabaseUser();
+
+  const isLoggedIn = Boolean(user);
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) toast({ title: error.message || "Sign out failed", variant: "destructive" });
+    else toast({ title: "Signed out" });
+  };
 
   const navLinks = [
     { path: "/", label: "Home" },
@@ -37,15 +49,16 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => (
+            {navLinks.map((link) => (
               <Link
                 key={link.path}
                 href={link.path}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                className={clsx(
+                  "px-4 py-2 rounded-lg font-medium transition-all duration-300",
                   isActive(link.path)
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
+                )}
               >
                 {link.label}
               </Link>
@@ -70,6 +83,9 @@ const Navbar = () => {
                     <User className="w-5 h-5" />
                   </Button>
                 </Link>
+                <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={handleSignOut}>
+                  <LogOut className="w-5 h-5" />
+                </Button>
               </>
             ) : (
               <Link href="/auth">
@@ -101,16 +117,17 @@ const Navbar = () => {
                   key={link.path}
                   href={link.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                  className={clsx(
+                    "px-4 py-3 rounded-lg font-medium transition-all",
                     isActive(link.path)
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                  }`}
+                  )}
                 >
                   {link.label}
                 </Link>
               ))}
-                  {isLoggedIn ? (
+              {isLoggedIn ? (
                 <>
                   <div className="flex items-center gap-2 px-4 py-3 mt-2 rounded-lg bg-muted border border-border">
                     <Wallet className="w-4 h-4 text-primary" />

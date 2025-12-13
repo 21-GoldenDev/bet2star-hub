@@ -34,3 +34,13 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Supabase Auth
+
+1. Create a Supabase project at https://app.supabase.com/
+2. Copy your `anon` key and project URL into `.env.local` using the provided `.env.local.example` file
+3. Run `npm install` (or `pnpm install`) to install the new Supabase dependency
+3. Enable a Google provider (or other OAuth providers) in Supabase Auth settings and set redirect URLs (e.g. `http://localhost:3000`)
+4. Run the app and visit `/auth` to sign up or sign in
+
+We use `@supabase/supabase-js` on the client and basic auth helpers in `lib/auth.ts`.

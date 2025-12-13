@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "@/components/ui/use-toast";
+import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { compressImage } from "@/lib/image";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -13,14 +17,59 @@ const Auth = () => {
     email: "",
     password: "",
     username: "",
+    phone: "",
+    fullName: "",
+    avatar: "",
     confirmPassword: "",
   });
 
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock submission - will be connected to backend later
-    console.log("Form submitted:", formData);
+    setLoading(true);
+
+    (async () => {
+      try {
+        if (isSignUp) {
+          if (formData.password !== formData.confirmPassword) {
+            toast({ title: "Passwords do not match", variant: "destructive" });
+            return;
+          }
+
+          const { error } = await signUpWithEmail(formData.email, formData.password, {
+            username: formData.username,
+            full_name: formData.fullName,
+            phone: formData.phone,
+            avatar: formData.avatar,
+          });
+          if (error) throw error;
+          toast({ title: "Check your email", description: "Confirmation link sent" });
+        } else {
+          const { error } = await signInWithEmail(formData.email, formData.password);
+          if (error) throw error;
+          toast({ title: "Signed in", description: "Redirecting..." });
+          router.push("/");
+        }
+      } catch (err: any) {
+        toast({ title: err?.message || "Auth error", variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    })();
   };
+
+  const handleClickGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      toast({ title: err?.message || "OAuth error", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen pt-16 flex items-center justify-center px-4">
@@ -55,19 +104,75 @@ const Auth = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Username"
-                  value={formData.username}
-                  onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
-                  }
-                  className="pl-11 h-12 bg-muted border-border"
-                />
-              </div>
+              {isSignUp && (
+              <>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Username"
+                    value={formData.username}
+                    onChange={(e) =>
+                      setFormData({ ...formData, username: e.target.value })
+                    }
+                    className="pl-11 h-12 bg-muted border-border"
+                  />
+                </div>
+                <div className="relative">
+                  <label className="block w-full">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          const compressed = await compressImage(file, 256, 0.8);
+                          setFormData((f) => ({ ...f, avatar: compressed }));
+                        } catch (err) {
+                          toast({ title: "Failed to process avatar", variant: "destructive" });
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer">
+                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                        {formData.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={formData.avatar} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <User className="w-5 h-5 text-muted-foreground" />
+                        )}
+                      </div>
+                      <span className="text-sm text-muted-foreground">Upload avatar (optional)</span>
+                    </div>
+                  </label>
+                </div>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Full name"
+                    value={formData.fullName}
+                    onChange={(e) =>
+                      setFormData({ ...formData, fullName: e.target.value })
+                    }
+                    className="pl-11 h-12 bg-muted border-border"
+                  />
+                </div>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    type="tel"
+                    placeholder="Phone"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="pl-11 h-12 bg-muted border-border"
+                  />
+                </div>
+              </>
             )}
 
             <div className="relative">
@@ -133,8 +238,8 @@ const Auth = () => {
               </div>
             )}
 
-            <Button type="submit" variant="gold" className="w-full h-12 text-base">
-              {isSignUp ? "Create Account" : "Sign In"}
+            <Button type="submit" variant="gold" className="w-full h-12 text-base" disabled={loading}>
+              {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
@@ -147,8 +252,12 @@ const Auth = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" className="h-12">
+          <div className="grid grid-cols-1 gap-3">
+            <Button
+              variant="outline"
+              className="h-12"
+              onClick={handleClickGoogleSignIn}
+            >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
@@ -169,12 +278,6 @@ const Auth = () => {
               </svg>
               Google
             </Button>
-            <Button variant="outline" className="h-12">
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.989C18.343 21.129 22 16.99 22 12c0-5.523-4.477-10-10-10z" />
-              </svg>
-              Facebook
-            </Button>
           </div>
 
           <p className="text-center text-muted-foreground mt-6">
@@ -182,7 +285,7 @@ const Auth = () => {
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-primary hover:text-primary/80 font-medium transition-colors"
+              className="cursor-pointer text-primary hover:text-primary/80 font-medium transition-colors"
             >
               {isSignUp ? "Sign In" : "Sign Up"}
             </button>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LucideIcon } from "lucide-react";
+import clsx from "clsx";
 
 interface GameCardProps {
   title: string;
@@ -26,10 +27,18 @@ const GameCard = ({ title, description, icon: Icon, path, gradient, delay = 0 }:
   return (
     <Link
       href={path}
-      className={`group block p-6 rounded-2xl bg-gradient-to-br ${gradientStyles[gradient]} border backdrop-blur-sm transition-all duration-500 animate-slide-up`}
+      className={clsx(
+        "group block p-6 rounded-2xl bg-linear-to-br border backdrop-blur-sm transition-all duration-500 animate-slide-up",
+        gradientStyles[gradient]
+      )}
       style={{ animationDelay: `${delay}ms` }}
     >
-      <div className={`w-14 h-14 rounded-xl ${iconStyles[gradient]} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
+      <div
+        className={clsx(
+          "w-14 h-14 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300",
+          iconStyles[gradient]
+        )}
+      >
         <Icon className="w-7 h-7" />
       </div>
       <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">

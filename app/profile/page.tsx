@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import useSupabaseUser from "@/hooks/use-supabase-user";
+import { signOut, updateAuthUser } from "@/lib/auth";
+import { compressImage } from "@/lib/image";
+import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,12 +27,47 @@ import {
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { user } = useSupabaseUser();
   const [profile, setProfile] = useState({
-    username: "JohnDoe123",
-    email: "john.doe@email.com",
-    phone: "+1 234 567 8900",
-    joinDate: "March 2024",
+    username: "",
+    displayName: "",
+    email: "",
+    phone: "",
+    avatar_url: undefined as string | undefined,
+    joinDate: "",
   });
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        username: user.email?.split("@")[0] ?? "",
+        displayName: user.user_metadata?.full_name ?? "",
+        email: user.email ?? "",
+        avatar_url: (user.user_metadata as any)?.avatar ?? undefined,
+        phone: user.user_metadata?.phone ?? "",
+        joinDate: formatDate(user.created_at),
+      });
+    } else {
+      setProfile({
+        avatar_url: undefined,
+        username: "",
+        displayName: "",
+        email: "",
+        phone: "",
+        joinDate: "",
+      })
+    }
+  }, [user]);
 
   const stats = [
     { label: "Total Bets", value: "247", icon: History },
@@ -44,6 +83,19 @@ const Profile = () => {
     { icon: Settings, label: "Preferences", path: "#" },
   ];
 
+  const handleSaveProfile = async () => {
+    setLoading(true);
+    try {
+      await updateAuthUser({ phone: profile.phone, full_name: profile.displayName, avatar: profile.avatar_url ?? null });
+      setIsEditing(false);
+      toast({ title: "Profile updated" });
+    } catch (err: any) {
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen pt-20 pb-8 px-4">
       <div className="container mx-auto max-w-2xl">
@@ -58,8 +110,35 @@ const Profile = () => {
         {/* Profile Header */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">
           <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center">
-              <User className="w-10 h-10 text-primary" />
+            <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center overflow-hidden relative">
+              {profile.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatar_url} alt={`${profile.username} avatar`} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-10 h-10 text-primary" />
+              )}
+              {isEditing && (
+                <label className="absolute -bottom-2 right-0">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        const compressed = await compressImage(file, 256, 0.8);
+                        setProfile((p) => ({ ...p, avatar_url: compressed }));
+                      } catch (err) {
+                        toast({ title: "Failed to process avatar", variant: "destructive" });
+                      }
+                    }}
+                  />
+                  <div className="bg-muted rounded-full p-1 cursor-pointer">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg>
+                  </div>
+                </label>
+              )}
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
@@ -106,41 +185,20 @@ const Profile = () => {
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                 <User className="w-5 h-5 text-muted-foreground" />
               </div>
-              {isEditing ? (
-                <Input
-                  value={profile.username}
-                  onChange={(e) =>
-                    setProfile({ ...profile, username: e.target.value })
-                  }
-                  className="flex-1 bg-muted border-border"
-                />
-              ) : (
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Username</p>
-                  <p className="text-foreground">{profile.username}</p>
-                </div>
-              )}
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Username</p>
+                <p className="text-foreground">{profile.username}</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                 <Mail className="w-5 h-5 text-muted-foreground" />
               </div>
-              {isEditing ? (
-                <Input
-                  type="email"
-                  value={profile.email}
-                  onChange={(e) =>
-                    setProfile({ ...profile, email: e.target.value })
-                  }
-                  className="flex-1 bg-muted border-border"
-                />
-              ) : (
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="text-foreground">{profile.email}</p>
-                </div>
-              )}
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground">Email</p>
+                <p className="text-foreground">{profile.email}</p>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
@@ -151,15 +209,31 @@ const Profile = () => {
                 <Input
                   type="tel"
                   value={profile.phone}
-                  onChange={(e) =>
-                    setProfile({ ...profile, phone: e.target.value })
-                  }
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
                   className="flex-1 bg-muted border-border"
                 />
               ) : (
                 <div className="flex-1">
                   <p className="text-sm text-muted-foreground">Phone</p>
                   <p className="text-foreground">{profile.phone}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                <User className="w-5 h-5 text-muted-foreground" />
+              </div>
+              {isEditing ? (
+                <Input
+                  value={profile.displayName}
+                  onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
+                  className="flex-1 bg-muted border-border"
+                />
+              ) : (
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground">Full name</p>
+                  <p className="text-foreground">{profile.displayName}</p>
                 </div>
               )}
             </div>
@@ -180,9 +254,10 @@ const Profile = () => {
               <Button
                 variant="gold"
                 className="flex-1"
-                onClick={() => setIsEditing(false)}
+                onClick={handleSaveProfile}
+                disabled={loading}
               >
-                Save Changes
+                {loading ? "Saving..." : "Save Changes"}
               </Button>
               <Button
                 variant="outline"
@@ -221,6 +296,11 @@ const Profile = () => {
         <Button
           variant="outline"
           className="w-full mt-6 text-destructive hover:bg-destructive/10"
+          onClick={async () => {
+            const { error } = await signOut();
+            if (error) toast({ title: error.message || "Sign out failed", variant: "destructive" });
+            else toast({ title: "Signed out" });
+          }}
         >
           Sign Out
         </Button>
