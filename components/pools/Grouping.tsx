@@ -180,13 +180,13 @@ const Grouping = ({ matches }: Props) => {
         {/* Left side - Matches */}
         <div className="lg:col-span-2">
           <div
-            // className="max-h-screen overflow-y-auto"
-            // style={{
-            //   scrollbarWidth: "thin",
-            //   scrollbarColor: "#20283c transparent",
-            //   msOverflowStyle: "auto",
-            //   WebkitOverflowScrolling: "touch",
-            // }}
+          // className="max-h-screen overflow-y-auto"
+          // style={{
+          //   scrollbarWidth: "thin",
+          //   scrollbarColor: "#20283c transparent",
+          //   msOverflowStyle: "auto",
+          //   WebkitOverflowScrolling: "touch",
+          // }}
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {matches.map((match, index) => {
@@ -242,10 +242,12 @@ const Grouping = ({ matches }: Props) => {
                       {(groupSelections[sel.id] ?? []).length === 0 ? (
                         <div className="text-xs text-muted-foreground">No matches selected</div>
                       ) : (
-                        (groupSelections[sel.id] ?? []).map((m) => (
-                          <div key={m} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
-                            {m}
-                          </div>
+                        matches.map((m, i) => (
+                          (groupSelections[sel.id] ?? []).includes(m) ? (
+                            <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
+                              {i + 1}. {m}
+                            </div>
+                          ) : null
                         ))
                       )}
                     </div>

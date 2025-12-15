@@ -137,7 +137,7 @@ const Direct = ({ matches }: Props) => {
                 <div className="flex flex-col gap-1">
                   {matches.map((m, i) => (
                     selectedMatches.includes(m) ? (
-                      <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
+                      <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
                         {i + 1}. {m}
                       </div>
                     ) : null
