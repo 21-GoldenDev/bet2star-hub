@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
 import Link from "next/link";
@@ -23,7 +23,10 @@ const Auth = () => {
   });
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+
+  const redirectTo = searchParams.get('redirectTo') || '/';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +51,7 @@ const Auth = () => {
         } else {
           const { error } = await signInWithEmail(formData.email, formData.password);
           if (error) throw error;
-          router.push("/");
+          router.push(redirectTo);
         }
       } catch (err: any) {
         toast({ title: err?.message || "Auth error", variant: "destructive" });

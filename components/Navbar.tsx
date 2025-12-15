@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Wallet, User, Menu, X, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import { toast } from "@/components/ui/use-toast";
 
 const Navbar = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user } = useSupabaseUser();
 
@@ -22,7 +23,10 @@ const Navbar = () => {
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) toast({ title: error.message || "Sign out failed", variant: "destructive" });
-    else toast({ title: "Signed out" });
+    else {
+      toast({ title: "Signed out" });
+      router.push("/");
+    }
   };
 
   const navLinks = [
