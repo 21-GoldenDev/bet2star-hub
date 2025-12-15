@@ -7,63 +7,70 @@ import clsx from "clsx";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
+interface USelection {
+  id: string;
+  u: number;
+}
+
 const Grouping = () => {
-  const [selectedUs, setSelectedUs] = useState<number[]>([]);
-  const [activeU, setActiveU] = useState<number | null>(null);
-  const [groupSelections, setGroupSelections] = useState<Record<number, number[]>>({});
+  const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
+  const [activeUId, setActiveUId] = useState<string | null>(null);
+  const [groupSelections, setGroupSelections] = useState<Record<string, number[]>>({});
   const [betAmount, setBetAmount] = useState(5000);
 
   const numbers = Array.from({ length: 49 }, (_, i) => i + 1);
 
-  const currentSum = selectedUs.reduce((acc, v) => acc + v, 0);
+  const currentSum = selectedUs.reduce((acc, sel) => acc + sel.u, 0);
 
-  const toggleU = (u: number) => {
-    if (selectedUs.includes(u)) {
-      setSelectedUs(selectedUs.filter((x) => x !== u));
-      const copy = { ...groupSelections };
-      delete copy[u];
-      setGroupSelections(copy);
-      if (activeU === u) setActiveU(selectedUs.filter((x) => x !== u)[0] ?? null);
-    } else {
-      if (currentSum + u > 7) {
-        toast.error("Total of selected U values cannot exceed 7");
-        return;
-      }
-      setSelectedUs([...selectedUs, u]);
-      setActiveU(u);
-      setGroupSelections({ ...groupSelections, [u]: [] });
+  const handleClickU = (u: number) => {
+    const newId = `${u}-${Date.now()}`;
+    if (currentSum + u > 7) {
+      toast.error("Total of selected U values cannot exceed 7");
+      return;
+    }
+    setSelectedUs([...selectedUs, { id: newId, u }]);
+    setActiveUId(newId);
+    setGroupSelections({ ...groupSelections, [newId]: [] });
+  };
+
+  const removeU = (id: string) => {
+    setSelectedUs(selectedUs.filter((sel) => sel.id !== id));
+    const copy = { ...groupSelections };
+    delete copy[id];
+    setGroupSelections(copy);
+    if (activeUId === id) {
+      setActiveUId(selectedUs.filter((sel) => sel.id !== id)[0]?.id ?? null);
     }
   };
 
   const toggleNumberForActive = (num: number) => {
-    if (!activeU) {
+    if (!activeUId) {
       toast.error("Select a U group first");
       return;
     }
-    for (const u of Object.keys(groupSelections)) {
-      const k = Number(u);
-      if (k !== activeU && groupSelections[k]?.includes(num)) {
+    for (const id of Object.keys(groupSelections)) {
+      if (id !== activeUId && groupSelections[id]?.includes(num)) {
         toast.error("Number already selected in another group");
         return;
       }
     }
-    const current = groupSelections[activeU] ?? [];
+    const current = groupSelections[activeUId] ?? [];
     if (current.includes(num)) {
-      setGroupSelections({ ...groupSelections, [activeU]: current.filter((n) => n !== num) });
+      setGroupSelections({ ...groupSelections, [activeUId]: current.filter((n) => n !== num) });
       return;
     }
-    setGroupSelections({ ...groupSelections, [activeU]: [...current, num] });
+    setGroupSelections({ ...groupSelections, [activeUId]: [...current, num] });
   };
 
   const clearAll = () => {
     setSelectedUs([]);
-    setActiveU(null);
+    setActiveUId(null);
     setGroupSelections({});
   };
 
-  const clearGroup = (u: number) => {
+  const clearGroup = (id: string) => {
     const copy = { ...groupSelections };
-    copy[u] = [];
+    copy[id] = [];
     setGroupSelections(copy);
   };
 
@@ -76,10 +83,10 @@ const Grouping = () => {
       toast.error("Sum of U selections must not exceed 7");
       return;
     }
-    for (const u of selectedUs) {
-      const sel = groupSelections[u] ?? [];
-      if (sel.length !== u) {
-        toast.error(`U${u} requires ${u} numbers`);
+    for (const sel of selectedUs) {
+      const selNumbers = groupSelections[sel.id] ?? [];
+      if (selNumbers.length !== sel.u) {
+        toast.error(`U${sel.u} requires ${sel.u} numbers`);
         return;
       }
     }
@@ -89,7 +96,7 @@ const Grouping = () => {
     }
 
     const groups = selectedUs
-      .map((u) => `U${u}:[${(groupSelections[u] ?? []).sort((a, b) => a - b).join(",")}]`)
+      .map((sel) => `U${sel.u}:[${(groupSelections[sel.id] ?? []).sort((a, b) => a - b).join(",")}]`)
       .join(" ");
 
     toast.success(`Bet placed! ${groups} | Bet: $${betAmount}`);
@@ -104,11 +111,8 @@ const Grouping = () => {
             {[1, 2, 3, 4, 5, 6, 7].map((u) => (
               <button
                 key={u}
-                onClick={() => toggleU(u)}
-                className={clsx(
-                  "px-3 py-1 rounded-lg font-medium cursor-pointer transition-all",
-                  selectedUs.includes(u) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-                )}
+                onClick={() => handleClickU(u)}
+                className="px-3 py-1 rounded-lg font-medium cursor-pointer transition-all bg-muted text-muted-foreground hover:text-foreground"
               >
                 U{u}
               </button>
@@ -123,17 +127,35 @@ const Grouping = () => {
               {selectedUs.length === 0 ? (
                 <span className="px-3 py-1 rounded-lg bg-muted border border-border/50 text-muted-foreground">None</span>
               ) : (
-                selectedUs.map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => setActiveU(u)}
-                    className={clsx(
-                      "px-3 py-1 rounded-lg font-medium cursor-pointer",
-                      activeU === u ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-                    )}
+                selectedUs.map((sel) => (
+                  <div
+                    key={sel.id}
+                    className="flex items-center gap-2"
                   >
-                    U{u} ({(groupSelections[u] ?? []).length})
-                  </button>
+                    <button
+                      onClick={() => setActiveUId(sel.id)}
+                      className={clsx(
+                        "px-3 py-1 rounded-lg font-medium cursor-pointer",
+                        activeUId === sel.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      U{sel.u} ({(groupSelections[sel.id] ?? []).length})
+                    </button>
+                    <span
+                      onClick={() => removeU(sel.id)}
+                      className="ml-1 cursor-pointer hover:opacity-70 font-medium"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          removeU(sel.id);
+                        }
+                      }}
+                    >
+                      ×
+                    </span>
+                  </div>
                 ))
               )}
             </div>
@@ -147,12 +169,12 @@ const Grouping = () => {
         </div>
       </div>
 
-      <div className="text-sm mb-2">Active Group: {activeU ? `U${activeU}` : "—"}</div>
+      <div className="text-sm mb-2">Active Group: {activeUId ? `U${selectedUs.find((sel) => sel.id === activeUId)?.u}` : "—"}</div>
 
       <div className="grid grid-cols-7 sm:grid-cols-10 gap-2 mb-6">
         {numbers.map((num) => {
-          const inActiveGroup = activeU !== null && (groupSelections[activeU] ?? []).includes(num);
-          const inOtherGroup = Object.entries(groupSelections).some(([u, arr]) => Number(u) !== activeU && arr.includes(num));
+          const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(num);
+          const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(num));
           return (
             <button
               key={num}
@@ -206,7 +228,7 @@ const Grouping = () => {
               variant="gold"
               size="lg"
               onClick={placeBet}
-              disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((u) => (groupSelections[u] ?? []).length < u)}
+              disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
             >
               Stake
             </Button>
@@ -216,16 +238,16 @@ const Grouping = () => {
 
       {/* Show per-group selections */}
       <div className="mt-4">
-        {selectedUs.map((u) => (
-          <div key={u} className="mb-4 p-4 rounded-lg bg-muted/10 border border-border">
+        {selectedUs.map((sel) => (
+          <div key={sel.id} className="mb-4 p-4 rounded-lg bg-muted/10 border border-border">
             <div className="flex items-center justify-between">
-              <div className="font-semibold">U{u} — {((groupSelections[u] ?? []).length)}</div>
+              <div className="font-semibold">U{sel.u} — {((groupSelections[sel.id] ?? []).length)}</div>
               <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => clearGroup(u)}>Clear</Button>
+                <Button variant="ghost" size="sm" onClick={() => clearGroup(sel.id)}>Clear</Button>
               </div>
             </div>
             <div className="flex gap-2 flex-wrap mt-3">
-              {(groupSelections[u] ?? []).sort((a, b) => a - b).map((n) => (
+              {(groupSelections[sel.id] ?? []).sort((a, b) => a - b).map((n) => (
                 <div key={n} className="px-3 py-1 rounded-lg bg-primary text-primary-foreground">{n}</div>
               ))}
             </div>
