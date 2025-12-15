@@ -197,12 +197,12 @@ const AuthForm = () => {
 
             {!isSignUp && (
               <div className="text-right">
-                <button
-                  type="button"
+                <Link
+                  href="/auth/forgot-password"
                   className="text-sm text-primary hover:text-primary/80 transition-colors"
                 >
                   Forgot password?
-                </button>
+                </Link>
               </div>
             )}
 

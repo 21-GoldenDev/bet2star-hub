@@ -24,7 +24,6 @@ const Navbar = () => {
     const { error } = await signOut();
     if (error) toast({ title: error.message || "Sign out failed", variant: "destructive" });
     else {
-      toast({ title: "Signed out" });
       router.push("/");
     }
   };

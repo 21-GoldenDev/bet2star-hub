@@ -41,3 +41,15 @@ export async function updateAuthUser(updates: { phone?: string | null; full_name
   const result = await supabase.auth.updateUser({ phone, data });
   return { data: result.data, error: result.error };
 }
+
+export async function resetPassword(email: string) {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/reset-password`,
+  });
+  return { data, error };
+}
+
+export async function updatePassword(newPassword: string) {
+  const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  return { data, error };
+}
