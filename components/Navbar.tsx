@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Wallet, User, Menu, X, LogIn, LogOut } from "lucide-react";
@@ -39,31 +40,33 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-[0_0_20px_hsl(43_96%_56%/0.3)]">
-              <span className="text-primary-foreground font-bold text-lg">B2</span>
-            </div>
-            <span className="text-xl font-bold text-foreground">
-              bet<span className="text-primary">2</span>star
-            </span>
+            <Image
+              src="/logo2.png"
+              alt="Bet2Star Logo"
+              height={33}
+              width={250}
+            />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                href={link.path}
-                className={clsx(
-                  "px-4 py-2 rounded-lg font-medium transition-all duration-300",
-                  isActive(link.path)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
+          {isLoggedIn && (
+            <div className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  className={clsx(
+                    "px-4 py-2 rounded-lg font-medium transition-all duration-300",
+                    isActive(link.path)
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Balance & User */}
           <div className="flex items-center gap-3">
@@ -71,7 +74,7 @@ const Navbar = () => {
               <>
                 <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
                   <Wallet className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-foreground">$1,250.00</span>
+                  <span className="font-semibold text-foreground">125,000</span>
                 </div>
                 <Link href="/deposit">
                   <Button variant="gold" size="sm" className="hidden sm:flex">
@@ -131,7 +134,7 @@ const Navbar = () => {
                 <>
                   <div className="flex items-center gap-2 px-4 py-3 mt-2 rounded-lg bg-muted border border-border">
                     <Wallet className="w-4 h-4 text-primary" />
-                    <span className="font-semibold text-foreground">$1,250.00</span>
+                    <span className="font-semibold text-foreground">125,000</span>
                   </div>
                   <Link href="/deposit" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="gold" className="w-full mt-2">

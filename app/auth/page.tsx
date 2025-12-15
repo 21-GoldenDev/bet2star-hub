@@ -8,7 +8,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { compressImage } from "@/lib/image";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -49,7 +48,6 @@ const Auth = () => {
         } else {
           const { error } = await signInWithEmail(formData.email, formData.password);
           if (error) throw error;
-          toast({ title: "Signed in", description: "Redirecting..." });
           router.push("/");
         }
       } catch (err: any) {
@@ -117,36 +115,6 @@ const Auth = () => {
                     }
                     className="pl-11 h-12 bg-muted border-border"
                   />
-                </div>
-                <div className="relative">
-                  <label className="block w-full">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          const compressed = await compressImage(file, 256, 0.8);
-                          setFormData((f) => ({ ...f, avatar: compressed }));
-                        } catch (err) {
-                          toast({ title: "Failed to process avatar", variant: "destructive" });
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <div className="flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer">
-                      <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                        {formData.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={formData.avatar} alt="avatar" className="w-full h-full object-cover" />
-                        ) : (
-                          <User className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <span className="text-sm text-muted-foreground">Upload avatar (optional)</span>
-                    </div>
-                  </label>
                 </div>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

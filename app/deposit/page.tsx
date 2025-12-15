@@ -20,7 +20,7 @@ const Deposit = () => {
   const [amount, setAmount] = useState("");
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
 
-  const quickAmounts = [50, 100, 250, 500, 1000];
+  const quickAmounts = [5000, 10000, 25000, 50000, 100000];
 
   const paymentMethods = [
     {
@@ -80,7 +80,7 @@ const Deposit = () => {
         {/* Current Balance */}
         <div className="bg-linear-to-r from-primary/20 to-secondary/20 border border-primary/30 rounded-2xl p-6 mb-6">
           <p className="text-sm text-muted-foreground mb-1">Current Balance</p>
-          <p className="text-4xl font-bold text-foreground">$1,250.00</p>
+          <p className="text-4xl font-bold text-foreground">125,000</p>
         </div>
 
         {/* Amount Selection */}
@@ -101,15 +101,12 @@ const Deposit = () => {
                     : "bg-muted text-foreground hover:bg-muted/80"
                 )}
               >
-                ${quickAmount}
+                {quickAmount}
               </button>
             ))}
           </div>
 
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">
-              $
-            </span>
             <Input
               type="number"
               placeholder="Enter custom amount"
@@ -120,7 +117,7 @@ const Deposit = () => {
           </div>
 
           <p className="text-sm text-muted-foreground mt-2">
-            Min: $10 • Max: $10,000
+            Min: 1000 • Max: 1000,000
           </p>
         </div>
 
@@ -186,15 +183,15 @@ const Deposit = () => {
             <div className="space-y-3">
               <div className="flex justify-between text-muted-foreground">
                 <span>Deposit Amount</span>
-                <span className="text-foreground">${amount}</span>
+                <span className="text-foreground">{amount}</span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Processing Fee</span>
-                <span className="text-secondary">$0.00</span>
+                <span className="text-secondary">0.00</span>
               </div>
               <div className="border-t border-border pt-3 flex justify-between font-semibold">
                 <span className="text-foreground">Total</span>
-                <span className="text-primary text-xl">${amount}</span>
+                <span className="text-primary text-xl">{amount}</span>
               </div>
             </div>
           </div>
@@ -207,7 +204,7 @@ const Deposit = () => {
           disabled={!amount || !selectedMethod}
           onClick={handleDeposit}
         >
-          Deposit ${amount || "0"}
+          Deposit {amount || "0"}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground mt-4">

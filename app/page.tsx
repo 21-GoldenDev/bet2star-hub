@@ -1,8 +1,14 @@
+"use client";
+
 import { Hash, Type, Trophy, Sparkles, TrendingUp, Shield } from "lucide-react";
 import GameCard from "@/components/GameCard";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import useSupabaseUser from "@/hooks/use-supabase-user";
 
 const Home = () => {
+  const { user } = useSupabaseUser();
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -28,9 +34,11 @@ const Home = () => {
               Join thousands of players on bet2star. Play number matching, word games, or bet on your favorite football matches.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "300ms" }}>
-              <Button variant="gold" size="xl">
-                Start Playing
-              </Button>
+              <Link href={user ? "/lotto" : "/auth"}>
+                <Button variant="gold" size="xl">
+                  Start Playing
+                </Button>
+              </Link>
               <Button variant="outline" size="xl">
                 Learn More
               </Button>

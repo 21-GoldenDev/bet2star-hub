@@ -282,7 +282,7 @@ const Profile = () => {
                 href={item.path}
                 className="flex items-center gap-4 p-4 hover:bg-muted transition-colors"
               >
-                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
                   <item.icon className="w-5 h-5 text-muted-foreground" />
                 </div>
                 <span className="flex-1 text-foreground">{item.label}</span>
