@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "@/components/ui/use-toast";
-import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
+import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 const AuthForm = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -88,9 +89,13 @@ const AuthForm = () => {
         <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_hsl(43_96%_56%/0.3)]">
-              <span className="text-primary-foreground font-bold text-2xl">B2</span>
-            </div>
+            <Image
+              src="/logo2.png"
+              alt="Bet2Star Logo"
+              width={250}
+              height={33}
+              className="mx-auto mb-4"
+            />
             <h1 className="text-2xl font-bold text-foreground">
               {isSignUp ? "Create Account" : "Welcome Back"}
             </h1>

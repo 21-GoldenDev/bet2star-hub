@@ -15,7 +15,7 @@ const protectedRoutes = [
 // Routes that should only be accessible when NOT authenticated
 const authRoutes = ['/auth'];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req });
   
   // Create a Supabase client configured to use cookies

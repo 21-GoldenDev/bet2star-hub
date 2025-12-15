@@ -5,6 +5,7 @@ import GameCard from "@/components/GameCard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import useSupabaseUser from "@/hooks/use-supabase-user";
+import Image from "next/image";
 
 const Home = () => {
   const { user } = useSupabaseUser();
@@ -62,7 +63,7 @@ const Home = () => {
               title="Lotto"
               description="Pick your numbers and win amazing prizes. Quick, thrilling, and easy to play."
               icon={Hash}
-              path="/lotto"
+              path={user ? "/lotto" : "/auth"}
               gradient="gold"
               delay={0}
             />
@@ -70,7 +71,7 @@ const Home = () => {
               title="Pools"
               description="Guess winning combinations and earn big rewards. Strategic and fun gameplay."
               icon={Type}
-              path="/pools"
+              path={user ? "/pools" : "/auth"}
               gradient="cyan"
               delay={100}
             />
@@ -78,7 +79,7 @@ const Home = () => {
               title="Sports Betting"
               description="Wager on your favorite sports teams and matches. Live odds and fast payouts."
               icon={Trophy}
-              path="/sports"
+              path={user ? "/sports" : "/auth"}
               gradient="purple"
               delay={200}
             />
@@ -114,12 +115,12 @@ const Home = () => {
         <div className="container mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">B2</span>
-              </div>
-              <span className="font-bold text-foreground">
-                bet<span className="text-primary">2</span>star
-              </span>
+              <Image
+                src="/logo2.png"
+                alt="Logo"
+                width={250}
+                height={33}
+              />
             </div>
             <p className="text-muted-foreground text-sm">
               © 2025 bet2star. All rights reserved. Play responsibly.
