@@ -16,7 +16,7 @@ const protectedRoutes = [
 const authRoutes = ['/auth'];
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
+  let res = NextResponse.next({ request: req });
   
   // Create a Supabase client configured to use cookies
   const supabase = createServerClient(
@@ -54,16 +54,16 @@ export async function middleware(req: NextRequest) {
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
   // Redirect unauthenticated users away from protected routes
-  if (isProtectedRoute && !session) {
-    const redirectUrl = new URL('/auth', req.url);
-    redirectUrl.searchParams.set('redirectTo', pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
+  // if (isProtectedRoute && !session) {
+  //   const redirectUrl = new URL('/auth', req.url);
+  //   redirectUrl.searchParams.set('redirectTo', pathname);
+  //   return NextResponse.redirect(redirectUrl);
+  // }
 
-  // Redirect authenticated users away from auth routes
-  if (isAuthRoute && session) {
-    return NextResponse.redirect(new URL('/', req.url));
-  }
+  // // Redirect authenticated users away from auth routes
+  // if (isAuthRoute && session) {
+  //   return NextResponse.redirect(new URL('/', req.url));
+  // }
 
   return res;
 }
