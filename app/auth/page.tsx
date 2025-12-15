@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "@/components/ui/use-toast";
 import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
 import Link from "next/link";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
-const Auth = () => {
+const AuthForm = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -23,10 +23,7 @@ const Auth = () => {
   });
 
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
-
-  const redirectTo = searchParams.get('redirectTo') || '/';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +48,7 @@ const Auth = () => {
         } else {
           const { error } = await signInWithEmail(formData.email, formData.password);
           if (error) throw error;
-          router.push(redirectTo);
+          router.push("/");
         }
       } catch (err: any) {
         toast({ title: err?.message || "Auth error", variant: "destructive" });
@@ -264,6 +261,27 @@ const Auth = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const Auth = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen pt-16 flex items-center justify-center px-4">
+        <div className="w-full max-w-md">
+          <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_hsl(43_96%_56%/0.3)]">
+                <span className="text-primary-foreground font-bold text-2xl">B2</span>
+              </div>
+              <h1 className="text-2xl font-bold text-foreground">Loading...</h1>
+            </div>
+          </div>
+        </div>
+      </div>
+    }>
+      <AuthForm />
+    </Suspense>
   );
 };
 
