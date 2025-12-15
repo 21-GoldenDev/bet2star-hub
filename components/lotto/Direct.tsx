@@ -4,12 +4,19 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import clsx from "clsx"
-import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-const Direct = () => {
+interface Props {
+  activeTab: "result" | "fixtures";
+  gameMode: "nap_perm" | "grouping";
+  setGameMode: (mode: "nap_perm" | "grouping") => void;
+}
+
+const Direct = ({ gameMode, setGameMode }: Props) => {
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
+  const [odd, setOdd] = useState<string>("");
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
 
   const numbers = Array.from({ length: 49 }, (_, i) => i + 1);
@@ -20,10 +27,6 @@ const Direct = () => {
     } else {
       setSelectedNumbers([...selectedNumbers, num]);
     }
-  };
-
-  const clearSelection = () => {
-    setSelectedNumbers([]);
   };
 
   const toggleMatch = (m: number) => {
@@ -58,71 +61,80 @@ const Direct = () => {
 
   return (
     <div className="min-h-75">
-      <div className="flex flex-col gap-4 mb-6 p-4 rounded-xl bg-card border border-border">
-        <div className="flex items-center gap-4 flex-wrap">
-          <div className="text-sm text-muted-foreground">
-            Match at least:
+      {/* 3 Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Column 1: Match at Least */}
+        <div className="lg:col-span-2">
+          <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
+            <RadioGroup value={gameMode} onValueChange={setGameMode}>
+              {["nap_perm", "grouping"].map((mode) => (
+                <label
+                  key={mode}
+                  className="cursor-pointer flex items-center gap-2"
+                >
+                  <RadioGroupItem key={mode} value={mode} />
+                  <span className="text-sm font-medium">
+                    {mode === "nap_perm" ? "NAP/PERM" : "Grouping"}
+                  </span>
+                </label>
+              ))}
+            </RadioGroup>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {[1, 2, 3, 4, 5, 6, 7].map((u) => (
-              <button
-                key={u}
-                onClick={() => toggleMatch(u)}
-                className={clsx(
-                  "px-3 py-1 rounded-lg font-medium cursor-pointer transition-all",
-                  matchAtLeast.includes(u)
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                U{u}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">
-              Selected: <span className="text-primary font-bold">{selectedNumbers.length} numbers</span>
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
+            <div className="flex flex-col gap-2">
+              {[1, 2, 3, 4, 5, 6, 7].map((u) => (
+                <label
+                  key={u}
+                  onClick={() => toggleMatch(u)}
+                  className="cursor-pointer flex items-center gap-2"
+                >
+                  <div>
+                    <div className="size-4 rounded-full bg-transparent border border-primary flex items-center justify-center">
+                      {matchAtLeast.includes(u) && (
+                        <div className="bg-primary size-2 rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm font-medium">
+                    {u}
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={clearSelection}>
-            <RefreshCw className="w-4 h-4 mr-1" />
-            Clear
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Number grid */}
-        <div className="lg:col-span-2">
-          <div className="grid grid-cols-7 sm:grid-cols-10 gap-2">
-            {numbers.map((num) => (
-              <button
-                key={num}
-                onClick={() => toggleNumber(num)}
-                className={clsx(
-                  "aspect-square rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
-                  selectedNumbers.includes(num)
-                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
-                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                )}
-              >
-                {num}
-              </button>
-            ))}
+        {/* Column 2: Number Grid */}
+        <div className="lg:col-span-6">
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+              {numbers.map((num) => (
+                <button
+                  key={num}
+                  onClick={() => toggleNumber(num)}
+                  className={clsx(
+                    "aspect-square rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
+                    selectedNumbers.includes(num)
+                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
+                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                  )}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Right: Selected numbers, Bet, Stake */}
-        <div className="flex flex-col gap-4">
-          <div className="p-4 rounded-xl bg-card border border-border flex flex-col h-full">
-            <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Numbers</div>
+        {/* Column 3: Selected Numbers, Bet Amount, Stake Button */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">
+              Selected Numbers ({selectedNumbers.length})
+            </div>
             <div
-              className="space-y-3 overflow-y-auto flex-1"
+              className="space-y-3 overflow-y-auto min-h-30 max-h-30"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "#20283c transparent",
@@ -133,9 +145,9 @@ const Direct = () => {
               {selectedNumbers.length === 0 ? (
                 <div className="text-xs text-muted-foreground">No numbers selected</div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {[...selectedNumbers].sort((a, b) => a - b).map((n) => (
-                    <span key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
+                    <span key={n} className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium">
                       {n}
                     </span>
                   ))}
@@ -145,7 +157,21 @@ const Direct = () => {
           </div>
 
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="text-sm font-semibold mb-3 text-muted-foreground">Bet Amount</div>
+            <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
+            <div className="flex flex-col gap-2">
+              <RadioGroup value={odd} onValueChange={setOdd}>
+                {['40-1 A', '100-1'].map((oddsValue) => (
+                  <label key={oddsValue} className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem key={oddsValue} value={oddsValue} />
+                    <span className="text-sm font-medium">{oddsValue}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
               <Input
                 type="number"
@@ -155,13 +181,13 @@ const Direct = () => {
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
                 className="w-full"
               />
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-4 gap-2">
                 {[1000, 2000, 5000, 10000].map((amount) => (
                   <button
                     key={amount}
                     onClick={() => setBetAmount(amount)}
                     className={clsx(
-                      "px-2 py-1 rounded text-xs font-medium cursor-pointer transition-all",
+                      "px-3 py-2 rounded text-sm font-medium cursor-pointer transition-all",
                       betAmount === amount
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:text-foreground"

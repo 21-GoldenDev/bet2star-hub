@@ -1,14 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import clsx from "clsx";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import clsx from "clsx";
-import { RefreshCw } from "lucide-react";
-import { toast } from "sonner";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
+const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
 interface Props {
   matches: string[];
+  activeTab: "result" | "fixtures";
+  gameMode: "nap_perm" | "grouping";
+  setGameMode: (mode: "nap_perm" | "grouping") => void;
 }
 
 interface USelection {
@@ -16,15 +21,25 @@ interface USelection {
   u: number;
 }
 
-const Grouping = ({ matches }: Props) => {
+const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
+  const [totalUnder, setTotalUnder] = useState<number>(0);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>({});
   const [betAmount, setBetAmount] = useState(5000);
+  const [odd, setOdd] = useState<string>("");
 
   const currentSum = selectedUs.reduce((acc, sel) => acc + sel.u, 0);
 
-  const toggleU = (u: number) => {
+  const handleUpdateU = (id: string, newU: number) => {
+    const index = selectedUs.findIndex((sel) => sel.id === id);
+    if (index === -1) return;
+    const newSelectedUs = selectedUs.slice(0, index);
+    newSelectedUs.push({ id, u: newU });
+    setSelectedUs(newSelectedUs);
+  }
+
+  const handleAddU = (u: number) => {
     const newId = `${u}-${Date.now()}`;
     if (currentSum + u > 7) {
       toast.error("Total of selected U values cannot exceed 7");
@@ -98,97 +113,82 @@ const Grouping = ({ matches }: Props) => {
     }
 
     const groups = selectedUs
-      .map((sel) => `U${sel.u}:[${(groupSelections[sel.id] ?? []).length} matches]`)
+      .map((sel) => `U${sel.u}:[${(groupSelections[sel.id] ?? []).join(",")}]`)
       .join(" ");
 
     toast.success(`Bet placed! ${groups} | Bet: $${betAmount}`);
   };
 
+  const nextGroup = useMemo(() => {
+    if (!totalUnder) return null;
+    const remaining = totalUnder - currentSum;
+    if (remaining <= 0) return null;
+    return {
+      label: groupLabels[selectedUs.length],
+      values: Array.from({ length: remaining }, (_, i) => i + 1),
+    }
+  }, [totalUnder, selectedUs]);
+
+  const getMatchesGroup = (id: string) => {
+    const index = selectedUs.findIndex((sel) => sel.id === id);
+    if (index === -1) return [];
+    const sum = selectedUs.slice(0, index).reduce((acc, sel) => acc + sel.u, 0);
+    if (totalUnder - sum <= 0) return [];
+    return Array.from({ length: totalUnder - sum }, (_, i) => i + 1);
+  }
+
   return (
     <div>
-      <div className="flex flex-col gap-4 mb-6 p-4 rounded-xl bg-card border border-border">
-        <div className="flex items-center gap-4 justify-between flex-wrap">
-          <div className="text-sm text-muted-foreground">Select groups (sum ≤ 7):</div>
-          <div className="flex gap-2 flex-wrap">
-            {[1, 2, 3, 4, 5, 6, 7].map((u) => (
-              <button
-                key={u}
-                onClick={() => toggleU(u)}
-                className={clsx(
-                  "px-3 py-1 rounded-lg font-medium cursor-pointer transition-all",
-                  selectedUs.some((sel) => sel.u === u) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                U{u}
-              </button>
-            ))}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
+        <div className="lg:col-span-2">
+          <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
+            <RadioGroup value={gameMode} onValueChange={setGameMode}>
+              {["nap_perm", "grouping"].map((mode) => (
+                <label
+                  key={mode}
+                  className="cursor-pointer flex items-center gap-2"
+                >
+                  <RadioGroupItem key={mode} value={mode} />
+                  <span className="text-sm font-medium">
+                    {mode === "nap_perm" ? "NAP/PERM" : "Grouping"}
+                  </span>
+                </label>
+              ))}
+            </RadioGroup>
           </div>
-        </div>
-
-        <div className="flex items-center gap-4 justify-between flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="text-sm text-muted-foreground">Selected:</div>
-            <div className="flex gap-2">
-              {selectedUs.length === 0 ? (
-                <span className="px-3 py-1 rounded-lg bg-muted border border-border/50 text-muted-foreground">None</span>
-              ) : (
-                selectedUs.map((sel) => (
-                  <div
-                    key={sel.id}
-                    className="flex items-center gap-2"
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
+            <div className="flex flex-col gap-2">
+              <RadioGroup
+                value={totalUnder.toString()}
+                onValueChange={(e) => setTotalUnder(Number(e))}
+              >
+                {[2, 3, 4, 5, 6, 7].map((u) => (
+                  <label
+                    key={u}
+                    className="cursor-pointer flex items-center gap-2"
                   >
-                    <button
-                      onClick={() => setActiveUId(sel.id)}
-                      className={clsx(
-                        "px-3 py-1 rounded-lg font-medium cursor-pointer",
-                        activeUId === sel.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      U{sel.u} ({(groupSelections[sel.id] ?? []).length})
-                    </button>
-                    <span
-                      onClick={() => removeU(sel.id)}
-                      className="ml-1 cursor-pointer hover:opacity-70 font-medium"
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          removeU(sel.id);
-                        }
-                      }}
-                    >
-                      ×
+                    <RadioGroupItem key={u} value={u.toString()} />
+                    <span className="text-sm font-medium">
+                      {u}
                     </span>
-                  </div>
-                ))
-              )}
+                  </label>
+                ))}
+              </RadioGroup>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={clearAll}>
-              <RefreshCw className="w-4 h-4 mr-1" />
-              Clear All
-            </Button>
-          </div>
         </div>
-      </div>
-
-      <div className="text-sm mb-4">Active Group: {activeUId ? `U${selectedUs.find((sel) => sel.id === activeUId)?.u}` : "—"}</div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left side - Matches */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-6">
           <div
-          // className="max-h-screen overflow-y-auto"
-          // style={{
-          //   scrollbarWidth: "thin",
-          //   scrollbarColor: "#20283c transparent",
-          //   msOverflowStyle: "auto",
-          //   WebkitOverflowScrolling: "touch",
-          // }}
+            className="max-h-screen overflow-y-auto"
+            style={{
+              scrollbarWidth: "thin",
+              scrollbarColor: "#20283c transparent",
+              msOverflowStyle: "auto",
+              WebkitOverflowScrolling: "touch",
+            }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-card border border-border rounded-xl p-4">
               {matches.map((match, index) => {
                 const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
                 const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
@@ -199,7 +199,7 @@ const Grouping = ({ matches }: Props) => {
                     className={clsx(
                       "p-3 rounded-xl font-medium text-sm transition-all duration-300 text-left",
                       inActiveGroup
-                        ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-[1.02]"
+                        ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
                         : inOtherGroup
                           ? "cursor-not-allowed bg-secondary text-secondary-foreground"
                           : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
@@ -212,14 +212,11 @@ const Grouping = ({ matches }: Props) => {
             </div>
           </div>
         </div>
-
-        {/* Right side - Selected matches, bet amount, and stake button */}
-        <div className="flex flex-col gap-4">
-          {/* Selected matches */}
-          <div className="p-4 rounded-xl bg-card border border-border">
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="p-4 rounded-xl bg-card border border-border flex flex-col">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Matches</div>
             <div
-              className="space-y-3 max-h-[50vh] overflow-y-auto"
+              className="space-y-3 min-h-30 max-h-80 overflow-y-auto flex-1"
               style={{
                 scrollbarWidth: "thin",
                 scrollbarColor: "#20283c transparent",
@@ -227,39 +224,107 @@ const Grouping = ({ matches }: Props) => {
                 WebkitOverflowScrolling: "touch",
               }}
             >
-              {selectedUs.length === 0 ? (
-                <div className="text-xs text-muted-foreground">No selections yet</div>
-              ) : (
-                selectedUs.map((sel) => (
-                  <div key={sel.id} className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium text-sm">U{sel.u}</div>
-                      <Button variant="ghost" size="sm" onClick={() => clearGroup(sel.id)} className="h-6 w-6 p-0">
-                        ×
-                      </Button>
+              {selectedUs.map((sel, index) => (
+                <div
+                  key={sel.id}
+                  onClick={() => setActiveUId(sel.id)}
+                  className={clsx(
+                    "p-3 rounded-lg cursor-pointer transition-all",
+                    activeUId === sel.id
+                      ? "bg-primary/10 border border-primary"
+                      : "bg-muted/50 border border-border/50 hover:bg-muted"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">{groupLabels[index]}</span>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={sel.u}
+                          onChange={(e) => handleUpdateU(sel.id, Number(e.target.value))}
+                          className={clsx(
+                            "px-2 py-0.5 rounded text-xs bg-muted border text-foreground cursor-pointer",
+                            activeUId === sel.id ? "border-primary" : "border-border"
+                          )}
+                        >
+                          <option value="">Select</option>
+                          {getMatchesGroup(sel.id).map((val) => (
+                            <option key={val} value={val}>
+                              {val}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {(groupSelections[sel.id] ?? []).length === 0 ? (
-                        <div className="text-xs text-muted-foreground">No matches selected</div>
-                      ) : (
-                        matches.map((m, i) => (
-                          (groupSelections[sel.id] ?? []).includes(m) ? (
-                            <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
-                              {i + 1}. {m}
-                            </div>
-                          ) : null
-                        ))
-                      )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearGroup(sel.id);
+                      }}
+                      className="h-6 w-6 p-0"
+                    >
+                      X
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(groupSelections[sel.id] ?? []).length === 0 ? (
+                      <div className="text-xs text-muted-foreground">No matches selected</div>
+                    ) : (
+                      matches.map((m, i) => (
+                        (groupSelections[sel.id] ?? []).includes(m) ? (
+                          <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
+                            {i + 1}. {m}
+                          </div>
+                        ) : null
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+              {!!nextGroup && (
+                <div className="p-3 rounded-lg cursor-pointer transition-all bg-muted/50 border border-border/50 hover:bg-muted">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">{nextGroup.label}</span>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value=""
+                          onChange={(e) => handleAddU(Number(e.target.value))}
+                          className="px-2 py-0.5 rounded text-xs bg-muted border border-border text-foreground cursor-pointer"
+                        >
+                          <option value="">Select</option>
+                          {nextGroup.values.map((val) => (
+                            <option key={val} value={val}>
+                              {val}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
-                ))
+                </div>
               )}
             </div>
           </div>
 
-          {/* Bet amount */}
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="text-sm font-semibold mb-3 text-muted-foreground">Bet Amount</div>
+            <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
+            <div className="flex flex-col gap-2">
+              <RadioGroup value={odd} onValueChange={setOdd}>
+                {['40-1 A', '100-1'].map((oddsValue) => (
+                  <label key={oddsValue} className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem key={oddsValue} value={oddsValue} />
+                    <span className="text-sm font-medium">{oddsValue}</span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
               <Input
                 type="number"
@@ -269,13 +334,13 @@ const Grouping = ({ matches }: Props) => {
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
                 className="w-full"
               />
-              <div className="grid grid-cols-2 gap-1">
+              <div className="grid grid-cols-4 gap-2">
                 {[1000, 2000, 5000, 10000].map((amount) => (
                   <button
                     key={amount}
                     onClick={() => setBetAmount(amount)}
                     className={clsx(
-                      "px-2 py-1 rounded text-xs font-medium cursor-pointer transition-all",
+                      "px-3 py-2 rounded text-sm font-medium cursor-pointer transition-all",
                       betAmount === amount
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground hover:text-foreground"
@@ -288,13 +353,12 @@ const Grouping = ({ matches }: Props) => {
             </div>
           </div>
 
-          {/* Stake button */}
           <Button
             variant="gold"
             size="lg"
             onClick={placeBet}
             disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
-            className="w-full"
+            className="w-full py-3"
           >
             Stake
           </Button>
