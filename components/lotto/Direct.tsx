@@ -108,62 +108,93 @@ const Direct = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 sm:grid-cols-10 gap-2 mb-6">
-        {numbers.map((num) => (
-          <button
-            key={num}
-            onClick={() => toggleNumber(num)}
-            className={clsx(
-              "aspect-square rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
-              selectedNumbers.includes(num)
-                ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
-                : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-            )}
-          >
-            {num}
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Number grid */}
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-7 sm:grid-cols-10 gap-2">
+            {numbers.map((num) => (
+              <button
+                key={num}
+                onClick={() => toggleNumber(num)}
+                className={clsx(
+                  "aspect-square rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
+                  selectedNumbers.includes(num)
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
+                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                )}
+              >
+                {num}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="p-6 rounded-2xl bg-card border border-border">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <span className="text-muted-foreground">Bet Amount:</span>
-            <div className="flex items-center gap-2">
+        {/* Right: Selected numbers, Bet, Stake */}
+        <div className="flex flex-col gap-4">
+          <div className="p-4 rounded-xl bg-card border border-border flex flex-col h-full">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Numbers</div>
+            <div
+              className="space-y-3 overflow-y-auto flex-1"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#20283c transparent",
+                msOverflowStyle: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {selectedNumbers.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No numbers selected</div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {[...selectedNumbers].sort((a, b) => a - b).map((n) => (
+                    <span key={n} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
+                      {n}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Bet Amount</div>
+            <div className="flex flex-col gap-2">
               <Input
                 type="number"
                 min={1}
                 step={1}
                 value={betAmount.toString()}
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
-                className="w-28"
+                className="w-full"
               />
-              {[1000, 2000, 5000, 10000, 20000].map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => setBetAmount(amount)}
-                  className={clsx(
-                    "px-4 py-2 rounded-lg font-medium cursor-pointer transition-all",
-                    betAmount === amount
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {amount}
-                </button>
-              ))}
+              <div className="grid grid-cols-2 gap-1">
+                {[1000, 2000, 5000, 10000].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setBetAmount(amount)}
+                    className={clsx(
+                      "px-2 py-1 rounded text-xs font-medium cursor-pointer transition-all",
+                      betAmount === amount
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {amount / 1000}k
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="gold"
-              size="lg"
-              onClick={placeBet}
-              disabled={selectedNumbers.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0}
-            >
-              Stake
-            </Button>
-          </div>
+
+          <Button
+            variant="gold"
+            size="lg"
+            onClick={placeBet}
+            disabled={selectedNumbers.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0}
+            className="w-full py-3"
+          >
+            Stake
+          </Button>
         </div>
       </div>
     </div>

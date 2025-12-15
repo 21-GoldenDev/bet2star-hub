@@ -169,90 +169,119 @@ const Grouping = () => {
         </div>
       </div>
 
-      <div className="text-sm mb-2">Active Group: {activeUId ? `U${selectedUs.find((sel) => sel.id === activeUId)?.u}` : "—"}</div>
+      <div className="text-sm mb-4">Active Group: {activeUId ? `U${selectedUs.find((sel) => sel.id === activeUId)?.u}` : "—"}</div>
 
-      <div className="grid grid-cols-7 sm:grid-cols-10 gap-2 mb-6">
-        {numbers.map((num) => {
-          const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(num);
-          const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(num));
-          return (
-            <button
-              key={num}
-              onClick={() => toggleNumberForActive(num)}
-              className={clsx(
-                "aspect-square rounded-xl font-bold text-lg transition-all duration-300",
-                inActiveGroup
-                  ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
-                  : inOtherGroup
-                    ? "cursor-not-allowed bg-secondary text-secondary-foreground"
-                    : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-              )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left side - Numbers */}
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-7 sm:grid-cols-10 gap-2">
+            {numbers.map((num) => {
+              const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(num);
+              const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(num));
+              return (
+                <button
+                  key={num}
+                  onClick={() => toggleNumberForActive(num)}
+                  className={clsx(
+                    "aspect-square rounded-xl font-bold text-lg transition-all duration-300",
+                    inActiveGroup
+                      ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
+                      : inOtherGroup
+                        ? "cursor-not-allowed bg-secondary text-secondary-foreground"
+                        : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                  )}
+                >
+                  {num}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Right side - Selected numbers, bet amount, and stake button */}
+        <div className="flex flex-col gap-4">
+          {/* Selected numbers and all numbers */}
+          <div className="p-4 rounded-xl bg-card border border-border flex flex-col h-full">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Numbers</div>
+            <div
+              className="space-y-3 overflow-y-auto flex-1"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#20283c transparent",
+                msOverflowStyle: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
             >
-              {num}
-            </button>
-          );
-        })}
-      </div>
+              {selectedUs.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No selections yet</div>
+              ) : (
+                selectedUs.map((sel) => (
+                  <div key={sel.id} className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-sm">U{sel.u}</div>
+                      <Button variant="ghost" size="sm" onClick={() => clearGroup(sel.id)} className="h-6 w-6 p-0">
+                        ×
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {(groupSelections[sel.id] ?? []).length === 0 ? (
+                        <div className="text-xs text-muted-foreground">No numbers selected</div>
+                      ) : (
+                        (groupSelections[sel.id] ?? []).sort((a, b) => a - b).map((n) => (
+                          <div key={n} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
+                            {n}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-      <div className="p-6 rounded-2xl bg-card border border-border">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <span className="text-muted-foreground">Bet Amount:</span>
-            <div className="flex items-center gap-2">
+          {/* Bet amount */}
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Bet Amount</div>
+            <div className="flex flex-col gap-2">
               <Input
                 type="number"
                 min={1}
                 step={1}
                 value={betAmount.toString()}
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
-                className="w-28"
+                className="w-full"
               />
-            </div>
-            {[1000, 2000, 5000, 10000, 20000].map((amount) => (
-              <button
-                key={amount}
-                onClick={() => setBetAmount(amount)}
-                className={clsx(
-                  "px-4 py-2 rounded-lg font-medium cursor-pointer transition-all",
-                  betAmount === amount
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {amount}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="gold"
-              size="lg"
-              onClick={placeBet}
-              disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
-            >
-              Stake
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Show per-group selections */}
-      <div className="mt-4">
-        {selectedUs.map((sel) => (
-          <div key={sel.id} className="mb-4 p-4 rounded-lg bg-muted/10 border border-border">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold">U{sel.u} — {((groupSelections[sel.id] ?? []).length)}</div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => clearGroup(sel.id)}>Clear</Button>
+              <div className="grid grid-cols-2 gap-1">
+                {[1000, 2000, 5000, 10000].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setBetAmount(amount)}
+                    className={clsx(
+                      "px-2 py-1 rounded text-xs font-medium cursor-pointer transition-all",
+                      betAmount === amount
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {amount / 1000}k
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="flex gap-2 flex-wrap mt-3">
-              {(groupSelections[sel.id] ?? []).sort((a, b) => a - b).map((n) => (
-                <div key={n} className="px-3 py-1 rounded-lg bg-primary text-primary-foreground">{n}</div>
-              ))}
-            </div>
           </div>
-        ))}
+
+          {/* Stake button */}
+          <Button
+            variant="gold"
+            size="lg"
+            onClick={placeBet}
+            disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
+            className="w-full py-3"
+          >
+            Stake
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -42,7 +42,7 @@ const PoolsPage = () => {
         <div className="bg-card border border-border rounded-xl p-4">
           <Tabs defaultValue="direct">
             <TabsList>
-              <TabsTrigger className="cursor-pointer" value="direct">Direct</TabsTrigger>
+              <TabsTrigger className="cursor-pointer" value="direct">NAP / PERM</TabsTrigger>
               <TabsTrigger className="cursor-pointer" value="grouping">Grouping</TabsTrigger>
             </TabsList>
 

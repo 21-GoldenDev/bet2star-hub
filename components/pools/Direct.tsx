@@ -97,62 +97,95 @@ const Direct = ({ matches }: Props) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-6">
-        {matches.map((match, index) => (
-          <button
-            key={index}
-            onClick={() => toggleMatch(match)}
-            className={clsx(
-              "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 text-left",
-              selectedMatches.includes(match)
-                ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-[1.02]"
-                : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-            )}
-          >
-            {index + 1}. {match}
-          </button>
-        ))}
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Matches grid */}
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {matches.map((match, index) => (
+              <button
+                key={index}
+                onClick={() => toggleMatch(match)}
+                className={clsx(
+                  "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 text-left",
+                  selectedMatches.includes(match)
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-[1.02]"
+                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                )}
+              >
+                {index + 1}. {match}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <div className="p-6 rounded-2xl bg-card border border-border">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <span className="text-muted-foreground">Bet Amount:</span>
-            <div className="flex items-center gap-2">
+        {/* Right: Selected matches, Bet, Stake */}
+        <div className="flex flex-col gap-4">
+          <div className="p-4 rounded-xl bg-card border border-border flex flex-col">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Matches</div>
+            <div
+              className="space-y-3 overflow-y-auto flex-1"
+              style={{
+                scrollbarWidth: "thin",
+                scrollbarColor: "#20283c transparent",
+                msOverflowStyle: "auto",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {selectedMatches.length === 0 ? (
+                <div className="text-xs text-muted-foreground">No matches selected</div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {matches.map((m, i) => (
+                    selectedMatches.includes(m) ? (
+                      <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
+                        {i + 1}. {m}
+                      </div>
+                    ) : null
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">Bet Amount</div>
+            <div className="flex flex-col gap-2">
               <Input
                 type="number"
                 min={1}
                 step={1}
                 value={betAmount.toString()}
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
-                className="w-28"
+                className="w-full"
               />
-              {[1000, 2000, 5000, 10000, 20000].map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => setBetAmount(amount)}
-                  className={clsx(
-                    "px-4 py-2 rounded-lg font-medium cursor-pointer transition-all",
-                    betAmount === amount
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {amount}
-                </button>
-              ))}
+              <div className="grid grid-cols-2 gap-1">
+                {[1000, 2000, 5000, 10000].map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setBetAmount(amount)}
+                    className={clsx(
+                      "px-2 py-1 rounded text-xs font-medium cursor-pointer transition-all",
+                      betAmount === amount
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {amount / 1000}k
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="gold"
-              size="lg"
-              onClick={placeBet}
-              disabled={selectedMatches.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0}
-            >
-              Stake
-            </Button>
-          </div>
+
+          <Button
+            variant="gold"
+            size="lg"
+            onClick={placeBet}
+            disabled={selectedMatches.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0}
+            className="w-full py-3"
+          >
+            Stake
+          </Button>
         </div>
       </div>
     </div>
