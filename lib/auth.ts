@@ -1,7 +1,14 @@
 import supabase from "./supabaseClient";
 
 export async function signUpWithEmail(email: string, password: string, metadata?: Record<string, any>) {
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata } });
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+    }
+  });
   return { data, error };
 }
 
