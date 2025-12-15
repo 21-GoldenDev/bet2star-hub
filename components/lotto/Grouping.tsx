@@ -228,7 +228,7 @@ const Grouping = () => {
                         <div className="text-xs text-muted-foreground">No numbers selected</div>
                       ) : (
                         (groupSelections[sel.id] ?? []).sort((a, b) => a - b).map((n) => (
-                          <div key={n} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
+                          <div key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
                             {n}
                           </div>
                         ))

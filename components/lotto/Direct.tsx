@@ -86,18 +86,6 @@ const Direct = () => {
             <div className="text-sm text-muted-foreground">
               Selected: <span className="text-primary font-bold">{selectedNumbers.length} numbers</span>
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {selectedNumbers.length > 0 && (
-                selectedNumbers.sort((a, b) => a - b).map((num) => (
-                  <span
-                    key={num}
-                    className="w-10 h-10 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm"
-                  >
-                    {num}
-                  </span>
-                ))
-              )}
-            </div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -147,7 +135,7 @@ const Direct = () => {
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {[...selectedNumbers].sort((a, b) => a - b).map((n) => (
-                    <span key={n} className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium">
+                    <span key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
                       {n}
                     </span>
                   ))}
