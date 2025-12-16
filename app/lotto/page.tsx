@@ -11,7 +11,7 @@ const LottoPage = () => {
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
-      <div className="container mx-auto max-w-4xl">
+      <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-10 animate-slide-up">
           {/* <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-4">
             Number Matching

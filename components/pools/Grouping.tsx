@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import Odd_40_1A from "../odds/40_1A";
+import Odd_100_1 from "../odds/100_1";
 
 const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
@@ -140,7 +142,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
   return (
     <div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
             <RadioGroup value={gameMode} onValueChange={setGameMode}>
               {["nap_perm", "grouping"].map((mode) => (
@@ -177,6 +179,12 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
               </RadioGroup>
             </div>
           </div>
+          {!!odd && (
+            <div className="mt-4">
+              {odd === "40-1 A" && <Odd_40_1A />}
+              {odd === "100-1" && <Odd_100_1 />}
+            </div>
+          )}
         </div>
         <div className="lg:col-span-6">
           <div
@@ -188,7 +196,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
               WebkitOverflowScrolling: "touch",
             }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-card border border-border rounded-xl p-4">
+            <div className="grid grid-cols-7 lg:grid-cols-10 gap-2 bg-card border border-border rounded-xl p-4">
               {matches.map((match, index) => {
                 const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
                 const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
@@ -197,22 +205,22 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
                     key={index}
                     onClick={() => toggleMatchForActive(match)}
                     className={clsx(
-                      "p-3 rounded-xl font-medium text-sm transition-all duration-300 text-left",
+                      "p-3 rounded-xl font-medium text-sm transition-all duration-300",
                       inActiveGroup
-                        ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
+                        ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                         : inOtherGroup
                           ? "cursor-not-allowed bg-secondary text-secondary-foreground"
                           : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
                     )}
                   >
-                    {index + 1}. {match}
+                    {match}
                   </button>
                 );
               })}
             </div>
           </div>
         </div>
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="p-4 rounded-xl bg-card border border-border flex flex-col">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Matches</div>
             <div
@@ -275,7 +283,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
                       matches.map((m, i) => (
                         (groupSelections[sel.id] ?? []).includes(m) ? (
                           <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
-                            {i + 1}. {m}
+                            {m}
                           </div>
                         ) : null
                       ))

@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import Odd_40_1A from "../odds/40_1A";
+import Odd_100_1 from "../odds/100_1";
 
 interface Props {
   matches: string[];
@@ -67,7 +69,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
       {/* 3 Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
         {/* Column 1: Match at Least */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
             <RadioGroup value={gameMode} onValueChange={setGameMode}>
               {["nap_perm", "grouping"].map((mode) => (
@@ -109,25 +111,30 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
               <RefreshCw className="w-4 h-4 mr-1" />
               Clear
             </Button>
+            {!!odd && (
+              <div className="mt-4">
+                {odd === "40-1 A" && <Odd_40_1A />}
+                {odd === "100-1" && <Odd_100_1 />}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Column 2: Matches Grid */}
         <div className="lg:col-span-6">
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-7 lg:grid-cols-10 gap-2">
               {matches.map((match, index) => (
                 <button
                   key={index}
                   onClick={() => toggleMatch(match)}
                   className={clsx(
-                    "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 text-left flex items-center gap-2",
+                    "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 flex items-center justify-center gap-2",
                     selectedMatches.includes(match)
-                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)] scale-105"
+                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                       : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
                   )}
                 >
-                  <div>{index + 1}.</div>
                   <div>{match}</div>
                 </button>
               ))}
@@ -136,7 +143,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
         </div>
 
         {/* Column 3: Controls and Selected Matches */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">
               Selected Matches ({selectedMatches.length})
@@ -157,7 +164,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
                   {matches.map((m, i) => (
                     selectedMatches.includes(m) ? (
                       <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
-                        {i + 1}. {m}
+                        {m}
                       </div>
                     ) : null
                   ))}
