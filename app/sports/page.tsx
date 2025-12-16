@@ -219,6 +219,17 @@ const Football = () => {
     return map;
   }, [matches]);
 
+  const matchNumberMap = useMemo(() => {
+    const map = new Map<number, number>();
+    let counter = 1;
+    Object.values(groupedMatches).forEach((leagueMatches) => {
+      leagueMatches.forEach((m) => {
+        map.set(m.id, counter++);
+      });
+    });
+    return map;
+  }, [groupedMatches]);
+
   return (
     <div className="h-screen pt-24 pb-2 px-4 overflow-hidden">
       <div className="container mx-auto max-w-5xl">
@@ -246,71 +257,79 @@ const Football = () => {
                   className="mt-2 space-y-1"
                   defaultValue={Object.entries(groupedMatches).map((_, index) => `league-${index}`)}
                 >
-                  {Object.entries(groupedMatches).map(([league, leagueMatches], index) => (
-                    <AccordionItem key={`league-acc-${index}`} className="border-0" value={`league-${index}`}>
-                      <AccordionTrigger className="bg-muted/50 px-3 py-4 rounded-md text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-bold">{league}</span>
-                          <span className="text-[10px] text-muted-foreground">{leagueMatches.length} matches</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="pt-2">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead></TableHead>
-                              <TableHead></TableHead>
-                              {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
-                                <TableHead key={key} className="text-center p-1">
-                                  {optionLabels[key as BetOptionKey]}
-                                </TableHead>
-                              ))}
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {leagueMatches.map((match) => (
-                              <TableRow key={match.id} className="border-0">
-                                <TableCell className="p-1 border border-border">
-                                  <div className="flex flex-col gap-1 font-semibold text-xs text-foreground">
-                                    <span>{match.homeTeam}</span>
-                                    <span>{match.awayTeam}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="p-1 border border-border">
-                                  <div className="flex justify-center">
-                                    {match.isLive ? (
-                                      <span className="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-medium">
-                                        <Zap className="w-3 h-3" /> LIVE
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                                        <Clock className="w-3 h-3" /> {match.time}
-                                      </span>
-                                    )}
-                                  </div>
-                                </TableCell>
+                  {Object.entries(groupedMatches).map(([league, leagueMatches], index) => {
+                    return (
+                      <AccordionItem key={`league-acc-${index}`} className="border-0" value={`league-${index}`}>
+                        <AccordionTrigger className="bg-muted/50 px-3 py-4 rounded-md text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold">{league}</span>
+                            <span className="text-[10px] text-muted-foreground">{leagueMatches.length} matches</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead></TableHead>
+                                <TableHead></TableHead>
                                 {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
-                                  <TableCell key={`${match.id}-${key}`} className="text-center p-1 border border-border">
-                                    <button
-                                      onClick={() => toggleBet(match.id, key as BetOptionKey, match.odds[key as BetOptionKey])}
-                                      className={clsx(
-                                        "cursor-pointer inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold",
-                                        isSelected(match.id, key as BetOptionKey)
-                                          ? "bg-primary text-primary-foreground shadow"
-                                          : "bg-muted hover:bg-muted/80 text-foreground"
-                                      )}
-                                    >
-                                      {match.odds[key as BetOptionKey].toFixed(2)}
-                                    </button>
-                                  </TableCell>
+                                  <TableHead key={key} className="text-center p-1">
+                                    {optionLabels[key as BetOptionKey]}
+                                  </TableHead>
                                 ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))}
+                            </TableHeader>
+                            <TableBody>
+                              {leagueMatches.map((match) => {
+                                const matchNumber = matchNumberMap.get(match.id) ?? 0;
+                                return (
+                                  <TableRow key={match.id} className="border-0">
+                                    <TableCell className="p-1 border border-border font-semibold text-xs text-foreground">
+                                      <div className="flex items-center gap-2">
+                                        <div>{matchNumber}.</div>
+                                        <div className="flex flex-col gap-1">
+                                          <span>{match.homeTeam}</span>
+                                          <span>{match.awayTeam}</span>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="p-1 border border-border">
+                                      <div className="flex justify-center">
+                                        {match.isLive ? (
+                                          <span className="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-medium">
+                                            <Zap className="w-3 h-3" /> LIVE
+                                          </span>
+                                        ) : (
+                                          <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                                            <Clock className="w-3 h-3" /> {match.time}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                    {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
+                                      <TableCell key={`${match.id}-${key}`} className="text-center p-1 border border-border">
+                                        <button
+                                          onClick={() => toggleBet(match.id, key as BetOptionKey, match.odds[key as BetOptionKey])}
+                                          className={clsx(
+                                            "cursor-pointer inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold",
+                                            isSelected(match.id, key as BetOptionKey)
+                                              ? "bg-primary text-primary-foreground shadow"
+                                              : "bg-muted hover:bg-muted/80 text-foreground"
+                                          )}
+                                        >
+                                          {match.odds[key as BetOptionKey].toFixed(2)}
+                                        </button>
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                )
+                              })}
+                            </TableBody>
+                          </Table>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
                 </Accordion>
               </div>
             </ScrollArea>
@@ -345,13 +364,14 @@ const Football = () => {
                   <div className="space-y-4 pr-1">
                     {Array.from(groupedSelections.entries()).map(([matchId, selections]) => {
                       const match = matches.find((m) => m.id === matchId)!;
+                      const matchNumber = matchNumberMap.get(matchId) ?? 0;
                       return (
                         <div key={matchId} className="p-3 rounded-lg bg-muted/50 border border-border/50">
                           <div className="flex justify-between items-start mb-2">
                             <div>
                               <div className="text-xs text-muted-foreground">{match.league}</div>
                               <div className="text-sm font-medium text-foreground">
-                                {match.homeTeam} vs {match.awayTeam}
+                                {matchNumber}. {match.homeTeam} vs {match.awayTeam}
                               </div>
                             </div>
                           </div>
