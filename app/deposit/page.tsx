@@ -20,8 +20,6 @@ const Deposit = () => {
   const [amount, setAmount] = useState("");
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
 
-  const quickAmounts = [5000, 10000, 25000, 50000, 100000];
-
   const paymentMethods = [
     {
       id: "card",
@@ -89,30 +87,13 @@ const Deposit = () => {
             Select Amount
           </h2>
 
-          <div className="grid grid-cols-5 gap-2 mb-4">
-            {quickAmounts.map((quickAmount) => (
-              <button
-                key={quickAmount}
-                onClick={() => setAmount(quickAmount.toString())}
-                className={clsx(
-                  "py-3 rounded-lg font-medium transition-all",
-                  amount === quickAmount.toString()
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground hover:bg-muted/80"
-                )}
-              >
-                {quickAmount}
-              </button>
-            ))}
-          </div>
-
           <div className="relative">
             <Input
               type="number"
               placeholder="Enter custom amount"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="pl-10 h-14 text-xl bg-muted border-border"
+              className="pl-4 h-14 text-xl bg-muted border-border"
             />
           </div>
 

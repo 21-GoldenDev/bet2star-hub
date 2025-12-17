@@ -182,22 +182,6 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
                 className="w-full"
               />
-              <div className="grid grid-cols-4 gap-2">
-                {[1000, 2000, 5000, 10000].map((amount) => (
-                  <button
-                    key={amount}
-                    onClick={() => setBetAmount(amount)}
-                    className={clsx(
-                      "px-3 py-2 rounded text-sm font-medium cursor-pointer transition-all",
-                      betAmount === amount
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {amount / 1000}k
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
