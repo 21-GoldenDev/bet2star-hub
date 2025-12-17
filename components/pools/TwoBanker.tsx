@@ -60,6 +60,21 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
     toast.success(`Bet placed! Bet: $${betAmount}`);
   };
 
+  const compareMatches = (a: string, b: string) => {
+    const aNum = Number(a);
+    const bNum = Number(b);
+    const aIsNum = !isNaN(aNum);
+    const bIsNum = !isNaN(bNum);
+    if (aIsNum && bIsNum) {
+      return aNum - bNum;
+    } else if (aIsNum) {
+      return -1;
+    } else if (bIsNum) {
+      return 1;
+    }
+    return a.localeCompare(b);
+  };
+
   return (
     <div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
@@ -179,7 +194,7 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
                   {groupAMatches.length === 0 ? (
                     <div className="text-xs text-muted-foreground">No numbers selected</div>
                   ) : (
-                    groupAMatches.sort((a, b) => a.localeCompare(b)).map((n) => (
+                    groupAMatches.sort((a, b) => compareMatches(a, b)).map((n) => (
                       <div key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
                         {n}
                       </div>
@@ -207,7 +222,7 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
                   {groupBMatches.length === 0 ? (
                     <div className="text-xs text-muted-foreground">Auto-filled</div>
                   ) : (
-                    groupBMatches.sort((a, b) => a.localeCompare(b)).map((n) => (
+                    groupBMatches.sort((a, b) => compareMatches(a, b)).map((n) => (
                       <div key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
                         {n}
                       </div>
