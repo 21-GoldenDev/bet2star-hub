@@ -1,13 +1,15 @@
 "use client";
 
-import { act, useState } from "react";
+import { useState } from "react";
 import clsx from "clsx";
 import Direct from "@/components/lotto/Direct";
 import Grouping from "@/components/lotto/Grouping";
+import TwoBanker from "@/components/lotto/TwoBanker";
+import { GameModeType } from "@/types/gameMode";
 
 const LottoPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
-  const [gameMode, setGameMode] = useState<"nap_perm" | "grouping">("nap_perm");
+  const [gameMode, setGameMode] = useState<GameModeType>("nap_perm");
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
@@ -77,6 +79,13 @@ const LottoPage = () => {
           )}
           {gameMode === "grouping" && (
             <Grouping
+              activeTab={activeTab}
+              gameMode={gameMode}
+              setGameMode={setGameMode}
+            />
+          )}
+          {gameMode === "2banker" && (
+            <TwoBanker
               activeTab={activeTab}
               gameMode={gameMode}
               setGameMode={setGameMode}

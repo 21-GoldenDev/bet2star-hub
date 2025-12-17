@@ -4,6 +4,8 @@ import { useState } from "react";
 import clsx from "clsx";
 import Direct from "@/components/pools/Direct";
 import Grouping from "@/components/pools/Grouping";
+import TwoBanker from "@/components/pools/TwoBanker";
+import { GameModeType } from "@/types/gameMode";
 
 // const matches = [
 //   "Arsenal vs Everton", "Burnley vs Brighton", "Arsenal vs Brighton",
@@ -28,7 +30,7 @@ const matches = Array.from({ length: 49 }, (_, i) => `${i + 1}`);
 
 const PoolsPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
-  const [gameMode, setGameMode] = useState<"nap_perm" | "grouping">("nap_perm");
+  const [gameMode, setGameMode] = useState<GameModeType>("nap_perm");
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
@@ -102,6 +104,14 @@ const PoolsPage = () => {
           )}
           {gameMode === "grouping" && (
             <Grouping
+              activeTab={activeTab}
+              gameMode={gameMode}
+              matches={matches}
+              setGameMode={setGameMode}
+            />
+          )}
+          {gameMode === "2banker" && (
+            <TwoBanker
               activeTab={activeTab}
               gameMode={gameMode}
               matches={matches}

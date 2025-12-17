@@ -9,12 +9,13 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
+import { gameModes, GameModeType } from "@/types/gameMode";
 
 interface Props {
   matches: string[];
   activeTab: "result" | "fixtures";
-  gameMode: "nap_perm" | "grouping";
-  setGameMode: (mode: "nap_perm" | "grouping") => void;
+  gameMode: GameModeType;
+  setGameMode: (mode: GameModeType) => void;
 }
 
 const Direct = ({ matches, gameMode, setGameMode }: Props) => {
@@ -72,14 +73,14 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
         <div className="lg:col-span-3">
           <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
             <RadioGroup value={gameMode} onValueChange={setGameMode}>
-              {["nap_perm", "grouping"].map((mode) => (
+              {Object.keys(gameModes).map((mode) => (
                 <label
                   key={mode}
                   className="cursor-pointer flex items-center gap-2"
                 >
                   <RadioGroupItem key={mode} value={mode} />
                   <span className="text-sm font-medium">
-                    {mode === "nap_perm" ? "NAP/PERM" : "Grouping"}
+                    {gameModes[mode as keyof typeof gameModes]}
                   </span>
                 </label>
               ))}

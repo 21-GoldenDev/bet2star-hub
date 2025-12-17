@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
+import { gameModes } from "@/types/gameMode";
 
 const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
@@ -88,12 +89,6 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
     setGroupSelections({});
   };
 
-  const clearGroup = (id: string) => {
-    const copy = { ...groupSelections };
-    copy[id] = [];
-    setGroupSelections(copy);
-  };
-
   const placeBet = () => {
     if (selectedUs.length < 2) {
       toast.error("Select at least two U options");
@@ -146,14 +141,14 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
         <div className="lg:col-span-3">
           <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
             <RadioGroup value={gameMode} onValueChange={setGameMode}>
-              {["nap_perm", "grouping"].map((mode) => (
+              {Object.keys(gameModes).map((mode) => (
                 <label
                   key={mode}
                   className="cursor-pointer flex items-center gap-2"
                 >
                   <RadioGroupItem key={mode} value={mode} />
                   <span className="text-sm font-medium">
-                    {mode === "nap_perm" ? "NAP/PERM" : "Grouping"}
+                    {gameModes[mode as keyof typeof gameModes]}
                   </span>
                 </label>
               ))}
@@ -260,11 +255,11 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        clearGroup(sel.id);
+                        removeU(sel.id);
                       }}
-                      className="h-6 w-6 p-0"
+                      className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                     >
-                      X
+                      <span className="text-sm font-semibold">✕</span>
                     </Button>
                   </div>
                   <div className="flex flex-wrap gap-1">
