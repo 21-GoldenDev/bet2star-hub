@@ -188,15 +188,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
           )}
         </div>
         <div className="lg:col-span-6">
-          <div
-            className="max-h-screen overflow-y-auto"
-            style={{
-              scrollbarWidth: "thin",
-              scrollbarColor: "#20283c transparent",
-              msOverflowStyle: "auto",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
+          <div className="max-h-screen overflow-y-auto scrollbar">
             <div className="grid grid-cols-7 lg:grid-cols-10 gap-2 bg-card border border-border rounded-xl p-4">
               {matches.map((match, index) => {
                 const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
@@ -224,15 +216,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
         <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="p-4 rounded-xl bg-card border border-border flex flex-col">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Matches</div>
-            <div
-              className="space-y-3 min-h-30 max-h-80 overflow-y-auto flex-1"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "#20283c transparent",
-                msOverflowStyle: "auto",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
+            <div className="space-y-3 min-h-30 max-h-80 overflow-y-auto flex-1 scrollbar">
               {selectedUs.map((sel, index) => (
                 <div
                   key={sel.id}

@@ -217,7 +217,7 @@ const Football = () => {
       map[m.league].push(m);
     }
     return map;
-  }, [matches]);
+  }, []);
 
   const matchNumberMap = useMemo(() => {
     const map = new Map<number, number>();
@@ -231,7 +231,7 @@ const Football = () => {
   }, [groupedMatches]);
 
   return (
-    <div className="h-screen pt-24 pb-2 px-4 overflow-hidden">
+    <div className="min-h-screen pt-24 pb-8 px-4">
       <div className="container mx-auto max-w-5xl">
         {/* Header */}
         <div className="text-center mb-10 animate-slide-up">
@@ -250,8 +250,8 @@ const Football = () => {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Matches List */}
           <div className="lg:col-span-2">
-            <ScrollArea className="p-4 rounded-xl bg-card border border-border lg:h-[calc(100vh-14rem)]">
-              <div className="space-y-4 pr-1">
+            <div className="p-4 pr-2 rounded-xl bg-card border border-border">
+              <div className="space-y-4 pr-2 max-h-150 lg:max-h-[calc(100vh-18rem)] overflow-auto scrollbar">
                 <Accordion
                   type="multiple"
                   className="mt-2 space-y-1"
@@ -266,73 +266,75 @@ const Football = () => {
                             <span className="text-[10px] text-muted-foreground">{leagueMatches.length} matches</span>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="pt-2">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead></TableHead>
-                                <TableHead></TableHead>
-                                {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
-                                  <TableHead key={key} className="text-center p-1">
-                                    {optionLabels[key as BetOptionKey]}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {leagueMatches.map((match) => {
-                                const matchNumber = matchNumberMap.get(match.id) ?? 0;
-                                return (
-                                  <TableRow key={match.id} className="border-0">
-                                    <TableCell className="p-1 border border-border font-semibold text-xs text-foreground">
-                                      <div className="flex items-center gap-2">
-                                        <div>{matchNumber}.</div>
-                                        <div className="flex flex-col gap-1">
-                                          <span>{match.homeTeam}</span>
-                                          <span>{match.awayTeam}</span>
+                        <AccordionContent className="pt-2 max-w-full overflow-x-auto">
+                          <div className="overflow-x-auto max-w-[calc(100vw-2rem)]">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead></TableHead>
+                                  <TableHead></TableHead>
+                                  {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
+                                    <TableHead key={key} className="text-center p-1">
+                                      {optionLabels[key as BetOptionKey]}
+                                    </TableHead>
+                                  ))}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {leagueMatches.map((match) => {
+                                  const matchNumber = matchNumberMap.get(match.id) ?? 0;
+                                  return (
+                                    <TableRow key={match.id} className="border-0">
+                                      <TableCell className="p-1 border border-border font-semibold text-xs text-foreground">
+                                        <div className="flex items-center gap-2">
+                                          <div>{matchNumber}.</div>
+                                          <div className="flex flex-col gap-1">
+                                            <span>{match.homeTeam}</span>
+                                            <span>{match.awayTeam}</span>
+                                          </div>
                                         </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="p-1 border border-border">
-                                      <div className="flex justify-center">
-                                        {match.isLive ? (
-                                          <span className="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-medium">
-                                            <Zap className="w-3 h-3" /> LIVE
-                                          </span>
-                                        ) : (
-                                          <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                                            <Clock className="w-3 h-3" /> {match.time}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </TableCell>
-                                    {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
-                                      <TableCell key={`${match.id}-${key}`} className="text-center p-1 border border-border">
-                                        <button
-                                          onClick={() => toggleBet(match.id, key as BetOptionKey, match.odds[key as BetOptionKey])}
-                                          className={clsx(
-                                            "cursor-pointer inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold",
-                                            isSelected(match.id, key as BetOptionKey)
-                                              ? "bg-primary text-primary-foreground shadow"
-                                              : "bg-muted hover:bg-muted/80 text-foreground"
-                                          )}
-                                        >
-                                          {match.odds[key as BetOptionKey].toFixed(2)}
-                                        </button>
                                       </TableCell>
-                                    ))}
-                                  </TableRow>
-                                )
-                              })}
-                            </TableBody>
-                          </Table>
+                                      <TableCell className="p-1 border border-border">
+                                        <div className="flex justify-center">
+                                          {match.isLive ? (
+                                            <span className="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-medium">
+                                              <Zap className="w-3 h-3" /> LIVE
+                                            </span>
+                                          ) : (
+                                            <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                                              <Clock className="w-3 h-3" /> {match.time}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
+                                        <TableCell key={`${match.id}-${key}`} className="text-center p-1 border border-border">
+                                          <button
+                                            onClick={() => toggleBet(match.id, key as BetOptionKey, match.odds[key as BetOptionKey])}
+                                            className={clsx(
+                                              "cursor-pointer inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold",
+                                              isSelected(match.id, key as BetOptionKey)
+                                                ? "bg-primary text-primary-foreground shadow"
+                                                : "bg-muted hover:bg-muted/80 text-foreground"
+                                            )}
+                                          >
+                                            {match.odds[key as BetOptionKey].toFixed(2)}
+                                          </button>
+                                        </TableCell>
+                                      ))}
+                                    </TableRow>
+                                  )
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
                         </AccordionContent>
                       </AccordionItem>
                     );
                   })}
                 </Accordion>
               </div>
-            </ScrollArea>
+            </div>
           </div>
 
           {/* Bet Slip */}
@@ -352,15 +354,7 @@ const Football = () => {
                   Select options to add to your slip
                 </div>
               ) : (
-                <div
-                  className="max-h-[calc(100vh-29rem)] overflow-y-auto mb-4"
-                  style={{
-                    scrollbarWidth: "thin",
-                    scrollbarColor: "#20283c transparent",
-                    msOverflowStyle: "auto",
-                    WebkitOverflowScrolling: "touch",
-                  }}
-                >
+                <div className="max-h-70 overflow-y-auto mb-4 scrollbar">
                   <div className="space-y-4 pr-1">
                     {Array.from(groupedSelections.entries()).map(([matchId, selections]) => {
                       const match = matches.find((m) => m.id === matchId)!;

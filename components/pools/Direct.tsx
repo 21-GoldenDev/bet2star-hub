@@ -149,15 +149,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
             <div className="text-sm font-semibold mb-3 text-muted-foreground">
               Selected Matches ({selectedMatches.length})
             </div>
-            <div
-              className="space-y-3 overflow-y-auto min-h-30 max-h-30"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "#20283c transparent",
-                msOverflowStyle: "auto",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
+            <div className="space-y-3 overflow-y-auto min-h-30 max-h-30 scrollbar">
               {selectedMatches.length === 0 ? (
                 <div className="text-xs text-muted-foreground">No matches selected</div>
               ) : (

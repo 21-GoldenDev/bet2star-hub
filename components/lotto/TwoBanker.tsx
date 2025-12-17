@@ -134,15 +134,7 @@ const TwoBanker = ({ gameMode, setGameMode }: Props) => {
         <div className="lg:col-span-3 flex flex-col gap-4">
           <div className="p-4 rounded-xl bg-card border border-border flex flex-col h-full">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Groups</div>
-            <div
-              className="space-y-3 overflow-y-auto min-h-30 flex-1"
-              style={{
-                scrollbarWidth: "thin",
-                scrollbarColor: "#20283c transparent",
-                msOverflowStyle: "auto",
-                WebkitOverflowScrolling: "touch",
-              }}
-            >
+            <div className="space-y-3 overflow-y-auto min-h-30 flex-1 scrollbar">
               {/* Group A */}
               <div
                 className={clsx(

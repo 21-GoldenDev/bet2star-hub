@@ -95,6 +95,24 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar::-webkit-scrollbar-thumb {
+  background-color: #20283c;
+  border-radius: 9999px;
+}
+
+.scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #252e44;
+}
+
 .dark {
   --background: hsl(222 47% 6%);
   --foreground: hsl(210 40% 98%);
