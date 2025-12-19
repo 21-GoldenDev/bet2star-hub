@@ -1,4 +1,4 @@
-import supabase from "./supabaseClient";
+import supabase from "./supabase/client";
 
 export async function signUpWithEmail(email: string, password: string, metadata?: Record<string, any>) {
   const { data, error } = await supabase.auth.signUp({
@@ -14,7 +14,6 @@ export async function signUpWithEmail(email: string, password: string, metadata?
 
 export async function signInWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  const { data: { session: _ } } = await supabase.auth.getSession();
   return { data, error };
 }
 

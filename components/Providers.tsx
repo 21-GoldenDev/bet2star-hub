@@ -1,10 +1,11 @@
 "use client";
 
+import { ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactNode } from "react";
+import ProtectedRoute from "./ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -13,7 +14,7 @@ export const Providers = ({ children }: { children: ReactNode }) => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      {children}
+      <ProtectedRoute>{children}</ProtectedRoute>
     </TooltipProvider>
   </QueryClientProvider>
 );

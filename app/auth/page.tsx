@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ const AuthForm = () => {
   });
 
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -49,7 +50,10 @@ const AuthForm = () => {
         } else {
           const { error } = await signInWithEmail(formData.email, formData.password);
           if (error) throw error;
-          router.push("/");
+          
+          // Redirect to the intended page or home
+          const redirectTo = searchParams.get('redirectTo') || '/';
+          router.push(redirectTo);
         }
       } catch (err: any) {
         toast({ title: err?.message || "Auth error", variant: "destructive" });
