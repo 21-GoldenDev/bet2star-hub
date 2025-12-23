@@ -50,7 +50,7 @@ const AuthForm = () => {
         } else {
           const { error } = await signInWithEmail(formData.email, formData.password);
           if (error) throw error;
-          
+
           // Redirect to the intended page or home
           const redirectTo = searchParams.get('redirectTo') || '/';
           router.push(redirectTo);
@@ -111,7 +111,7 @@ const AuthForm = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-              {isSignUp && (
+            {isSignUp && (
               <>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
-import { gameModes } from "@/types/gameMode";
+import { gameModes, GameModeType } from "@/lib/types/gameMode";
+import { calcAplGrouping } from "@/lib/helpers";
 
 const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
@@ -19,8 +20,8 @@ interface USelection {
 
 interface Props {
   activeTab: "result" | "fixtures";
-  gameMode: "nap_perm" | "grouping";
-  setGameMode: (mode: "nap_perm" | "grouping") => void;
+  gameMode: GameModeType;
+  setGameMode: (mode: GameModeType) => void;
 }
 
 const Grouping = ({ gameMode, setGameMode }: Props) => {
@@ -30,6 +31,7 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
   const [groupSelections, setGroupSelections] = useState<Record<string, number[]>>({});
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const numbers = Array.from({ length: 49 }, (_, i) => i + 1);
 
@@ -89,7 +91,7 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
     setGroupSelections({});
   };
 
-  const placeBet = () => {
+  const placeBet = async () => {
     if (selectedUs.length < 2) {
       toast.error("Select at least two U options");
       return;
@@ -98,23 +100,44 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
       toast.error("Sum of U selections must not exceed 7");
       return;
     }
-    for (const sel of selectedUs) {
-      const selNumbers = groupSelections[sel.id] ?? [];
-      if (selNumbers.length !== sel.u) {
-        toast.error(`U${sel.u} requires ${sel.u} numbers`);
-        return;
-      }
-    }
     if (betAmount <= 0) {
       toast.error("Enter a valid bet amount");
       return;
     }
 
-    const groups = selectedUs
-      .map((sel) => `U${sel.u}:[${(groupSelections[sel.id] ?? []).sort((a, b) => a - b).join(",")}]`)
-      .join(" ");
+    setIsPlacingBet(true);
+    try {
+      const response = await fetch("/api/bets/grouping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedUs,
+          groupSelections,
+          betAmount,
+          totalUnder,
+          gameMode,
+        }),
+      });
 
-    toast.success(`Bet placed! ${groups} | Bet: $${betAmount}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to place bet");
+        return;
+      }
+
+      toast.success(data.message);
+      // Reset form
+      clearAll();
+      setBetAmount(5000);
+      setOdd("");
+      setTotalUnder(0);
+    } catch (error) {
+      toast.error("Error placing bet");
+      console.error(error);
+    } finally {
+      setIsPlacingBet(false);
+    }
   };
 
   const nextGroup = useMemo(() => {
@@ -307,6 +330,17 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
             </div>
           </div>
 
+          {selectedUs.length >= 2 && currentSum === totalUnder && !selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u) && (
+            <div className="p-4 rounded-xl bg-card border border-border">
+              <div className="text-sm font-semibold mb-3 text-muted-foreground">APL</div>
+              <div className="flex items-center justify-center">
+                <span className="text-lg font-bold text-foreground">
+                  {calcAplGrouping(betAmount, groupSelections).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
@@ -325,11 +359,20 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
+            disabled={selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u) || isPlacingBet}
             className="w-full py-3"
           >
-            Stake
+            {isPlacingBet ? "Placing..." : "Stake"}
           </Button>
+
+          {(selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)) && (
+            <div className="text-xs text-red-400 text-left list-disc ml-4">
+              {selectedUs.length < 2 && <li>Select at least 2 groups</li>}
+              {selectedUs.length >= 2 && currentSum !== totalUnder && <li>Fill all groups ({currentSum}/{totalUnder})</li>}
+              {currentSum === totalUnder && selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u) && <li>Select all required matches</li>}
+              {betAmount <= 0 && <li>Enter valid bet amount</li>}
+            </div>
+          )}
         </div>
       </div>
     </div>

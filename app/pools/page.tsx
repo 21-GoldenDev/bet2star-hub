@@ -5,7 +5,7 @@ import clsx from "clsx";
 import Direct from "@/components/pools/Direct";
 import Grouping from "@/components/pools/Grouping";
 import TwoBanker from "@/components/pools/TwoBanker";
-import { GameModeType } from "@/types/gameMode";
+import { GameModeType } from "@/lib/types/gameMode";
 
 // const matches = [
 //   "Arsenal vs Everton", "Burnley vs Brighton", "Arsenal vs Brighton",

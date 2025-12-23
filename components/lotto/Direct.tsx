@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
-import { gameModes, GameModeType } from "@/types/gameMode";
+import { gameModes, GameModeType } from "@/lib/types/gameMode";
+import { calcAplDirect } from "@/lib/helpers";
 
 interface Props {
   activeTab: "result" | "fixtures";
@@ -21,6 +22,7 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const numbers = Array.from({ length: 49 }, (_, i) => i + 1);
 
@@ -37,7 +39,7 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
     else setMatchAtLeast([...matchAtLeast, m]);
   };
 
-  const placeBet = () => {
+  const placeBet = async () => {
     if (matchAtLeast.length === 0) {
       toast.error("Select at least one 'Match at least' option (U1..U7)");
       return;
@@ -57,9 +59,38 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
       return;
     }
 
-    const numbersSorted = [...selectedNumbers].sort((a, b) => a - b);
-    const matches = matchAtLeast.map((m) => `U${m}`).join(", ");
-    toast.success(`Bet placed! Numbers: ${numbersSorted.join(", ")} | Match: ${matches} | Bet: $${betAmount}`);
+    setIsPlacingBet(true);
+    try {
+      const response = await fetch("/api/bets/direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedNumbers,
+          betAmount,
+          matchAtLeast,
+          gameMode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to place bet");
+        return;
+      }
+
+      toast.success(data.message);
+      // Reset form
+      setSelectedNumbers([]);
+      setMatchAtLeast([]);
+      setBetAmount(5000);
+      setOdd("");
+    } catch (error) {
+      toast.error("Error placing bet");
+      console.error(error);
+    } finally {
+      setIsPlacingBet(false);
+    }
   };
 
   return (
@@ -172,6 +203,15 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
           </div>
 
           <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">APL</div>
+            <div className="flex items-center justify-center">
+              <span className="text-lg font-bold text-foreground">
+                {calcAplDirect(betAmount, matchAtLeast, selectedNumbers.length).toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
               <Input
@@ -189,11 +229,19 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={selectedNumbers.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0}
+            disabled={selectedNumbers.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0 || isPlacingBet}
             className="w-full py-3"
           >
-            Stake
+            {isPlacingBet ? "Placing..." : "Stake"}
           </Button>
+
+          {(selectedNumbers.length < Math.max(...matchAtLeast) || betAmount <= 0) && (
+            <div className="text-xs text-red-400 text-left list-disc ml-4">
+              {matchAtLeast.length < 2 && <li>Select at least 2 'Under' options</li>}
+              {selectedNumbers.length < Math.max(...matchAtLeast) && <li>Select at least {Math.max(...matchAtLeast)} numbers</li>}
+              {betAmount <= 0 && <li>Enter a valid bet amount</li>}
+            </div>
+          )}
         </div>
       </div>
     </div>

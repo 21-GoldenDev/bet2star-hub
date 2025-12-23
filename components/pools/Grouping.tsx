@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
-import { gameModes, GameModeType } from "@/types/gameMode";
+import { gameModes, GameModeType } from "@/lib/types/gameMode";
+import { calcAplGrouping } from "@/lib/helpers";
 
 const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
@@ -102,13 +103,6 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
     if (currentSum > 7) {
       toast.error("Sum of U selections must not exceed 7");
       return;
-    }
-    for (const sel of selectedUs) {
-      const selMatches = groupSelections[sel.id] ?? [];
-      if (selMatches.length !== sel.u) {
-        toast.error(`U${sel.u} requires ${sel.u} matches`);
-        return;
-      }
     }
     if (betAmount <= 0) {
       toast.error("Enter a valid bet amount");
@@ -316,6 +310,17 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
             </div>
           </div>
 
+          {selectedUs.length >= 2 && currentSum === totalUnder && !selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u) && (
+            <div className="p-4 rounded-xl bg-card border border-border">
+              <div className="text-sm font-semibold mb-3 text-muted-foreground">APL</div>
+              <div className="flex items-center justify-center">
+                <span className="text-lg font-bold text-foreground">
+                  {calcAplGrouping(betAmount, groupSelections).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
@@ -334,11 +339,20 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={selectedUs.length < 2 || currentSum > 7 || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
+            disabled={selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
             className="w-full py-3"
           >
             Stake
           </Button>
+
+          {(selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)) && (
+            <div className="text-xs text-red-400 text-left list-disc ml-4">
+              {selectedUs.length < 2 && <li>Select at least 2 groups</li>}
+              {selectedUs.length >= 2 && currentSum !== totalUnder && <li>Fill all groups ({currentSum}/{totalUnder})</li>}
+              {currentSum === totalUnder && selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u) && <li>Select all required matches</li>}
+              {betAmount <= 0 && <li>Enter valid bet amount</li>}
+            </div>
+          )}
         </div>
       </div>
     </div>

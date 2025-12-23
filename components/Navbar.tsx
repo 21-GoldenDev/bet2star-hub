@@ -28,14 +28,22 @@ const Navbar = () => {
     }
   };
 
+  const isActive = (path: string) => pathname === path;
+  const isAdminPage = pathname.startsWith("/admin");
+
   const navLinks = [
     { path: "/", label: "Home" },
-    { path: "/lotto", label: "Lotto" },
-    { path: "/pools", label: "Pools" },
-    { path: "/sports", label: "Sports Betting" },
   ];
 
-  const isActive = (path: string) => pathname === path;
+  if (isAdminPage) {
+    navLinks.push({ path: "/admin", label: "Admin Dashboard" });
+  } else {
+    navLinks.push(
+      { path: "/lotto", label: "Lotto" },
+      { path: "/pools", label: "Pools" },
+      { path: "/sports", label: "Sports Betting" }
+    );
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border/50">
@@ -52,7 +60,7 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          {isLoggedIn && (
+          {isLoggedIn && !isAdminPage && (
             <div className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
                 <Link
@@ -75,15 +83,19 @@ const Navbar = () => {
           <div className="flex items-center gap-3">
             {isLoggedIn ? (
               <>
-                <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
-                  <Wallet className="w-4 h-4 text-primary" />
-                  <span className="font-semibold text-foreground">125,000</span>
-                </div>
-                <Link href="/deposit">
-                  <Button variant="gold" size="sm" className="hidden sm:flex">
-                    Deposit
-                  </Button>
-                </Link>
+                {!isAdminPage && (
+                  <>
+                    <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
+                      <Wallet className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-foreground">125,000</span>
+                    </div>
+                    <Link href="/deposit">
+                      <Button variant="gold" size="sm" className="hidden sm:flex">
+                        Deposit
+                      </Button>
+                    </Link>
+                  </>
+                )}
                 <Link href="/profile">
                   <Button variant="ghost" size="icon" className="text-muted-foreground">
                     <User className="w-5 h-5" />
@@ -118,7 +130,7 @@ const Navbar = () => {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
             <div className="flex flex-col gap-2">
-              {navLinks.map((link) => (
+              {!isAdminPage && navLinks.map((link) => (
                 <Link
                   key={link.path}
                   href={link.path}
@@ -135,15 +147,19 @@ const Navbar = () => {
               ))}
               {isLoggedIn ? (
                 <>
-                  <div className="flex items-center gap-2 px-4 py-3 mt-2 rounded-lg bg-muted border border-border">
-                    <Wallet className="w-4 h-4 text-primary" />
-                    <span className="font-semibold text-foreground">125,000</span>
-                  </div>
-                  <Link href="/deposit" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="gold" className="w-full mt-2">
-                      Deposit
-                    </Button>
-                  </Link>
+                  {!isAdminPage && (
+                    <>
+                      <div className="flex items-center gap-2 px-4 py-3 mt-2 rounded-lg bg-muted border border-border">
+                        <Wallet className="w-4 h-4 text-primary" />
+                        <span className="font-semibold text-foreground">125,000</span>
+                      </div>
+                      <Link href="/deposit" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="gold" className="w-full mt-2">
+                          Deposit
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                   <Link href="/withdraw" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="cyan" className="w-full mt-2">
                       Withdraw

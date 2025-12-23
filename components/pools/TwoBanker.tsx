@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
-import { gameModes, GameModeType } from "@/types/gameMode";
+import { gameModes, GameModeType } from "@/lib/types/gameMode";
+import { calcAplGrouping } from "@/lib/helpers";
 
 interface Props {
   matches: string[];
@@ -32,8 +33,8 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
       setGroupAMatches(groupAMatches.filter((n) => n !== match));
       return;
     }
-    if (groupAMatches.length >= groupAU) {
-      toast.error(`Group A requires exactly ${groupAU} matches`);
+    if (groupAMatches.length >= 2) {
+      toast.error(`Group A requires exactly 2 matches`);
       return;
     }
     setGroupAMatches([...groupAMatches, match]);
@@ -50,6 +51,10 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
     }
     if (groupAU === 0) {
       toast.error("Select U value for Group A");
+      return;
+    }
+    if (groupAMatches.length < 2) {
+      toast.error(`Select 2 matches for Group A`);
       return;
     }
     if (betAmount <= 0) {
@@ -101,7 +106,7 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
                 value={totalUnder.toString()}
                 onValueChange={(e) => setTotalUnder(Number(e))}
               >
-                {[3, 4, 5, 6].map((u) => (
+                {[3, 4, 5, 6, 7].map((u) => (
                   <label
                     key={u}
                     className="cursor-pointer flex items-center gap-2"
@@ -163,9 +168,6 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
                         onChange={(e) => {
                           const newU = Number(e.target.value);
                           setGroupAU(newU);
-                          if (groupAMatches.length > newU) {
-                            setGroupAMatches(groupAMatches.slice(0, newU));
-                          }
                         }}
                         className="px-2 py-0.5 rounded text-xs bg-muted border border-primary text-foreground cursor-pointer"
                       >
@@ -247,6 +249,20 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
             </div>
           </div>
 
+          {totalUnder && groupAU > 0 && groupAMatches.length === 2 && (
+            <div className="p-4 rounded-xl bg-card border border-border">
+              <div className="text-sm font-semibold mb-3 text-muted-foreground">APL</div>
+              <div className="flex items-center justify-center">
+                <span className="text-lg font-bold text-foreground">
+                  {calcAplGrouping(betAmount, {
+                    [`${groupAU}-groupA`]: groupAMatches,
+                    [`${groupBU}-groupB`]: groupBMatches
+                  }).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
@@ -265,11 +281,20 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={!totalUnder || groupAU === 0 || groupAMatches.length !== groupAU}
+            disabled={!totalUnder || groupAU === 0 || groupAMatches.length !== 2}
             className="w-full py-3"
           >
             Stake
           </Button>
+
+          {(!totalUnder || groupAU === 0 || groupAMatches.length !== 2 || betAmount <= 0) && (
+            <div className="text-xs text-red-400 text-left space-y-1 ml-2">
+              {!totalUnder && <div>• Select a total U value</div>}
+              {totalUnder && groupAU === 0 && <div>• Select U value for Group A</div>}
+              {totalUnder && groupAU > 0 && groupAMatches.length < 2 && <div>• Select {2 - groupAMatches.length} more matches for Group A</div>}
+              {betAmount <= 0 && <div>• Enter a valid bet amount</div>}
+            </div>
+          )}
         </div>
       </div>
     </div>

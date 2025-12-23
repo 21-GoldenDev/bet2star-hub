@@ -35,7 +35,7 @@
   --radius: 0.75rem;
 
   --sidebar-background: hsl(222 47% 8%);
-  --sidebar-foreground: 240 4.8hsl(% 95.9%);
+  --sidebar-foreground: hsl(240 4.8% 95.9%);
   --sidebar-primary: hsl(43 96% 56%);
   --sidebar-primary-foreground: hsl(0 0% 100%);
   --sidebar-accent: hsl(222 30% 15%);

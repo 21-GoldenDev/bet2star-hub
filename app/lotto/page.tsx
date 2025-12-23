@@ -5,7 +5,7 @@ import clsx from "clsx";
 import Direct from "@/components/lotto/Direct";
 import Grouping from "@/components/lotto/Grouping";
 import TwoBanker from "@/components/lotto/TwoBanker";
-import { GameModeType } from "@/types/gameMode";
+import { GameModeType } from "@/lib/types/gameMode";
 
 const LottoPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");

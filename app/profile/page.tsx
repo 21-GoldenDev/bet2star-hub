@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
-import { signOut, updateAuthUser } from "@/lib/auth";
+import { getUserProfile, signOut, updateAuthUser } from "@/lib/auth";
 import { compressImage } from "@/lib/image";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -49,14 +49,20 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
-      setProfile({
-        username: user.email?.split("@")[0] ?? "",
-        displayName: user.user_metadata?.full_name ?? "",
-        email: user.email ?? "",
-        avatar_url: (user.user_metadata as any)?.avatar ?? undefined,
-        phone: user.user_metadata?.phone ?? "",
-        joinDate: formatDate(user.created_at),
-      });
+      getUserProfile(user.id)
+        .then(({ data: profile }) => {
+          setProfile({
+            avatar_url: profile?.avatar || undefined,
+            username: profile?.username || "",
+            displayName: profile?.full_name || "",
+            email: user.email || "",
+            phone: profile?.phone || "",
+            joinDate: formatDate(user.created_at),
+          });
+        })
+        .catch(() => {
+          toast({ title: "Failed to load profile", variant: "destructive" });
+        });
     } else {
       setProfile({
         avatar_url: undefined,

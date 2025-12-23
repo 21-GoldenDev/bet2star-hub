@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import Odd_40_1A from "../odds/40_1A";
 import Odd_100_1 from "../odds/100_1";
-import { gameModes, GameModeType } from "@/types/gameMode";
+import { gameModes, GameModeType } from "@/lib/types/gameMode";
+import { calcAplDirect } from "@/lib/helpers";
 
 interface Props {
   matches: string[];
@@ -181,6 +182,15 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
           </div>
 
           <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="text-sm font-semibold mb-3 text-muted-foreground">APL</div>
+            <div className="flex items-center justify-center">
+              <span className="text-lg font-bold text-foreground">
+                {calcAplDirect(betAmount, matchAtLeast, selectedMatches.length).toFixed(2)}
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
             <div className="flex flex-col gap-2">
               <Input
@@ -203,6 +213,13 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
           >
             Stake
           </Button>
+
+          {(selectedMatches.length < Math.max(...matchAtLeast) || betAmount <= 0) && (
+            <div className="text-xs text-red-400 text-left list-disc ml-4">
+              {selectedMatches.length < Math.max(...matchAtLeast) && <li>Select at least {Math.max(...matchAtLeast)} matches</li>}
+              {betAmount <= 0 && <li>Enter a valid bet amount</li>}
+            </div>
+          )}
         </div>
       </div>
     </div>

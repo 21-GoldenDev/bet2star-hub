@@ -12,6 +12,13 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   useEffect(() => {
     const currentPath = window.location.pathname;
     if (currentPath === "/") return;
+    if (currentPath.startsWith("/admin")) return;
+    if (!isLoading && user === null && currentPath.startsWith("/auth")) {
+      return;
+    }
+    if (!isLoading && user !== null && currentPath.startsWith("/auth")) {
+      router.push("/");
+    }
     if (!isLoading && user === null) {
       router.push(`/auth?redirectTo=${currentPath}`);
     }

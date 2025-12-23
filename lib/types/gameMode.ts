@@ -4,3 +4,5 @@ export const gameModes = {
   "2banker": "2 Banker",
 }
 export type GameModeType = keyof typeof gameModes;
+
+export type GameType = "lotto" | "pools" | "sports";

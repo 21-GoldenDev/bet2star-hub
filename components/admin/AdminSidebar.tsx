@@ -1,0 +1,192 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  BarChart3,
+  Users,
+  Gamepad2,
+  Settings,
+  ChevronDown,
+  Menu,
+  X,
+  LogOut,
+  Home,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import clsx from "clsx";
+import { signOut } from "@/lib/auth";
+import { useRouter } from "next/navigation";
+
+const adminMenuItems = [
+  { href: "/admin", label: "Dashboard", icon: BarChart3 },
+  { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/games", label: "Games", icon: Gamepad2 },
+  // { href: "/admin/transactions", label: "Transactions", icon: DollarSign },
+  // { href: "/admin/reports", label: "Reports", icon: FileText },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+];
+
+export default function AdminSidebar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [betsOpen, setBetsOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/auth");
+  };
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <div
+        className={clsx(
+          "lg:hidden fixed top-20 left-4 z-50 transition-transform duration-300",
+          isOpen ? "translate-x-64" : "translate-x-0",
+        )}
+      >
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsOpen(!isOpen)}
+          className="bg-background"
+        >
+          {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </Button>
+      </div>
+
+      {/* Sidebar */}
+      <aside
+        className={clsx(
+          "fixed left-0 top-0 h-screen w-64 bg-card border-r border-border transition-transform duration-300 z-40",
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        )}
+      >
+        <div className="flex flex-col h-full pt-16">
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+            {/* Bets expandable item */}
+            <div>
+              {(() => {
+                const isParentActive = pathname?.startsWith("/admin/bets");
+                return (
+                  <div>
+                    <div
+                      role="button"
+                      onClick={() => setBetsOpen(!betsOpen)}
+                      className={clsx(
+                        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer",
+                        isParentActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <BarChart3 className="w-5 h-5" />
+                        <span className="font-medium">Bets</span>
+                      </div>
+                      <ChevronDown className={clsx("w-4 h-4 transition-transform", betsOpen && "rotate-180")} />
+                    </div>
+
+                    {betsOpen && (
+                      <div className="mt-2 space-y-1">
+                        <Link href="/admin/bets/lotto" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/lotto"
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            )}
+                          >
+                            <span>Lotto</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/bets/pools" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/pools"
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            )}
+                          >
+                            <span>Pools</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/bets/sports" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/sports"
+                                ? "bg-primary text-primary-foreground"
+                                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                            )}
+                          >
+                            <span>Sports</span>
+                          </div>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {adminMenuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              return (
+                <Link key={item.href} href={item.href} onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-border space-y-2">
+            <Link href="/">
+              <Button variant="outline" className="w-full justify-start" size="sm">
+                <Home className="w-4 h-4 mr-2" />
+                Back to App
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-destructive hover:text-destructive"
+              size="sm"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </>
+  );
+}
