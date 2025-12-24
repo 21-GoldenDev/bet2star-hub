@@ -1,36 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import Direct from "@/components/pools/Direct";
 import Grouping from "@/components/pools/Grouping";
 import TwoBanker from "@/components/pools/TwoBanker";
 import { GameModeType } from "@/lib/types/gameMode";
 
-// const matches = [
-//   "Arsenal vs Everton", "Burnley vs Brighton", "Arsenal vs Brighton",
-//   "Chelsea vs Liverpool", "Man United vs Man City", "Tottenham vs Newcastle",
-//   "Aston Villa vs West Ham", "Wolves vs Leicester", "Southampton vs Crystal Palace",
-//   "Brentford vs Fulham", "Nottm Forest vs Bournemouth", "Luton vs Sheffield Utd",
-//   "Arsenal vs Chelsea", "Liverpool vs Tottenham", "Man City vs Newcastle",
-//   "Brighton vs Aston Villa", "Everton vs West Ham", "Leicester vs Wolves",
-//   "Crystal Palace vs Southampton", "Fulham vs Brentford", "Bournemouth vs Nottm Forest",
-//   "Sheffield Utd vs Luton", "Arsenal vs Liverpool", "Chelsea vs Man City",
-//   "Tottenham vs Man United", "Newcastle vs Brighton", "West Ham vs Aston Villa",
-//   "Wolves vs Everton", "Leicester vs Southampton", "Crystal Palace vs Fulham",
-//   "Brentford vs Bournemouth", "Nottm Forest vs Sheffield Utd", "Luton vs Arsenal",
-//   "Liverpool vs Chelsea", "Man City vs Tottenham", "Man United vs Newcastle",
-//   "Brighton vs West Ham", "Aston Villa vs Wolves", "Everton vs Leicester",
-//   "Southampton vs Brentford", "Fulham vs Nottm Forest", "Bournemouth vs Luton",
-//   "Sheffield Utd vs Arsenal", "Chelsea vs Man United", "Liverpool vs Man City",
-//   "Tottenham vs Brighton", "Newcastle vs Aston Villa", "West Ham vs Everton",
-//   "Wolves vs Crystal Palace"
-// ];
-const matches = Array.from({ length: 49 }, (_, i) => `${i + 1}`);
-
 const PoolsPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
   const [gameMode, setGameMode] = useState<GameModeType>("nap_perm");
+  const [matches, setMatches] = useState<string[]>([]);
+
+  useEffect(() => {
+    const getMatches = async () => {
+      try {
+        const response = await fetch("/api/matches");
+        const data = await response.json();
+        const matchList = data.matches.map((match: any) => match.number);
+        setMatches(matchList);
+      } catch (error) {
+        console.error("Error fetching matches:", error);
+        setMatches(Array.from({ length: 49 }, (_, i) => `${i + 1}`));
+      }
+    }
+    getMatches();
+  }, []);
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
