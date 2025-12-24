@@ -47,22 +47,21 @@ export async function GET(request: NextRequest) {
 
     const uniquePlayerIds = Array.from(new Set(playerIds));
 
-    let playersMap: Record<string, { id: string; fullName: string; email: string }> = {};
+    let playersMap: Record<string, { fullName: string; userName: string }> = {};
 
     if (uniquePlayerIds.length > 0) {
-      const { data: usersData, error: usersError } = await supabase.auth.admin.listUsers();
+      const { data: usersData, error: usersError } = await supabase.from("profiles").select("*").in("user_id", uniquePlayerIds);
 
-      if (!usersError && usersData?.users) {
-        playersMap = usersData.users
-          .filter((user) => uniquePlayerIds.includes(user.id))
+      if (!usersError && usersData) {
+        playersMap = usersData
+          .filter((user) => uniquePlayerIds.includes(user.user_id))
           .reduce((acc, user) => {
-            acc[user.id] = {
-              id: user.id,
-              fullName: user.user_metadata?.full_name || user.email?.split("@")[0] || "Unknown",
-              email: user.email || "",
+            acc[user.user_id] = {
+              fullName: user.full_name || "",
+              userName: user.username || "",
             };
             return acc;
-          }, {} as Record<string, { id: string; fullName: string; email: string }>);
+          }, {} as Record<string, { fullName: string; userName: string }>);
       }
     }
 
@@ -79,6 +78,7 @@ export async function GET(request: NextRequest) {
       staked: bet.staked,
       terminal: bet.terminal,
       betTime: bet.bet_time,
+      status: bet.status,
     }));
 
     return NextResponse.json({ data: transformedData }, { status: 200 });

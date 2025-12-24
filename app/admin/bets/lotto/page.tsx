@@ -8,7 +8,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
-import { Trash2 } from "lucide-react";
+import { Trash2, XCircle } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 import type { LottoBet, Player, GameMode } from "@/lib/types/lotto";
 import { useToast } from "@/hooks/use-toast";
@@ -134,12 +134,49 @@ export default function LottoPage() {
     }
   }
 
+  async function voidBet(betId: string) {
+    try {
+      const response = await fetch(`/api/admin/bets/lotto/void`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: betId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to void bet");
+      }
+
+      fetchBets();
+
+      toast({
+        title: "Success",
+        description: "Bet voided successfully.",
+      });
+    } catch (error) {
+      console.error("Error voiding bet:", error);
+      toast({
+        title: "Error",
+        description: "Failed to void bet. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }
+
   function getGameLabel(gameType: string) {
     switch (gameType) {
       case "nap_perm": return "NAP/PERM";
       case "grouping": return "Grouping";
       case "two_banker": return "2 Banker";
       default: return gameType;
+    }
+  }
+
+  function renderStatus(status: string | undefined) {
+    switch (status) {
+      case "active": return <span className="text-green-600 font-medium">Active</span>;
+      case "closed": return <span className="text-blue-600 font-medium">Closed</span>;
+      case "void": return <span className="text-red-600 font-medium">Void</span>;
+      default: return <span className="text-muted-foreground">N/A</span>;
     }
   }
 
@@ -254,7 +291,7 @@ export default function LottoPage() {
                 row.player ? (
                   <div>
                     <div className="font-medium">{row.player.fullName}</div>
-                    <div className="text-xs text-muted-foreground">{row.player.email}</div>
+                    <div className="text-xs text-muted-foreground">{row.player.userName}</div>
                   </div>
                 ) : (
                   <div>Agent</div>
@@ -284,11 +321,19 @@ export default function LottoPage() {
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
             { key: "terminal", label: "Terminal" },
             { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+            { key: "status", label: "Status", render: (value: string | undefined) => renderStatus(value) },
           ]}
           actions={(row) => (
-            <Button variant="outline" size="sm" onClick={() => deleteBet(row)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {row.status !== "void" && (
+                <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
+                  <XCircle className="w-4 h-4" />
+                </Button>
+              )}
+              <Button variant="outline" title="Delete bet" size="sm" onClick={() => deleteBet(row)}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           )}
         />
       </section>

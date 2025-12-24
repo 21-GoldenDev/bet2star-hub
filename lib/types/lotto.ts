@@ -1,6 +1,6 @@
 export type GameMode = "nap_perm" | "grouping" | "two_banker";
 
-export type Player = { id: string; fullName: string; email: string };
+export type Player = { fullName: string; userName: string };
 
 export type BaseBet = {
   id: string;
@@ -12,6 +12,7 @@ export type BaseBet = {
   staked: number;
   terminal: string;
   betTime: string;
+  status?: string; // "active", "closed", "void"
 };
 
 export type NapPermBet = BaseBet & {
