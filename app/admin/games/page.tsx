@@ -23,8 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit2, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+
+interface Prize {
+  id: string;
+  name: string;
+}
 
 interface Game {
   id: string;
@@ -34,11 +40,12 @@ interface Game {
   end_time?: string; // from database
   startTime?: string; // for form compatibility
   endTime?: string; // for form compatibility
-  prize: string[];
+  prizes?: Prize[];
   results?: number[] | string[] | object[] | null;
 }
 
 export default function GamesPage() {
+  const router = useRouter();
   const [games, setGames] = useState<Game[]>([]);
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -51,13 +58,11 @@ export default function GamesPage() {
     type: GameType;
     startTime: string;
     endTime: string;
-    prize: string[];
   }>({
     week: 1,
     type: "lotto",
     startTime: "",
     endTime: "",
-    prize: [],
   });
 
   // Fetch games from API
@@ -105,7 +110,6 @@ export default function GamesPage() {
       type: game.type,
       startTime: game.startTime || game.start_time || "",
       endTime: game.endTime || game.end_time || "",
-      prize: game.prize,
     });
     setIsEditDialogOpen(true);
   };
@@ -125,7 +129,6 @@ export default function GamesPage() {
           type: formData.type,
           startTime: formData.startTime,
           endTime: formData.endTime,
-          prize: formData.prize,
         }),
       });
 
@@ -170,7 +173,6 @@ export default function GamesPage() {
           type: formData.type,
           startTime: formData.startTime,
           endTime: formData.endTime,
-          prize: formData.prize,
         }),
       });
 
@@ -182,7 +184,7 @@ export default function GamesPage() {
           description: "Game created successfully",
         });
         setIsCreateOpen(false);
-        setFormData({ week: 1, type: "lotto", startTime: "", endTime: "", prize: [] });
+        setFormData({ week: 1, type: "lotto", startTime: "", endTime: "" });
         fetchGames(); // Refresh the list
       } else {
         toast({
@@ -303,24 +305,6 @@ export default function GamesPage() {
                   disabled={submitting}
                 />
               </div>
-              <div>
-                <Label>Prize Modes</Label>
-                <div className="flex gap-2">
-                  {["40_1a", "100_1"].map((odd) => (
-                    <label key={odd} className="inline-flex items-center gap-2">
-                      <Checkbox
-                        checked={formData.prize.includes(odd)}
-                        disabled={submitting}
-                        onCheckedChange={(checked) => {
-                          if (checked) setFormData({ ...formData, prize: Array.from(new Set([...formData.prize, odd])) });
-                          else setFormData({ ...formData, prize: formData.prize.filter((p) => p !== odd) });
-                        }}
-                      />
-                      <span className="uppercase">{odd.replace("_", " ")}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
               <div className="flex gap-2">
                 <Button 
                   variant="outline" 
@@ -407,13 +391,17 @@ export default function GamesPage() {
               sortable: true 
             },
             {
-              key: "prize", 
-              label: "Prize Modes", 
-              render: (prizes: string[]) => (
-                <div className="flex gap-2">
-                  {prizes?.map(p => (
-                    <Badge key={p} variant="outline" className="uppercase text-nowrap">{p.replace("_", " ")}</Badge>
-                  ))}
+              key: "prizes", 
+              label: "Prizes", 
+              render: (prizes: Prize[]) => (
+                <div className="flex gap-1 flex-wrap">
+                  {prizes && prizes.length > 0 ? (
+                    prizes.map(p => (
+                      <Badge key={p.id} variant="outline" className="text-xs">{p.name}</Badge>
+                    ))
+                  ) : (
+                    <span className="text-muted-foreground text-xs">No prizes</span>
+                  )}
                 </div>
               )
             },
@@ -423,6 +411,14 @@ export default function GamesPage() {
           searchPlaceholder="Search by game week..."
           actions={(game) => (
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/admin/games/${game.id}/settings`)}
+                title="Game Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -492,24 +488,6 @@ export default function GamesPage() {
                 onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                 disabled={submitting}
               />
-            </div>
-            <div>
-              <Label>Prize Modes</Label>
-              <div className="flex gap-2">
-                {["40_1a", "100_1"].map((odd) => (
-                  <label key={odd} className="inline-flex items-center gap-2">
-                    <Checkbox
-                      checked={formData.prize.includes(odd)}
-                      disabled={submitting}
-                      onCheckedChange={(checked) => {
-                        if (checked) setFormData({ ...formData, prize: Array.from(new Set([...formData.prize, odd])) });
-                        else setFormData({ ...formData, prize: formData.prize.filter((p) => p !== odd) });
-                      }}
-                    />
-                    <span className="uppercase">{odd.replace("_", " ")}</span>
-                  </label>
-                ))}
-              </div>
             </div>
             <div className="flex gap-2">
               <Button 

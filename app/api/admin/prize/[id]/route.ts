@@ -21,7 +21,7 @@ export async function GET(
     const { id } = await params;
 
     const { data, error } = await supabase
-      .from("games")
+      .from("prize")
       .select("*")
       .eq("id", id)
       .single();
@@ -31,12 +31,12 @@ export async function GET(
     }
 
     if (!data) {
-      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+      return NextResponse.json({ error: "Prize not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ game: data }, { status: 200 });
+    return NextResponse.json({ prize: data }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching game:", error);
+    console.error("Error fetching prize:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -51,17 +51,25 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { week, type, startTime, endTime, results } = body;
+    const { name, data } = body;
 
     const updateData: any = {};
-    if (week !== undefined) updateData.week = week;
-    if (type !== undefined) updateData.type = type;
-    if (startTime !== undefined) updateData.start_time = startTime;
-    if (endTime !== undefined) updateData.end_time = endTime;
-    if (results !== undefined) updateData.results = results;
+    if (name !== undefined) updateData.name = name;
+    if (data !== undefined) {
+      // Validate data structure
+      if (!data.columns || !Array.isArray(data.columns) || !data.data || typeof data.data !== "object") {
+        return NextResponse.json(
+          { error: "Invalid data structure. Expected { columns: string[], data: { [key: string]: number[] } }" },
+          { status: 400 }
+        );
+      }
+      updateData.data = data;
+    }
 
-    const { data, error } = await supabase
-      .from("games")
+    updateData.updated_at = new Date().toISOString();
+
+    const { data: prizeData, error } = await supabase
+      .from("prize")
       .update(updateData)
       .eq("id", id)
       .select()
@@ -71,13 +79,13 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (!data) {
-      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    if (!prizeData) {
+      return NextResponse.json({ error: "Prize not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ game: data }, { status: 200 });
+    return NextResponse.json({ prize: prizeData }, { status: 200 });
   } catch (error) {
-    console.error("Error updating game:", error);
+    console.error("Error updating prize:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -92,18 +100,18 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const { error } = await supabase.from("games").delete().eq("id", id);
+    const { error } = await supabase.from("prize").delete().eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(
-      { message: "Game deleted successfully" },
+      { message: "Prize deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error deleting game:", error);
+    console.error("Error deleting prize:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -24,7 +24,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ games: data }, { status: 200 });
+    const { data: gamesWithPrizes, error: prizesError } = await supabase
+      .from("game_prizes")
+      .select("game_id, prize_id, prize(name)");
+    if (prizesError) {
+      return NextResponse.json({ error: prizesError.message }, { status: 500 });
+    }
+    
+    const prizesMap: Record<string, Array<{ id: string; name: string }>> = {};
+    gamesWithPrizes?.forEach((gp: any) => {
+      if (!prizesMap[gp.game_id]) {
+        prizesMap[gp.game_id] = [];
+      }
+      prizesMap[gp.game_id].push({
+        id: gp.prize_id,
+        name: gp.prize?.name || "Unknown Prize",
+      });
+    });
+
+    const games = data.map((game) => ({
+      ...game,
+      prizes: prizesMap[game.id] || [],
+    }));
+
+    return NextResponse.json({ games }, { status: 200 });
   } catch (error) {
     console.error("Error fetching games:", error);
     return NextResponse.json(
@@ -37,7 +60,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { week, type, startTime, endTime, prize, results } = body;
+    const { week, type, startTime, endTime, results } = body;
 
     // Validate required fields
     if (!week || !type || !startTime || !endTime) {
@@ -55,7 +78,6 @@ export async function POST(request: NextRequest) {
           type,
           start_time: startTime,
           end_time: endTime,
-          prize: prize || [],
           results: results || null,
         },
       ])
