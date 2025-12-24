@@ -24,6 +24,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
   const [betAmount, setBetAmount] = useState(5000);
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
   const [odd, setOdd] = useState<string>("");
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const toggleMatch = (match: string) => {
     if (selectedMatches.includes(match)) {
@@ -42,7 +43,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
     else setMatchAtLeast([...matchAtLeast, m]);
   };
 
-  const placeBet = () => {
+  const placeBet = async () => {
     if (matchAtLeast.length === 0) {
       toast.error("Select at least one 'Match at least' option (U1..U7)");
       return;
@@ -62,8 +63,38 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
       return;
     }
 
-    const matchesStr = matchAtLeast.map((m) => `U${m}`).join(", ");
-    toast.success(`Bet placed! Matches: ${selectedMatches.length} selected | Match: ${matchesStr} | Bet: $${betAmount}`);
+    setIsPlacingBet(true);
+    try {
+      const response = await fetch("/api/bets/pools/direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedMatches,
+          betAmount,
+          matchAtLeast,
+          gameMode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to place bet");
+        return;
+      }
+
+      toast.success(data.message);
+      // Reset form
+      setSelectedMatches([]);
+      setMatchAtLeast([]);
+      setBetAmount(5000);
+      setOdd("");
+    } catch (error) {
+      toast.error("Error placing bet");
+      console.error(error);
+    } finally {
+      setIsPlacingBet(false);
+    }
   };
 
   return (
@@ -208,10 +239,10 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={selectedMatches.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0}
+            disabled={selectedMatches.length <= 0 || matchAtLeast.length === 0 || betAmount <= 0 || isPlacingBet}
             className="w-full py-3"
           >
-            Stake
+            {isPlacingBet ? "Placing..." : "Stake"}
           </Button>
 
           {(selectedMatches.length < Math.max(...matchAtLeast) || betAmount <= 0) && (

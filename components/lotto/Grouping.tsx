@@ -107,7 +107,7 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch("/api/bets/grouping", {
+      const response = await fetch("/api/bets/lotto/grouping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

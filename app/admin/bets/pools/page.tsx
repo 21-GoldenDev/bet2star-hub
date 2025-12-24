@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
@@ -8,136 +8,11 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
-import { Trash2 } from "lucide-react";
+import { Trash2, XCircle } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
-
-type Player = { id: string; fullName: string; email: string };
-
-type BaseBet = {
-  id: string; // uuid, database only (not displayed)
-  betId: bigint; // auto-increment
-  week: number;
-  player?: Player; // offline players may not have user
-  under: number[];
-  staked: number;
-  terminal: string;
-  betTime: string; // ISO
-  prize?: string; // optional prize/category for pools
-};
-
-type DirectBet = BaseBet & {
-  gameType: "direct";
-  matches: string[];
-};
-
-type GroupingBet = BaseBet & {
-  gameType: "grouping";
-  matches: Record<string, string[]>; // groupId -> matches
-};
-
-type TwoBankerBet = BaseBet & {
-  gameType: "two_banker";
-  matches: Record<string, string[]>; // groupId -> banker pairs (as strings)
-};
-
-const samplePrizes = ["40_1A", "100_1"];
-
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
-
-function generateUValues(len: number, maxSum = 7): number[] {
-  if (len < 2) len = 2;
-  let vals: number[] = [];
-  do {
-    vals = Array.from({ length: len }, () => 1 + Math.floor(Math.random() * 6));
-  } while (vals.reduce((s, v) => s + v, 0) < 2 || vals.reduce((s, v) => s + v, 0) > maxSum);
-  return vals;
-}
-
-function generateMockDirectBets(n = 36): DirectBet[] {
-  const bets: DirectBet[] = [];
-  for (let i = 0; i < n; i++) {
-    const count = 6; // sample size
-    const matches = Array.from({ length: count }, () => String(Math.floor(Math.random() * 49) + 1)).sort((a, b) => Number(a) - Number(b));
-    const isOffline = Math.random() <= 0.2;
-    const underValues = generateUValues(2 + (i % 2), 7);
-    bets.push({
-      gameType: "direct",
-      id: uid() + i,
-      betId: BigInt(1000 + i),
-      week: 1 + (i % 4),
-      player: !isOffline ? { id: uid(), fullName: `Player ${i + 1}`, email: `player${i + 1}@example.com` } : undefined,
-      under: underValues,
-      matches,
-      staked: +(Math.random() * 10000).toFixed(0),
-      terminal: isOffline ? `T-${Math.floor(Math.random() * 9999)}` : "",
-      betTime: new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 30)).toISOString(),
-      prize: samplePrizes[i % samplePrizes.length],
-    });
-  }
-  return bets;
-}
-
-function generateMockGroupingBets(n = 24): GroupingBet[] {
-  const bets: GroupingBet[] = [];
-  for (let i = 0; i < n; i++) {
-    const isOffline = Math.random() <= 0.2;
-    const groupCount = 2 + (i % 2); // ensure length >= 2 (2 or 3)
-    const uValues = generateUValues(groupCount, 7); // each 1-6; sum 2-7
-    const groups: Record<string, string[]> = {};
-    for (let g = 0; g < groupCount; g++) {
-      const count = 3 + (g % 3); // 3-5 matches per group (sample)
-      const ms = Array.from({ length: count }, () => String(Math.floor(Math.random() * 49) + 1)).sort((a, b) => Number(a) - Number(b));
-      const dt = new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 7)).toISOString();
-      groups[`${uValues[g]}-${dt}`] = ms;
-    }
-    bets.push({
-      gameType: "grouping",
-      id: uid() + "g" + i,
-      betId: BigInt(2000 + i),
-      week: 1 + (i % 4),
-      player: !isOffline ? { id: uid(), fullName: `Player ${i + 1}`, email: `player${i + 1}@example.com` } : undefined,
-      under: [uValues.reduce((s, v) => s + v, 0)],
-      matches: groups,
-      staked: +(Math.random() * 10000).toFixed(0),
-      terminal: isOffline ? `T-${Math.floor(Math.random() * 9999)}` : "",
-      betTime: new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 30)).toISOString(),
-      prize: samplePrizes[i % samplePrizes.length],
-    });
-  }
-  return bets;
-}
-
-function generateMockTwoBankerBets(n = 24): TwoBankerBet[] {
-  const bets: TwoBankerBet[] = [];
-  for (let i = 0; i < n; i++) {
-    const isOffline = Math.random() <= 0.2;
-    const groups: Record<string, string[]> = {};
-    const under = Math.floor(Math.random() * 5) + 2;
-    const u1 = under > 2 ? Math.floor(Math.random() * 2) + 1 : 1;
-    const uValues = [u1, under - u1];
-    for (let g = 0; g < 2; g++) {
-      const ms = Array.from({ length: 2 }, () => String(Math.floor(Math.random() * 49) + 1)).sort((a, b) => Number(a) - Number(b));
-      const dt = new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 7)).toISOString();
-      groups[`${uValues[g]}-${dt}`] = ms;
-    }
-    bets.push({
-      gameType: "two_banker",
-      id: uid() + "b" + i,
-      betId: BigInt(3000 + i),
-      week: 1 + (i % 4),
-      player: !isOffline ? { id: uid(), fullName: `Player ${i + 1}`, email: `player${i + 1}@example.com` } : undefined,
-      under: [under],
-      matches: groups,
-      staked: +(Math.random() * 10000).toFixed(0),
-      terminal: isOffline ? `T-${Math.floor(Math.random() * 9999)}` : "",
-      betTime: new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 30)).toISOString(),
-      prize: samplePrizes[i % samplePrizes.length],
-    });
-  }
-  return bets;
-}
+import type { PoolsBet, Player } from "@/lib/types/pools";
+import { useToast } from "@/hooks/use-toast";
+import { GameModeType } from "@/lib/types/gameMode";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -145,23 +20,73 @@ function formatDateIso(iso?: string) {
 }
 
 export default function PoolsPage() {
-  // Data per game type
-  const [dataDirect, setDataDirect] = useState<DirectBet[]>(() => generateMockDirectBets(42));
-  const [dataGrouping, setDataGrouping] = useState<GroupingBet[]>(() => generateMockGroupingBets(24));
-  const [dataTwo, setDataTwo] = useState<TwoBankerBet[]>(() => generateMockTwoBankerBets(24));
+  const { toast } = useToast();
+  const [allData, setAllData] = useState<PoolsBet[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Unified filters
   const [weekFilter, setWeekFilter] = useState<number | "">("");
   const [prizeFilter, setPrizeFilter] = useState<string | "">("");
-  const [gameFilter, setGameFilter] = useState<
-    | "all"
-    | DirectBet["gameType"]
-    | GroupingBet["gameType"]
-    | TwoBankerBet["gameType"]
-  >("all");
+  const [gameFilter, setGameFilter] = useState<"all" | GameModeType>("all");
   const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
 
-  const allData = useMemo(() => [...dataDirect, ...dataGrouping, ...dataTwo], [dataDirect, dataGrouping, dataTwo]);
+  // Fetch data from API
+  useEffect(() => {
+    fetchBets();
+  }, []);
+
+  async function fetchBets() {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+
+      if (weekFilter !== "") {
+        params.append("week", String(weekFilter));
+      }
+      if (prizeFilter !== "") {
+        params.append("prize", prizeFilter);
+      }
+      if (gameFilter !== "all") {
+        params.append("gameType", gameFilter);
+      }
+      if (rangeFilter?.from) {
+        params.append("dateFrom", rangeFilter.from.toISOString());
+      }
+      if (rangeFilter?.to) {
+        params.append("dateTo", rangeFilter.to.toISOString());
+      }
+
+      const response = await fetch(`/api/admin/bets/pools?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch bets");
+      }
+
+      const result = await response.json();
+
+      // Convert betId strings back to BigInt
+      const transformedData = result.data.map((bet: any) => ({
+        ...bet,
+        betId: BigInt(bet.betId),
+      }));
+
+      setAllData(transformedData);
+    } catch (error) {
+      console.error("Error fetching bets:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch bets. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Refetch when filters change
+  useEffect(() => {
+    fetchBets();
+  }, [weekFilter, prizeFilter, gameFilter, rangeFilter]);
   const weeksAll = useMemo(() => Array.from(new Set(allData.map((d) => d.week))).sort(), [allData]);
   const prizesAll = useMemo(
     () => Array.from(new Set(allData.map((d) => d.prize).filter(Boolean) as string[])).sort(),
@@ -169,7 +94,7 @@ export default function PoolsPage() {
   );
   const gameOptions: Array<{ value: string; label: string }> = [
     { value: "all", label: "All games" },
-    { value: "direct", label: "Direct" },
+    { value: "nap_perm", label: "NAP/PERM" },
     { value: "grouping", label: "Grouping" },
     { value: "two_banker", label: "2 Banker" },
   ];
@@ -189,31 +114,81 @@ export default function PoolsPage() {
       })
       .map((b) => {
         if (b.gameType === "direct") {
-          return { ...b, apl: calcAplDirect(b.staked, b.under, b.matches.length) } as any;
+          return { ...b, apl: calcAplDirect(b.staked, b.under.map(Number), b.matches.length) } as any;
         }
         return { ...b, apl: calcAplGrouping(b.staked, b.matches) } as any;
       });
   }, [allData, weekFilter, prizeFilter, gameFilter, rangeFilter]);
 
-  function deleteDirect(id: string) {
-    setDataDirect((d) => d.filter((b) => b.id !== id));
+  async function deleteBet(row: PoolsBet) {
+    try {
+      const response = await fetch(`/api/admin/bets/pools/${row.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete bet");
+      }
+
+      setAllData((prev) => prev.filter((b) => b.id !== row.id));
+
+      toast({
+        title: "Success",
+        description: "Bet deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting bet:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete bet. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
-  function deleteGrouping(id: string) {
-    setDataGrouping((d) => d.filter((b) => b.id !== id));
+  async function voidBet(betId: string) {
+    try {
+      const response = await fetch(`/api/admin/bets/pools/void`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: betId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to void bet");
+      }
+
+      fetchBets();
+
+      toast({
+        title: "Success",
+        description: "Bet voided successfully.",
+      });
+    } catch (error) {
+      console.error("Error voiding bet:", error);
+      toast({
+        title: "Error",
+        description: "Failed to void bet. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
-  function deleteTwo(id: string) {
-    setDataTwo((d) => d.filter((b) => b.id !== id));
+  function getGameLabel(gameType: GameModeType) {
+    switch (gameType) {
+      case "nap_perm": return "NAP/PERM";
+      case "grouping": return "Grouping";
+      case "2banker": return "2 Banker";
+      default: return gameType;
+    }
   }
 
-  function deleteBet(row: DirectBet | GroupingBet | TwoBankerBet) {
-    if (row.gameType === "direct") {
-      deleteDirect(row.id);
-    } else if (row.gameType === "grouping") {
-      deleteGrouping(row.id);
-    } else {
-      deleteTwo(row.id);
+  function renderStatus(status: string | undefined) {
+    switch (status) {
+      case "active": return <span className="text-green-600 font-medium">Active</span>;
+      case "closed": return <span className="text-blue-600 font-medium">Closed</span>;
+      case "void": return <span className="text-red-600 font-medium">Void</span>;
+      default: return <span className="text-muted-foreground">N/A</span>;
     }
   }
 
@@ -222,159 +197,173 @@ export default function PoolsPage() {
       <h1 className="text-2xl font-bold">Bets — Pools</h1>
       <p className="text-sm text-muted-foreground mt-2">Manage pool bets here.</p>
 
-      <section className="mt-6 space-y-4">
-        <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-            <div>
-              <Label>Game</Label>
-              <Select
-                value={gameFilter}
-                onValueChange={(val) => setGameFilter(val as typeof gameFilter)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All games" />
-                </SelectTrigger>
-                <SelectContent>
-                  {gameOptions.map((g) => (
-                    <SelectItem key={g.value} value={g.value}>
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      {loading ? (
+        <div className="flex items-center justify-center mt-12">
+          <div className="text-muted-foreground">Loading bets...</div>
+        </div>
+      ) : (
+        <section className="mt-6 space-y-4">
+          <div className="bg-card p-4 rounded-lg border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+              <div>
+                <Label>Game</Label>
+                <Select
+                  value={gameFilter}
+                  onValueChange={(val) => setGameFilter(val as typeof gameFilter)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All games" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gameOptions.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label>Week</Label>
-              <Select
-                value={weekFilter === "" ? undefined : String(weekFilter)}
-                onValueChange={(val) => setWeekFilter(val === "all" ? "" : Number(val))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All weeks" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {weeksAll.map((w) => (
-                    <SelectItem key={w} value={String(w)}>
-                      {w}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label>Week</Label>
+                <Select
+                  value={weekFilter === "" ? undefined : String(weekFilter)}
+                  onValueChange={(val) => setWeekFilter(val === "all" ? "" : Number(val))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All weeks" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {weeksAll.map((w) => (
+                      <SelectItem key={w} value={String(w)}>
+                        {w}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div>
-              <Label>Prize</Label>
-              <Select
-                value={prizeFilter || undefined}
-                onValueChange={(val) => setPrizeFilter(val === "all" ? "" : val)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All prizes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {prizesAll.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div>
+                <Label>Prize</Label>
+                <Select
+                  value={prizeFilter || undefined}
+                  onValueChange={(val) => setPrizeFilter(val === "all" ? "" : val)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All prizes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {prizesAll.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="md:col-span-2">
-              <Label>Date Range</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="mt-1 w-full justify-start">
-                    {rangeFilter?.from && rangeFilter?.to
-                      ? `${new Date(rangeFilter.from).toLocaleDateString()} – ${new Date(rangeFilter.to).toLocaleDateString()}`
-                      : "Pick a range"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <div className="p-3">
-                    <Calendar
-                      mode="range"
-                      selected={rangeFilter}
-                      onSelect={setRangeFilter}
-                      numberOfMonths={2}
-                    />
-                    <div className="flex justify-end gap-2 mt-2">
-                      <Button variant="outline" size="sm" onClick={() => setRangeFilter(undefined)}>
-                        Clear
-                      </Button>
+              <div className="md:col-span-2">
+                <Label>Date Range</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="mt-1 w-full justify-start">
+                      {rangeFilter?.from && rangeFilter?.to
+                        ? `${new Date(rangeFilter.from).toLocaleDateString()} – ${new Date(rangeFilter.to).toLocaleDateString()}`
+                        : "Pick a range"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <div className="p-3">
+                      <Calendar
+                        mode="range"
+                        selected={rangeFilter}
+                        onSelect={setRangeFilter}
+                        numberOfMonths={2}
+                      />
+                      <div className="flex justify-end gap-2 mt-2">
+                        <Button variant="outline" size="sm" onClick={() => setRangeFilter(undefined)}>
+                          Clear
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
 
-            <div className="md:col-span-5 flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">{filteredAll.length} results</div>
-              <Button variant="outline" size="sm" onClick={() => { setGameFilter("all"); setWeekFilter(""); setPrizeFilter(""); setRangeFilter(undefined); }}>
-                Reset Filters
-              </Button>
+              <div className="md:col-span-5 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">{filteredAll.length} results</div>
+                <Button variant="outline" size="sm" onClick={() => { setGameFilter("all"); setWeekFilter(""); setPrizeFilter(""); setRangeFilter(undefined); }}>
+                  Reset Filters
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <DataTable
-          title="Pools Bets"
-          data={filteredAll}
-          itemsPerPage={10}
-          columns={[
-            { key: "gameType", label: "Game", render: (value: string) => (value === "direct" ? "Direct" : value === "grouping" ? "Grouping" : "2 Banker") },
-            { key: "betId", label: "Bet#", render: (value: bigint) => value.toString() },
-            { key: "week", label: "Week" },
-            {
-              key: "player",
-              label: "Player",
-              render: (_: Player | undefined, row) =>
-                row.player ? (
-                  <div>
-                    <div className="font-medium">{row.player.fullName}</div>
-                    <div className="text-xs text-muted-foreground">{row.player.email}</div>
-                  </div>
-                ) : (
-                  <div>Agent</div>
-                ),
-            },
-            { key: "under", label: "Under" },
-            {
-              key: "matches",
-              label: "Matches",
-              render: (value: string[] | Record<string, string[]>) => {
-                if (Array.isArray(value)) {
-                  return value.join(", ");
-                }
-                return (
-                  <div className="space-y-1">
-                    {Object.entries(value).map(([gid, ms]) => (
-                      <div key={gid} className="text-sm">
-                        <span className="font-medium mr-1">{gid.split('-')[0]}:</span>
-                        <span className="text-muted-foreground">{ms.join(", ")}</span>
-                      </div>
-                    ))}
-                  </div>
-                );
+          <DataTable
+            title="Pools Bets"
+            data={filteredAll}
+            itemsPerPage={10}
+            columns={[
+              { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value as GameModeType) },
+              { key: "betId", label: "Bet#", render: (value: bigint) => value.toString() },
+              { key: "week", label: "Week" },
+              {
+                key: "player",
+                label: "Player",
+                render: (_: Player | undefined, row) =>
+                  row.player ? (
+                    <div>
+                      <div className="font-medium">{row.player.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{row.player.userName}</div>
+                    </div>
+                  ) : (
+                    <div>Agent</div>
+                  ),
               },
-            },
-            { key: "apl", label: "APL", render: (value: number) => value.toFixed(2) },
-            { key: "prize", label: "Prize" },
-            { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
-            { key: "terminal", label: "Terminal" },
-            { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
-          ]}
-          actions={(row) => (
-            <Button variant="outline" size="sm" onClick={() => deleteBet(row)}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-        />
-      </section>
+              { key: "under", label: "Under" },
+              {
+                key: "matches",
+                label: "Matches",
+                render: (value: string[] | Record<string, string[]>) => {
+                  if (Array.isArray(value)) {
+                    return value.join(", ");
+                  }
+                  return (
+                    <div className="space-y-1">
+                      {Object.entries(value).map(([gid, ms]) => (
+                        <div key={gid} className="text-sm">
+                          <span className="font-medium mr-1">{gid.split('-')[0]}:</span>
+                          <span className="text-muted-foreground">{ms.join(", ")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                },
+              },
+              { key: "apl", label: "APL", render: (value: number) => value.toFixed(2) },
+              { key: "prize", label: "Prize" },
+              { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              { key: "terminal", label: "Terminal" },
+              { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+              { key: "status", label: "Status", render: (value: string | undefined) => renderStatus(value) },
+            ]}
+            actions={(row) => (
+              <div className="flex items-center gap-2">
+                {row.status !== "void" && (
+                  <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
+                    <XCircle className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button variant="outline" title="Delete bet" size="sm" onClick={() => deleteBet(row)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          />
+        </section>
+      )}
     </div>
   );
 }

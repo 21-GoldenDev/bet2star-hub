@@ -12,27 +12,28 @@ export type BaseBet = {
   staked: number;
   terminal: string;
   betTime: string;
+  prize?: string;
   status?: string; // "active", "closed", "void"
 };
 
-export type NapPermBet = BaseBet & {
-  gameType: "nap_perm";
-  numbers: number[];
+export type DirectBet = BaseBet & {
+  gameType: "direct";
+  matches: string[];
 };
 
 export type GroupingBet = BaseBet & {
   gameType: "grouping";
-  numbers: Record<string, number[]>;
+  matches: Record<string, string[]>;
 };
 
 export type TwoBankerBet = BaseBet & {
   gameType: "two_banker";
-  numbers: Record<string, number[]>;
+  matches: Record<string, string[]>;
 };
 
-export type LottoBet = NapPermBet | GroupingBet | TwoBankerBet;
+export type PoolsBet = DirectBet | GroupingBet | TwoBankerBet;
 
-export type LottoBetFilters = {
+export type PoolsBetFilters = {
   week?: number;
   prize?: string;
   gameType?: GameModeType;

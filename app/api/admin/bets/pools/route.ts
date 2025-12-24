@@ -9,11 +9,12 @@ export async function GET(request: NextRequest) {
 
     const week = searchParams.get("week");
     const gameType = searchParams.get("gameType") as GameModeType | "all" | null;
+    const prize = searchParams.get("prize");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
     let query = supabase
-      .from("bets_lotto")
+      .from("bets_pools")
       .select("*")
       .order("bet_time", { ascending: false });
 
@@ -23,6 +24,10 @@ export async function GET(request: NextRequest) {
 
     if (gameType && gameType !== "all") {
       query = query.eq("gameType", gameType);
+    }
+
+    if (prize && prize !== "all") {
+      query = query.eq("prize", prize);
     }
 
     if (dateFrom) {
@@ -50,7 +55,10 @@ export async function GET(request: NextRequest) {
     let playersMap: Record<string, { fullName: string; userName: string }> = {};
 
     if (uniquePlayerIds.length > 0) {
-      const { data: usersData, error: usersError } = await supabase.from("profiles").select("*").in("user_id", uniquePlayerIds);
+      const { data: usersData, error: usersError } = await supabase
+        .from("profiles")
+        .select("*")
+        .in("user_id", uniquePlayerIds);
 
       if (!usersError && usersData) {
         playersMap = usersData
@@ -74,10 +82,11 @@ export async function GET(request: NextRequest) {
       week: bet.week,
       player: bet.player ? playersMap[bet.player] : undefined,
       under: bet.under,
-      numbers: bet.numbers,
+      matches: bet.matches,
       staked: bet.staked,
       terminal: bet.terminal,
       betTime: bet.bet_time,
+      prize: bet.prize,
       status: bet.status,
     }));
 
@@ -85,33 +94,5 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createClient();
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ error: "Bet ID is required" }, { status: 400 });
-    }
-
-    const { error } = await supabase
-      .from("bets_lotto")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to delete bet" },
-      { status: 500 }
-    );
   }
 }

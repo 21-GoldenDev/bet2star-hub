@@ -65,7 +65,7 @@ const TwoBanker = ({ gameMode, setGameMode }: Props) => {
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch("/api/bets/twobanker", {
+      const response = await fetch("/api/bets/lotto/twobanker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -300,7 +300,7 @@ const TwoBanker = ({ gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={!totalUnder || groupAU === 0 || groupANumbers.length !== 2 || isPlacingBet}
+            disabled={!totalUnder || groupAU === 0 || groupANumbers.length !== 2 || isPlacingBet || betAmount <= 0}
             className="w-full py-3"
           >
             {isPlacingBet ? "Placing..." : "Stake"}

@@ -32,6 +32,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>({});
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const currentSum = selectedUs.reduce((acc, sel) => acc + sel.u, 0);
 
@@ -95,7 +96,7 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
     setGroupSelections(copy);
   };
 
-  const placeBet = () => {
+  const placeBet = async () => {
     if (selectedUs.length < 2) {
       toast.error("Select at least two U options");
       return;
@@ -109,11 +110,39 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
       return;
     }
 
-    const groups = selectedUs
-      .map((sel) => `U${sel.u}:[${(groupSelections[sel.id] ?? []).join(",")}]`)
-      .join(" ");
+    setIsPlacingBet(true);
+    try {
+      const response = await fetch("/api/bets/pools/grouping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selectedUs,
+          groupSelections,
+          betAmount,
+          totalUnder,
+          gameMode,
+        }),
+      });
 
-    toast.success(`Bet placed! ${groups} | Bet: $${betAmount}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to place bet");
+        return;
+      }
+
+      toast.success(data.message);
+      // Reset form
+      clearAll();
+      setBetAmount(5000);
+      setOdd("");
+      setTotalUnder(0);
+    } catch (error) {
+      toast.error("Error placing bet");
+      console.error(error);
+    } finally {
+      setIsPlacingBet(false);
+    }
   };
 
   const nextGroup = useMemo(() => {
@@ -339,10 +368,10 @@ const Grouping = ({ matches, gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)}
+            disabled={selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u) || isPlacingBet}
             className="w-full py-3"
           >
-            Stake
+            {isPlacingBet ? "Placing..." : "Stake"}
           </Button>
 
           {(selectedUs.length < 2 || currentSum !== totalUnder || betAmount <= 0 || selectedUs.some((sel) => (groupSelections[sel.id] ?? []).length < sel.u)) && (

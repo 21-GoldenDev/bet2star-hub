@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
 import { Trash2, XCircle } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
-import type { LottoBet, Player, GameMode } from "@/lib/types/lotto";
+import type { LottoBet, Player } from "@/lib/types/lotto";
 import { useToast } from "@/hooks/use-toast";
+import { GameModeType } from "@/lib/types/gameMode";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -25,7 +26,7 @@ export default function LottoPage() {
 
   // Unified filters
   const [weekFilter, setWeekFilter] = useState<number | "">("");
-  const [gameFilter, setGameFilter] = useState<"all" | GameMode>("all");
+  const [gameFilter, setGameFilter] = useState<"all" | GameModeType>("all");
   const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
 
   // Fetch data from API

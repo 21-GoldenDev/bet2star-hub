@@ -61,7 +61,7 @@ const Direct = ({ gameMode, setGameMode }: Props) => {
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch("/api/bets/direct", {
+      const response = await fetch("/api/bets/lotto/direct", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

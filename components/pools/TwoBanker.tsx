@@ -24,6 +24,7 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
   const [groupAMatches, setGroupAMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const groupBU = totalUnder - groupAU;
   const groupBMatches = matches.filter((m) => !groupAMatches.includes(m));
@@ -44,7 +45,7 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
     setGroupAMatches([]);
   };
 
-  const placeBet = () => {
+  const placeBet = async () => {
     if (!totalUnder) {
       toast.error("Select a total U value");
       return;
@@ -62,7 +63,40 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
       return;
     }
 
-    toast.success(`Bet placed! Bet: $${betAmount}`);
+    setIsPlacingBet(true);
+    try {
+      const response = await fetch("/api/bets/pools/twobanker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          totalUnder,
+          groupAU,
+          groupAMatches,
+          betAmount,
+          gameMode,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        toast.error(data.error || "Failed to place bet");
+        return;
+      }
+
+      toast.success(data.message);
+      // Reset form
+      setTotalUnder(0);
+      setGroupAU(0);
+      setGroupAMatches([]);
+      setBetAmount(5000);
+      setOdd("");
+    } catch (error) {
+      toast.error("Error placing bet");
+      console.error(error);
+    } finally {
+      setIsPlacingBet(false);
+    }
   };
 
   const compareMatches = (a: string, b: string) => {
@@ -281,10 +315,10 @@ const TwoBanker = ({ matches, gameMode, setGameMode }: Props) => {
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={!totalUnder || groupAU === 0 || groupAMatches.length !== 2}
+            disabled={!totalUnder || groupAU === 0 || groupAMatches.length !== 2 || isPlacingBet || betAmount <= 0}
             className="w-full py-3"
           >
-            Stake
+            {isPlacingBet ? "Placing..." : "Stake"}
           </Button>
 
           {(!totalUnder || groupAU === 0 || groupAMatches.length !== 2 || betAmount <= 0) && (
