@@ -1,10 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createSupabaseServer } from "@/lib/supabase/server";
 import { GameModeType } from "@/lib/types/gameMode";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServer();
     const searchParams = request.nextUrl.searchParams;
 
     const week = searchParams.get("week");
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = await createSupabaseServer();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
