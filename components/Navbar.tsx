@@ -5,20 +5,38 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Wallet, User, Menu, X, LogIn, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 
-import useSupabaseUser from "@/hooks/use-supabase-user";
 import { signOut } from "@/lib/auth";
 import { toast } from "@/components/ui/use-toast";
+import supabase from "@/lib/supabase/client";
 
 const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user } = useSupabaseUser();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const isLoggedIn = Boolean(user);
+  useEffect(() => {
+    let mounted = true;
+
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (mounted) setIsLoggedIn(!!user);
+    };
+
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
+  }, []);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
