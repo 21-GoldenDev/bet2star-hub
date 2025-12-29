@@ -4,12 +4,9 @@ import { Hash, Type, Trophy, Sparkles, TrendingUp, Shield } from "lucide-react";
 import GameCard from "@/components/GameCard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import useSupabaseUser from "@/hooks/use-supabase-user";
 import Image from "next/image";
 
 const Home = () => {
-  const { user } = useSupabaseUser();
-
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -35,7 +32,7 @@ const Home = () => {
               Join thousands of players on bet2star. Play number matching, word games, or bet on your favorite football matches.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "300ms" }}>
-              <Link href={user ? "/lotto" : "/auth"}>
+              <Link href="/lotto">
                 <Button variant="gold" size="xl">
                   Start Playing
                 </Button>
@@ -63,7 +60,7 @@ const Home = () => {
               title="Lotto"
               description="Pick your numbers and win amazing prizes. Quick, thrilling, and easy to play."
               icon={Hash}
-              path={user ? "/lotto" : "/auth"}
+              path="/lotto"
               gradient="gold"
               delay={0}
             />
@@ -71,7 +68,7 @@ const Home = () => {
               title="Pools"
               description="Guess winning combinations and earn big rewards. Strategic and fun gameplay."
               icon={Type}
-              path={user ? "/pools" : "/auth"}
+              path="/pools"
               gradient="cyan"
               delay={100}
             />
@@ -79,7 +76,7 @@ const Home = () => {
               title="Sports Betting"
               description="Wager on your favorite sports teams and matches. Live odds and fast payouts."
               icon={Trophy}
-              path={user ? "/sports" : "/auth"}
+              path="/sports"
               gradient="purple"
               delay={200}
             />

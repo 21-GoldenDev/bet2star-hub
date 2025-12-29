@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/auth-client";
+import supabase from "@/lib/supabase/client";
 
 const ConfirmContent = () => {
   const router = useRouter();

@@ -5,7 +5,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import ProtectedRoute from "./ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -14,7 +13,7 @@ export const Providers = ({ children }: { children: ReactNode }) => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <ProtectedRoute>{children}</ProtectedRoute>
+      {children}
     </TooltipProvider>
   </QueryClientProvider>
 );
