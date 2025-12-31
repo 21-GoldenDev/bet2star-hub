@@ -32,3 +32,40 @@ export const calcAplGrouping = (stake: number, selects: Record<string, string[] 
   const apl = stake / totalWays;;
   return apl;
 }
+
+const isArrayInvolved = (array1: string[], array2: string[]): boolean => {
+  if (array2.length === 0) return true;
+  return array2.every(item => array1.includes(item));
+}
+
+const generateCombinations = (array: any[], length: number): any[][] => {
+  if (length === 0) return [[]];
+  if (length > array.length) return [];
+  if (length === 1) return array.map(item => [item]);
+
+  const result: any[][] = [];
+  for (let i = 0; i <= array.length - length; i++) {
+    const head = array[i];
+    const tail = generateCombinations(array.slice(i + 1), length - 1);
+    result.push(...tail.map(combination => [head, ...combination]));
+  }
+  return result;
+}
+
+export const calcAward = (
+  selectedNumbers: number[] | string[],
+  resultNumbers: number[] | string[],
+  matchAtLeast: number[],
+  apl: number
+): number => {
+  let totalAward = 0;
+  for (const u of matchAtLeast) {
+    const combinations = generateCombinations(selectedNumbers, u);
+    for (const combo of combinations) {
+      if (isArrayInvolved(resultNumbers.map(String), combo.map(String))) {
+        totalAward += apl;
+      }
+    }
+  }
+  return totalAward;
+}

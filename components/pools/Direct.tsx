@@ -7,24 +7,27 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import Odd_40_1A from "../odds/40_1A";
-import Odd_100_1 from "../odds/100_1";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { calcAplDirect } from "@/lib/helpers";
+import { Prize } from "@/lib/types/prize";
+import PrizeTable from "../PrizeTable";
 
 interface Props {
   matches: string[];
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
+  prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
 }
 
-const Direct = ({ matches, gameMode, setGameMode }: Props) => {
+const Direct = ({ matches, gameMode, prizes, setGameMode }: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+
+  const prize = prizes?.find((p) => p.id === odd);
 
   const toggleMatch = (match: string) => {
     if (selectedMatches.includes(match)) {
@@ -73,6 +76,7 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
           betAmount,
           matchAtLeast,
           gameMode,
+          prize: odd,
         }),
       });
 
@@ -144,10 +148,9 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
               <RefreshCw className="w-4 h-4 mr-1" />
               Clear
             </Button>
-            {!!odd && (
+            {!!prize && (
               <div className="mt-4">
-                {odd === "40-1 A" && <Odd_40_1A />}
-                {odd === "100-1" && <Odd_100_1 />}
+                <PrizeTable prize={prize} />
               </div>
             )}
           </div>
@@ -202,10 +205,10 @@ const Direct = ({ matches, gameMode, setGameMode }: Props) => {
             <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
             <div className="flex flex-col gap-2">
               <RadioGroup value={odd} onValueChange={setOdd}>
-                {['40-1 A', '100-1'].map((oddsValue) => (
-                  <label key={oddsValue} className="cursor-pointer flex items-center gap-2">
-                    <RadioGroupItem key={oddsValue} value={oddsValue} />
-                    <span className="text-sm font-medium">{oddsValue}</span>
+                {(prizes || []).map((prize) => (
+                  <label key={prize.id} className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem key={prize.id} value={prize.id} />
+                    <span className="text-sm font-medium">{prize.name}</span>
                   </label>
                 ))}
               </RadioGroup>

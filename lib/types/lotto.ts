@@ -6,12 +6,13 @@ export type BaseBet = {
   id: string;
   gameId: string;
   betId: bigint;
-  week: number;
+  week?: number | null;
   player?: Player;
   under: number[];
   staked: number;
   terminal: string;
   betTime: string;
+  prize?: string;
   status?: string; // "active", "closed", "void"
 };
 

@@ -9,10 +9,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
 import { Trash2, XCircle } from "lucide-react";
-import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, calcAward } from "@/lib/helpers";
 import type { PoolsBet, Player } from "@/lib/types/pools";
 import { useToast } from "@/hooks/use-toast";
 import { GameModeType } from "@/lib/types/gameMode";
+import { Game } from "@/lib/types/game";
+import { Input } from "@/components/ui/input";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -23,29 +25,60 @@ export default function PoolsPage() {
   const { toast } = useToast();
   const [allData, setAllData] = useState<PoolsBet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeksAll, setWeeksAll] = useState<Game[]>([]);
 
   // Unified filters
-  const [weekFilter, setWeekFilter] = useState<number | "">("");
-  const [prizeFilter, setPrizeFilter] = useState<string | "">("");
+  const [weekFilter, setWeekFilter] = useState<string | undefined>(undefined);
+  const [weekResult, setWeekResult] = useState<string[]>([]);
   const [gameFilter, setGameFilter] = useState<"all" | GameModeType>("all");
   const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
 
-  // Fetch data from API
   useEffect(() => {
-    fetchBets();
+    const fetchWeeks = async () => {
+      try {
+        const response = await fetch(`/api/admin/bets/pools/weeks`);
+        const result = await response.json();
+        const weekValues = result.data || [];
+        setWeeksAll(weekValues);
+        if (weekValues.length > 0) {
+          setWeekFilter(weekValues[0].id);
+          if (weekValues[0].results) {
+            setWeekResult(weekValues[0].results as string[]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching weeks:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch weeks. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+    fetchWeeks();
   }, []);
 
+  useEffect(() => {
+    if (!weekFilter) {
+      setWeekResult([]);
+      return;
+    }
+    const selectedWeek = weeksAll.find((w) => w.id === weekFilter);
+    if (selectedWeek && selectedWeek.results) {
+      setWeekResult(selectedWeek.results as string[]);
+    } else {
+      setWeekResult([]);
+    }
+  }, [weekFilter, weeksAll]);
+
   async function fetchBets() {
+    if (!weekFilter) {
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
-
-      if (weekFilter !== "") {
-        params.append("week", String(weekFilter));
-      }
-      if (prizeFilter !== "") {
-        params.append("prize", prizeFilter);
-      }
+      params.append("game_id", String(weekFilter));
       if (gameFilter !== "all") {
         params.append("gameType", gameFilter);
       }
@@ -83,15 +116,36 @@ export default function PoolsPage() {
     }
   }
 
+  const updateWeekResult = async (result: string[]) => {
+    if (weekFilter === undefined) {
+      toast({ title: "Error", description: "Please select a week before setting result.", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/bets/pools/result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_id: weekFilter, result }),
+      });
+      if (!res.ok) throw new Error("Failed to set result");
+      setWeeksAll(prev => {
+        const gameIndex = prev.findIndex(w => w.id === weekFilter);
+        if (gameIndex !== -1) {
+          prev[gameIndex].results = result;
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to set result.", variant: "destructive" });
+    }
+  }
+
   // Refetch when filters change
   useEffect(() => {
     fetchBets();
-  }, [weekFilter, prizeFilter, gameFilter, rangeFilter]);
-  const weeksAll = useMemo(() => Array.from(new Set(allData.map((d) => d.week))).sort(), [allData]);
-  const prizesAll = useMemo(
-    () => Array.from(new Set(allData.map((d) => d.prize).filter(Boolean) as string[])).sort(),
-    [allData]
-  );
+  }, [weekFilter, gameFilter, rangeFilter]);
+
   const gameOptions: Array<{ value: string; label: string }> = [
     { value: "all", label: "All games" },
     { value: "nap_perm", label: "NAP/PERM" },
@@ -104,8 +158,7 @@ export default function PoolsPage() {
     const toTime = rangeFilter?.to ? new Date(rangeFilter.to).setHours(23, 59, 59, 999) : undefined;
     return allData
       .filter((b) => {
-        if (weekFilter !== "" && b.week !== weekFilter) return false;
-        if (prizeFilter !== "" && b.prize !== prizeFilter) return false;
+        if (weekFilter !== undefined && b.gameId !== weekFilter) return false;
         if (gameFilter !== "all" && b.gameType !== gameFilter) return false;
         const bt = new Date(b.betTime).getTime();
         if (fromTime !== undefined && bt < fromTime) return false;
@@ -113,12 +166,31 @@ export default function PoolsPage() {
         return true;
       })
       .map((b) => {
-        if (b.gameType === "direct") {
-          return { ...b, apl: calcAplDirect(b.staked, b.under.map(Number), b.matches.length) } as any;
+        if (b.gameType === "nap_perm") {
+          const apl = calcAplDirect(b.staked, b.under, b.matches.length);
+          let award = calcAward(b.matches, weekResult, b.under, apl);
+          if (!b.player) {
+            award *= b.prize ? (b.prize as any).commission / 100 : 1;
+          }
+          return {
+            ...b,
+            apl,
+            award: calcAward(b.matches, weekResult, b.under, apl),
+          };
         }
-        return { ...b, apl: calcAplGrouping(b.staked, b.matches) } as any;
+        const apl = calcAplGrouping(b.staked, b.matches);
+        let award = 0;
+        Object.keys(b.matches).forEach((gid) => {
+          const under = Number(gid.split("-")[0]);
+          const matches = b.matches[gid];
+          award += calcAward(matches, weekResult, [under], apl);
+        });
+        if (!b.player) {
+          award *= b.prize ? (b.prize as any).commission / 100 : 1;
+        }
+        return { ...b, apl, award };
       });
-  }, [allData, weekFilter, prizeFilter, gameFilter, rangeFilter]);
+  }, [allData, weekFilter, gameFilter, rangeFilter, weekResult]);
 
   async function deleteBet(row: PoolsBet) {
     try {
@@ -204,13 +276,32 @@ export default function PoolsPage() {
       ) : (
         <section className="mt-6 space-y-4">
           <div className="bg-card p-4 rounded-lg border border-border">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div>
+                <Label>Week</Label>
+                <Select
+                  value={weekFilter === undefined ? undefined : weekFilter}
+                  onValueChange={(val) => setWeekFilter(val)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select week" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {weeksAll.map((w) => (
+                      <SelectItem key={w.id} value={w.id}>
+                        {w.week}
+                      </SelectItem>
+                    ))}
+                    {weeksAll.length === 0 && (
+                      <SelectItem value="none" disabled>No weeks available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div>
                 <Label>Game</Label>
-                <Select
-                  value={gameFilter}
-                  onValueChange={(val) => setGameFilter(val as typeof gameFilter)}
-                >
+                <Select value={gameFilter} onValueChange={(val) => setGameFilter(val as typeof gameFilter)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="All games" />
                   </SelectTrigger>
@@ -218,46 +309,6 @@ export default function PoolsPage() {
                     {gameOptions.map((g) => (
                       <SelectItem key={g.value} value={g.value}>
                         {g.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Week</Label>
-                <Select
-                  value={weekFilter === "" ? undefined : String(weekFilter)}
-                  onValueChange={(val) => setWeekFilter(val === "all" ? "" : Number(val))}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="All weeks" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {weeksAll.map((w) => (
-                      <SelectItem key={w} value={String(w)}>
-                        {w}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Prize</Label>
-                <Select
-                  value={prizeFilter || undefined}
-                  onValueChange={(val) => setPrizeFilter(val === "all" ? "" : val)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="All prizes" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    {prizesAll.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -292,9 +343,60 @@ export default function PoolsPage() {
                 </Popover>
               </div>
 
-              <div className="md:col-span-5 flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">{filteredAll.length} results</div>
-                <Button variant="outline" size="sm" onClick={() => { setGameFilter("all"); setWeekFilter(""); setPrizeFilter(""); setRangeFilter(undefined); }}>
+              {!!weekFilter && (
+                <div className="md:col-span-4">
+                  <Label>Week Result (Enter-separated numbers)</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <Input
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const result = e.currentTarget.value;
+                          const newSet = new Set(weekResult);
+                          newSet.add(result);
+                          const updatedResult = Array.from(newSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                          setWeekResult(updatedResult);
+                          updateWeekResult(updatedResult);
+                          e.currentTarget.value = "";
+                        }
+                      }}
+                      className="w-20"
+                      placeholder="e.g. 25"
+                    />
+                    <div className="flex items-center gap-1">
+                      {weekResult.map((num, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium flex items-center gap-1"
+                        >
+                          {num}
+                          <XCircle
+                            className="w-3 h-3 cursor-pointer hover:text-red-600"
+                            onClick={() => {
+                              const updatedResult = weekResult.filter((_, i) => i !== idx);
+                              setWeekResult(updatedResult);
+                              updateWeekResult(updatedResult);
+                            }}
+                          />
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="md:col-span-4 flex items-center justify-between">
+                <div className="text-sm text-muted-foreground">
+                  {loading ? "Loading..." : `${filteredAll.length} results`}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setGameFilter("all");
+                    setWeekFilter(undefined);
+                    setRangeFilter(undefined);
+                  }}
+                >
                   Reset Filters
                 </Button>
               </div>
@@ -308,7 +410,6 @@ export default function PoolsPage() {
             columns={[
               { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value as GameModeType) },
               { key: "betId", label: "Bet#", render: (value: bigint) => value.toString() },
-              { key: "week", label: "Week" },
               {
                 key: "player",
                 label: "Player",
@@ -322,7 +423,7 @@ export default function PoolsPage() {
                     <div>Agent</div>
                   ),
               },
-              { key: "under", label: "Under" },
+              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? value.join(", ") : value) },
               {
                 key: "matches",
                 label: "Matches",
@@ -343,8 +444,15 @@ export default function PoolsPage() {
                 },
               },
               { key: "apl", label: "APL", render: (value: number) => value.toFixed(2) },
-              { key: "prize", label: "Prize" },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              {
+                key: "prize",
+                label: "Prize",
+                render: (value: { name: string; commission: number } | undefined) => (
+                  value ? <div className="text-nowrap">{value.name}</div> : "—"
+                )
+              },
+              { key: "award", label: "Award", render: (value: number) => value.toFixed(2) },
               { key: "terminal", label: "Terminal" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "status", label: "Status", render: (value: string | undefined) => renderStatus(value) },

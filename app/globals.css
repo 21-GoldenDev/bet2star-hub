@@ -117,3 +117,8 @@ body {
   --background: hsl(222 47% 6%);
   --foreground: hsl(210 40% 98%);
 }
+
+.calendar-icon-muted::-webkit-calendar-picker-indicator {
+  filter: invert(100%);
+  cursor: pointer;
+}

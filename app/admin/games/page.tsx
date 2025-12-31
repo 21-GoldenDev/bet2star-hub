@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { GameType } from "@/lib/types/gameMode";
 import {
   Select,
@@ -26,23 +25,32 @@ import {
 import { Plus, Edit2, Trash2, Loader2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { Game } from "@/lib/types/game";
 
-interface Prize {
-  id: string;
-  name: string;
-}
+// Helper function to get next Monday at 8:00 AM
+const getNextMonday = (): string => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
 
-interface Game {
-  id: string;
-  week: number;
-  type: GameType;
-  start_time?: string; // from database
-  end_time?: string; // from database
-  startTime?: string; // for form compatibility
-  endTime?: string; // for form compatibility
-  prizes?: Prize[];
-  results?: number[] | string[] | object[] | null;
-}
+  const nextMonday = new Date(now);
+  nextMonday.setDate(now.getDate() + daysUntilMonday);
+  nextMonday.setHours(8, 0, 0, 0);
+
+  // Format to datetime-local input format (YYYY-MM-DDTHH:mm)
+  return nextMonday.toISOString().slice(0, 16);
+};
+
+// Helper function to get Friday of the same week at 5:00 PM
+const getFridayFromMonday = (mondayStr: string): string => {
+  const monday = new Date(mondayStr);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 5);
+  friday.setHours(17, 0, 0, 0);
+
+  // Format to datetime-local input format (YYYY-MM-DDTHH:mm)
+  return friday.toISOString().slice(0, 16);
+};
 
 export default function GamesPage() {
   const router = useRouter();
@@ -75,7 +83,7 @@ export default function GamesPage() {
       setLoading(true);
       const response = await fetch("/api/admin/games");
       const data = await response.json();
-      
+
       if (response.ok) {
         // Normalize the data to handle both snake_case and camelCase
         const normalizedGames = data.games.map((game: any) => ({
@@ -108,8 +116,8 @@ export default function GamesPage() {
     setFormData({
       week: game.week,
       type: game.type,
-      startTime: game.startTime || game.start_time || "",
-      endTime: game.endTime || game.end_time || "",
+      startTime: (game.startTime || game.start_time || "").slice(0, 16),
+      endTime: (game.endTime || game.end_time || "").slice(0, 16),
     });
     setIsEditDialogOpen(true);
   };
@@ -249,7 +257,23 @@ export default function GamesPage() {
           </p>
         </div>
         {/* Create Dialog */}
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog
+          open={isCreateOpen}
+          onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (open) {
+              // Set default times when opening create dialog
+              const startTime = getNextMonday();
+              const endTime = getFridayFromMonday(startTime);
+              setFormData({
+                week: 1,
+                type: "lotto",
+                startTime,
+                endTime,
+              });
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button size="lg" disabled={loading}>
               <Plus className="w-4 h-4 mr-2" />
@@ -272,8 +296,8 @@ export default function GamesPage() {
               </div>
               <div>
                 <Label>Game Type</Label>
-                <Select 
-                  value={formData.type} 
+                <Select
+                  value={formData.type}
                   onValueChange={(v: GameType) => setFormData({ ...formData, type: v })}
                   disabled={submitting}
                 >
@@ -306,16 +330,16 @@ export default function GamesPage() {
                 />
               </div>
               <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  className="flex-1" 
+                <Button
+                  variant="outline"
+                  className="flex-1"
                   onClick={() => setIsCreateOpen(false)}
                   disabled={submitting}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  className="flex-1" 
+                <Button
+                  className="flex-1"
                   onClick={handleCreate}
                   disabled={submitting}
                 >
@@ -378,22 +402,22 @@ export default function GamesPage() {
               ),
               sortable: true,
             },
-            { 
-              key: "start_time", 
-              label: "Start Time", 
-              render: (_v, game) => new Date(game.startTime || game.start_time || "").toLocaleString(), 
-              sortable: true 
-            },
-            { 
-              key: "end_time", 
-              label: "End Time", 
-              render: (_v, game) => new Date(game.endTime || game.end_time || "").toLocaleString(), 
-              sortable: true 
+            {
+              key: "start_time",
+              label: "Start Time",
+              render: (_v, game) => new Date(game.startTime || game.start_time || "").toLocaleString(),
+              sortable: true
             },
             {
-              key: "prizes", 
-              label: "Prizes", 
-              render: (prizes: Prize[]) => (
+              key: "end_time",
+              label: "End Time",
+              render: (_v, game) => new Date(game.endTime || game.end_time || "").toLocaleString(),
+              sortable: true
+            },
+            {
+              key: "prizes",
+              label: "Prizes",
+              render: (prizes: { id: string; name: string }[]) => (
                 <div className="flex gap-1 flex-wrap">
                   {prizes && prizes.length > 0 ? (
                     prizes.map(p => (
@@ -456,8 +480,8 @@ export default function GamesPage() {
             </div>
             <div>
               <Label>Game Type</Label>
-              <Select 
-                value={formData.type} 
+              <Select
+                value={formData.type}
                 onValueChange={(v: GameType) => setFormData({ ...formData, type: v })}
                 disabled={submitting}
               >
@@ -490,16 +514,16 @@ export default function GamesPage() {
               />
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1" 
+              <Button
+                variant="outline"
+                className="flex-1"
                 onClick={() => setIsEditDialogOpen(false)}
                 disabled={submitting}
               >
                 Cancel
               </Button>
-              <Button 
-                className="flex-1" 
+              <Button
+                className="flex-1"
                 onClick={handleSave}
                 disabled={submitting}
               >

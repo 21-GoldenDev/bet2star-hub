@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import Odd_40_1A from "../odds/40_1A";
-import Odd_100_1 from "../odds/100_1";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { calcAplGrouping } from "@/lib/helpers";
+import PrizeTable from "../PrizeTable";
+import { Prize } from "@/lib/types/prize";
 
 const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
@@ -21,10 +21,11 @@ interface USelection {
 interface Props {
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
+  prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
 }
 
-const Grouping = ({ gameMode, setGameMode }: Props) => {
+const Grouping = ({ gameMode, prizes, setGameMode }: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(0);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
@@ -33,7 +34,8 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
-  const numbers = Array.from({ length: 49 }, (_, i) => i + 1);
+  const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
+  const prize = prizes?.find((p) => p.id === odd);
 
   const currentSum = selectedUs.reduce((acc, sel) => acc + sel.u, 0);
 
@@ -116,6 +118,7 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
           betAmount,
           totalUnder,
           gameMode,
+          prize: odd,
         }),
       });
 
@@ -198,10 +201,9 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
               </RadioGroup>
             </div>
           </div>
-          {!!odd && (
+          {!!prize && (
             <div className="mt-4">
-              {odd === "40-1 A" && <Odd_40_1A />}
-              {odd === "100-1" && <Odd_100_1 />}
+              <PrizeTable prize={prize} />
             </div>
           )}
         </div>
@@ -320,10 +322,10 @@ const Grouping = ({ gameMode, setGameMode }: Props) => {
             <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
             <div className="flex flex-col gap-2">
               <RadioGroup value={odd} onValueChange={setOdd}>
-                {['40-1 A', '100-1'].map((oddsValue) => (
-                  <label key={oddsValue} className="cursor-pointer flex items-center gap-2">
-                    <RadioGroupItem key={oddsValue} value={oddsValue} />
-                    <span className="text-sm font-medium">{oddsValue}</span>
+                {(prizes || []).map((prize) => (
+                  <label key={prize.id} className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem key={prize.id} value={prize.id} />
+                    <span className="text-sm font-medium">{prize.name}</span>
                   </label>
                 ))}
               </RadioGroup>

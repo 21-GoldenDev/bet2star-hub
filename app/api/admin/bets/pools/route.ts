@@ -7,27 +7,23 @@ export async function GET(request: NextRequest) {
     const supabase = await createSupabaseServer();
     const searchParams = request.nextUrl.searchParams;
 
-    const week = searchParams.get("week");
+    const game_id = searchParams.get("game_id");
+
+    if (!game_id) {
+      return NextResponse.json({ error: "game_id parameter is required" }, { status: 400 });
+    }
     const gameType = searchParams.get("gameType") as GameModeType | "all" | null;
-    const prize = searchParams.get("prize");
     const dateFrom = searchParams.get("dateFrom");
     const dateTo = searchParams.get("dateTo");
 
     let query = supabase
       .from("bets_pools")
-      .select("*")
-      .order("bet_time", { ascending: false });
-
-    if (week) {
-      query = query.eq("week", parseInt(week));
-    }
+      .select("*, games:game_id (week)")
+      .order("bet_time", { ascending: false })
+      .eq("game_id", game_id);
 
     if (gameType && gameType !== "all") {
       query = query.eq("gameType", gameType);
-    }
-
-    if (prize && prize !== "all") {
-      query = query.eq("prize", prize);
     }
 
     if (dateFrom) {
@@ -73,20 +69,52 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    let prizeMap: Record<string, { name: string; commission: number }> = {};
+
+    const uniquePrizeIds = Array.from(new Set(data.map((bet) => bet.prize_id).filter((id): id is string => id !== null)));
+
+    if (uniquePrizeIds.length > 0) {
+      const { data: prizesData, error: prizesError } = await supabase
+        .from("prize")
+        .select("id, name")
+        .in("id", uniquePrizeIds);
+
+      const { data: gamePrizesData } = await supabase
+        .from("game_prizes")
+        .select("prize_id, commission")
+        .in("prize_id", uniquePrizeIds);
+
+      if (!prizesError && prizesData) {
+        const commissionMap = (gamePrizesData || []).reduce((acc, gp) => {
+          acc[gp.prize_id] = gp.commission;
+          return acc;
+        }, {} as Record<string, number>);
+
+        prizeMap = prizesData.reduce((acc, prize) => {
+          acc[prize.id] = {
+            name: prize.name,
+            commission: commissionMap[prize.id] || 0
+          };
+          return acc;
+        }, {} as Record<string, { name: string; commission: number }>);
+      }
+    }
+
     // Transform data to match frontend types (camelCase)
     const transformedData = data.map((bet) => ({
       id: bet.id,
       gameId: bet.game_id,
       gameType: bet.gameType,
       betId: bet.bet_id,
-      week: bet.week,
+      week: bet.games.week ?? null,
       player: bet.player ? playersMap[bet.player] : undefined,
       under: bet.under,
       matches: bet.matches,
       staked: bet.staked,
       terminal: bet.terminal,
       betTime: bet.bet_time,
-      prize: bet.prize,
+      prize: bet.prize_id ? prizeMap[bet.prize_id] : undefined,
+      prizeCommission: bet.prize_id ? prizeMap[bet.prize_id]?.commission : undefined,
       status: bet.status,
     }));
 

@@ -344,23 +344,17 @@ export default function PrizePage() {
       sortable: true,
     },
     {
-      key: "commission" as keyof Prize,
-      label: "Commission (%)",
-      render: (value: number) => <span>{value}%</span>,
-      sortable: true,
-    },
-    {
-      key: "status" as keyof Prize,
-      label: "Status",
-      render: (value: string) => (
-        <Badge
-          variant={value === "active" ? "default" : "secondary"}
-          className="capitalize"
-        >
-          {value}
-        </Badge>
+      key: "data" as keyof Prize,
+      label: "Draws",
+      render: (data: PrizeData) => (
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(data.data).map((key, idx) => (
+            <Badge key={idx} variant="secondary">
+              {key}
+            </Badge>
+          ))}
+        </div>
       ),
-      sortable: true,
     },
     {
       key: "created_at" as keyof Prize,

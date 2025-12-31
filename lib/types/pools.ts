@@ -17,7 +17,7 @@ export type BaseBet = {
 };
 
 export type DirectBet = BaseBet & {
-  gameType: "direct";
+  gameType: "nap_perm";
   matches: string[];
 };
 

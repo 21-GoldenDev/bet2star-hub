@@ -4,15 +4,17 @@ import { useMemo, useState, useEffect } from "react";
 import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
 import { Trash2, XCircle } from "lucide-react";
-import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, calcAward } from "@/lib/helpers";
 import type { LottoBet, Player } from "@/lib/types/lotto";
 import { useToast } from "@/hooks/use-toast";
 import { GameModeType } from "@/lib/types/gameMode";
+import { Game } from "@/lib/types/game";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -23,25 +25,60 @@ export default function LottoPage() {
   const { toast } = useToast();
   const [allData, setAllData] = useState<LottoBet[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeksAll, setWeeksAll] = useState<Game[]>([]);
 
   // Unified filters
-  const [weekFilter, setWeekFilter] = useState<number | "">("");
+  const [weekFilter, setWeekFilter] = useState<string | undefined>(undefined);
+  const [weekResult, setWeekResult] = useState<number[]>([]);
   const [gameFilter, setGameFilter] = useState<"all" | GameModeType>("all");
   const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
 
-  // Fetch data from API
   useEffect(() => {
-    fetchBets();
+    const fetchWeeks = async () => {
+      try {
+        const response = await fetch(`/api/admin/bets/lotto/weeks`);
+        const result = await response.json();
+        const weekValues = result.data || [];
+        setWeeksAll(weekValues);
+        if (weekValues.length > 0) {
+          setWeekFilter(weekValues[0].id);
+          if (weekValues[0].results) {
+            setWeekResult(weekValues[0].results as number[]);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching weeks:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch weeks. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+    fetchWeeks();
   }, []);
 
+  useEffect(() => {
+    if (!weekFilter) {
+      setWeekResult([]);
+      return;
+    }
+    const selectedWeek = weeksAll.find((w) => w.id === weekFilter);
+    if (selectedWeek && selectedWeek.results) {
+      setWeekResult(selectedWeek.results as number[]);
+    } else {
+      setWeekResult([]);
+    }
+  }, [weekFilter, weeksAll]);
+
   async function fetchBets() {
+    if (!weekFilter) {
+      return;
+    }
     try {
       setLoading(true);
       const params = new URLSearchParams();
-
-      if (weekFilter !== "") {
-        params.append("week", String(weekFilter));
-      }
+      params.append("game_id", weekFilter);
       if (gameFilter !== "all") {
         params.append("gameType", gameFilter);
       }
@@ -79,7 +116,30 @@ export default function LottoPage() {
     }
   }
 
-  const weeksAll = useMemo(() => Array.from(new Set(allData.map((d) => d.week))).sort(), [allData]);
+  const updateWeekResult = async (result: number[]) => {
+    if (weekFilter === undefined) {
+      toast({ title: "Error", description: "Please select a week before setting result.", variant: "destructive" });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/bets/lotto/result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_id: weekFilter, result }),
+      });
+      if (!res.ok) throw new Error("Failed to set result");
+      setWeeksAll(prev => {
+        const gameIndex = prev.findIndex(w => w.id === weekFilter);
+        if (gameIndex !== -1) {
+          prev[gameIndex].results = result;
+        }
+        return prev;
+      });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Error", description: "Failed to set result.", variant: "destructive" });
+    }
+  }
 
   const gameOptions: Array<{ value: string; label: string }> = [
     { value: "all", label: "All games" },
@@ -94,7 +154,7 @@ export default function LottoPage() {
 
     return allData
       .filter((b) => {
-        if (weekFilter !== "" && b.week !== weekFilter) return false;
+        if (weekFilter !== undefined && b.gameId !== weekFilter) return false;
         if (gameFilter !== "all" && b.gameType !== gameFilter) return false;
         const bt = new Date(b.betTime).getTime();
         if (fromTime !== undefined && bt < fromTime) return false;
@@ -103,11 +163,30 @@ export default function LottoPage() {
       })
       .map((b) => {
         if (b.gameType === "nap_perm") {
-          return { ...b, apl: calcAplDirect(b.staked, b.under, b.numbers.length) };
+          const apl = calcAplDirect(b.staked, b.under, b.numbers.length);
+          let award = calcAward(b.numbers, weekResult, b.under, apl);
+          if (!b.player) {
+            award *= b.prize ? (b.prize as any).commission / 100 : 1;
+          }
+          return {
+            ...b,
+            apl,
+            award: calcAward(b.numbers, weekResult, b.under, apl),
+          };
         }
-        return { ...b, apl: calcAplGrouping(b.staked, b.numbers) };
+        const apl = calcAplGrouping(b.staked, b.numbers);
+        let award = 0;
+        Object.keys(b.numbers).forEach((gid) => {
+          const under = Number(gid.split("-")[0]);
+          const nums = b.numbers[gid];
+          award += calcAward(nums, weekResult, [under], apl);
+        });
+        if (!b.player) {
+          award *= b.prize ? (b.prize as any).commission / 100 : 1;
+        }
+        return { ...b, apl, award };
       });
-  }, [allData, weekFilter, gameFilter, rangeFilter]);
+  }, [allData, weekFilter, gameFilter, rangeFilter, weekResult]);
 
   async function deleteBet(row: LottoBet) {
     try {
@@ -193,7 +272,29 @@ export default function LottoPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <Label>Week</Label>
+              <Select
+                value={weekFilter === undefined ? undefined : weekFilter}
+                onValueChange={(val) => setWeekFilter(val)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select week" />
+                </SelectTrigger>
+                <SelectContent>
+                  {weeksAll.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.week}
+                    </SelectItem>
+                  ))}
+                  {weeksAll.length === 0 && (
+                    <SelectItem value="none" disabled>No weeks available</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label>Game</Label>
               <Select value={gameFilter} onValueChange={(val) => setGameFilter(val as typeof gameFilter)}>
@@ -204,26 +305,6 @@ export default function LottoPage() {
                   {gameOptions.map((g) => (
                     <SelectItem key={g.value} value={g.value}>
                       {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Week</Label>
-              <Select
-                value={weekFilter === "" ? undefined : String(weekFilter)}
-                onValueChange={(val) => setWeekFilter(val === "all" ? "" : Number(val))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All weeks" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {weeksAll.map((w) => (
-                    <SelectItem key={w} value={String(w)}>
-                      {w}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -258,7 +339,50 @@ export default function LottoPage() {
               </Popover>
             </div>
 
-            <div className="md:col-span-5 flex items-center justify-between">
+            {!!weekFilter && (
+              <div className="md:col-span-4">
+                <Label>Week Result (Enter-separated numbers)</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <Input
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const result = Number(e.currentTarget.value);
+                        if (!isNaN(result)) {
+                          const newSet = new Set(weekResult);
+                          newSet.add(result);
+                          const updatedResult = Array.from(newSet).sort((a, b) => a - b);
+                          setWeekResult(updatedResult);
+                          updateWeekResult(updatedResult);
+                          e.currentTarget.value = "";
+                        }
+                      }
+                    }}
+                    className="w-20"
+                    placeholder="e.g. 25"
+                  />
+                  <div className="flex items-center gap-1">
+                    {weekResult.map((num, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium flex items-center gap-1"
+                      >
+                        {num}
+                        <XCircle
+                          className="w-3 h-3 cursor-pointer hover:text-red-600"
+                          onClick={() => {
+                            const updatedResult = weekResult.filter((_, i) => i !== idx);
+                            setWeekResult(updatedResult);
+                            updateWeekResult(updatedResult);
+                          }}
+                        />
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="md:col-span-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${filteredAll.length} results`}
               </div>
@@ -267,7 +391,7 @@ export default function LottoPage() {
                 size="sm"
                 onClick={() => {
                   setGameFilter("all");
-                  setWeekFilter("");
+                  setWeekFilter(undefined);
                   setRangeFilter(undefined);
                 }}
               >
@@ -284,7 +408,6 @@ export default function LottoPage() {
           columns={[
             { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
             { key: "betId", label: "Bet#", render: (value: bigint) => value.toString() },
-            { key: "week", label: "Week" },
             {
               key: "player",
               label: "Player",
@@ -304,14 +427,14 @@ export default function LottoPage() {
               label: "Numbers",
               render: (value: number[] | Record<string, number[]>) => {
                 if (Array.isArray(value)) {
-                  return value.join(", ");
+                  return value.sort((a, b) => a - b).join(", ");
                 }
                 return (
                   <div className="space-y-1">
                     {Object.entries(value).map(([gid, nums]) => (
                       <div key={gid} className="text-sm">
                         <span className="font-medium mr-1">{gid.split("-")[0]}:</span>
-                        <span className="text-muted-foreground">{nums.join(", ")}</span>
+                        <span className="text-muted-foreground">{nums.sort((a, b) => a - b).join(", ")}</span>
                       </div>
                     ))}
                   </div>
@@ -320,6 +443,14 @@ export default function LottoPage() {
             },
             { key: "apl", label: "APL", render: (value: number) => value.toFixed(2) },
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+            {
+              key: "prize",
+              label: "Prize",
+              render: (value: { name: string; commission: number } | undefined) => (
+                value ? <div className="text-nowrap">{value.name}</div> : "—"
+              )
+            },
+            { key: "award", label: "Award", render: (value: number) => value.toFixed(2) },
             { key: "terminal", label: "Terminal" },
             { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
             { key: "status", label: "Status", render: (value: string | undefined) => renderStatus(value) },
