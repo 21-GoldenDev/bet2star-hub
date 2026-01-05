@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     if (uniquePrizeIds.length > 0) {
       const { data: prizesData, error: prizesError } = await supabase
         .from("prize")
-        .select("id, name")
+        .select("id, name, data")
         .in("id", uniquePrizeIds);
 
       const { data: gamePrizesData } = await supabase
@@ -90,10 +90,11 @@ export async function GET(request: NextRequest) {
         prizeMap = prizesData.reduce((acc, prize) => {
           acc[prize.id] = {
             name: prize.name,
-            commission: commissionMap[prize.id] || 0
+            commission: commissionMap[prize.id] || 0,
+            data: prize.data,
           };
           return acc;
-        }, {} as Record<string, { name: string; commission: number }>);
+        }, {} as Record<string, any>);
       }
     }
 

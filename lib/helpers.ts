@@ -52,19 +52,29 @@ const generateCombinations = (array: any[], length: number): any[][] => {
   return result;
 }
 
-export const calcAward = (
+export const parseDraws = (text: string): { start: number; end: number } | null => {
+  const match = text.match(/(\d+)\s*[-~]\s*(\d+)/);
+  if (!match) return null;
+
+  const [, start, end] = match;
+  const startNum = parseInt(start, 10);
+  const endNum = parseInt(end, 10);
+
+  if (startNum > endNum) return null;
+
+  return { start: startNum, end: endNum };
+}
+
+export const calcAwardLine = (
   selectedNumbers: number[] | string[],
   resultNumbers: number[] | string[],
-  matchAtLeast: number[],
-  apl: number
+  matchAtLeast: number,
 ): number => {
   let totalAward = 0;
-  for (const u of matchAtLeast) {
-    const combinations = generateCombinations(selectedNumbers, u);
-    for (const combo of combinations) {
-      if (isArrayInvolved(resultNumbers.map(String), combo.map(String))) {
-        totalAward += apl;
-      }
+  const combinations = generateCombinations(selectedNumbers, matchAtLeast);
+  for (const combo of combinations) {
+    if (isArrayInvolved(resultNumbers.map(String), combo.map(String))) {
+      totalAward += 1;
     }
   }
   return totalAward;

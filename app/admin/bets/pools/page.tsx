@@ -9,12 +9,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { DateRange } from "react-day-picker";
 import { Trash2, XCircle } from "lucide-react";
-import { calcAplDirect, calcAplGrouping, calcAward } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, calcAwardLine, parseDraws } from "@/lib/helpers";
 import type { PoolsBet, Player } from "@/lib/types/pools";
 import { useToast } from "@/hooks/use-toast";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
 import { Input } from "@/components/ui/input";
+import { Prize } from "@/lib/types/prize";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -166,28 +167,39 @@ export default function PoolsPage() {
         return true;
       })
       .map((b) => {
-        if (b.gameType === "nap_perm") {
-          const apl = calcAplDirect(b.staked, b.under, b.matches.length);
-          let award = calcAward(b.matches, weekResult, b.under, apl);
-          if (!b.player) {
-            award *= b.prize ? (b.prize as any).commission / 100 : 1;
-          }
-          return {
-            ...b,
-            apl,
-            award: calcAward(b.matches, weekResult, b.under, apl),
-          };
-        }
-        const apl = calcAplGrouping(b.staked, b.matches);
+        const isNapPerm = b.gameType === "nap_perm";
+        const apl = isNapPerm ? calcAplDirect(b.staked, b.under, b.matches.length) : calcAplGrouping(b.staked, b.matches);
         let award = 0;
-        Object.keys(b.matches).forEach((gid) => {
-          const under = Number(gid.split("-")[0]);
-          const matches = b.matches[gid];
-          award += calcAward(matches, weekResult, [under], apl);
+        const prize = (b.prize as any) as Prize;
+        Object.keys(prize.data.data).forEach((draw) => {
+          const parsedDraw = parseDraws(draw);
+          if (parsedDraw) {
+            const { start, end } = parsedDraw;
+            if (weekResult.length >= start && weekResult.length <= end) {
+              let multiplier = 0;
+              if (isNapPerm) {
+                b.under.forEach((u) => {
+                  const columnIndex = prize.data.columns.findIndex((col) => col.toUpperCase() === `U${u}`);
+                  if (columnIndex !== -1) {
+                    multiplier += (prize.data.data[draw][columnIndex] || 0) * calcAwardLine(b.matches, weekResult, u);
+                  }
+                });
+              } else {
+                const awardLine = Object.keys(b.matches).reduce((acc, gid) =>
+                  acc * calcAwardLine(b.matches[gid], weekResult, Number(gid.split("-")[0])), 1
+                );
+                b.under.forEach((u) => {
+                  const columnIndex = prize.data.columns.findIndex((col) => col.toUpperCase() === `U${u}`);
+                  if (columnIndex !== -1) {
+                    multiplier += prize.data.data[draw][columnIndex] || 0;
+                  }
+                });
+                multiplier *= awardLine;
+              }
+              award = multiplier * apl;
+            }
+          }
         });
-        if (!b.player) {
-          award *= b.prize ? (b.prize as any).commission / 100 : 1;
-        }
         return { ...b, apl, award };
       });
   }, [allData, weekFilter, gameFilter, rangeFilter, weekResult]);
