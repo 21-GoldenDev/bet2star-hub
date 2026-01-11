@@ -10,161 +10,32 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { Clock, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Game } from "@/lib/types/game";
-import PrizeTable from "@/components/PrizeTable";
+import { SportsMatch } from "@/lib/types/sports";
+import supabase from "@/lib/supabase/client";
+import { useSupabaseUser } from "@/hooks/use-supabase-user";
 
-type BetOptionKey = "H" | "D" | "A" | "1X" | "12" | "O25" | "U25" | "GG";
+type BetOptionKey = "H" | "D" | "A" | "1X" | "12" | "X2" | "O25" | "U25" | "GG";
 
 interface Match {
-  id: number;
+  id: string;
+  number: number;
   league: string;
   homeTeam: string;
   awayTeam: string;
-  time: string;
+  time?: string;
   isLive?: boolean;
-  odds: {
-    H: number; // 1
-    D: number; // X
-    A: number; // 2
-    "1X": number;
-    "12": number;
-    O25: number; // Over 2.5
-    U25: number; // Under 2.5
-    GG: number; // Both teams to score
-  };
+  prizes: number[]; // [H, D, A, 1X, 12, O25, U25, GG]
 }
 
-const matches: Match[] = [
-  {
-    id: 1,
-    league: "Premier League",
-    homeTeam: "Manchester City",
-    awayTeam: "Liverpool",
-    time: "15:00",
-    isLive: true,
-    odds: { H: 2.1, D: 3.5, A: 3.2, "1X": 1.35, "12": 1.45, O25: 1.65, U25: 2.3, GG: 1.7 },
-  },
-  {
-    id: 2,
-    league: "La Liga",
-    homeTeam: "Real Madrid",
-    awayTeam: "Barcelona",
-    time: "20:00",
-    odds: { H: 2.4, D: 3.3, A: 2.8, "1X": 1.42, "12": 1.47, O25: 1.75, U25: 2.2, GG: 1.8 },
-  },
-  {
-    id: 3,
-    league: "Premier League",
-    homeTeam: "Juventus",
-    awayTeam: "AC Milan",
-    time: "17:30",
-    odds: { H: 2.0, D: 3.4, A: 3.6, "1X": 1.40, "12": 1.52, O25: 1.9, U25: 1.95, GG: 1.85 },
-  },
-  {
-    id: 4,
-    league: "Bundesliga",
-    homeTeam: "Bayern Munich",
-    awayTeam: "Dortmund",
-    time: "18:30",
-    odds: { H: 1.75, D: 3.8, A: 4.2, "1X": 1.28, "12": 1.44, O25: 1.6, U25: 2.4, GG: 1.72 },
-  },
-  {
-    id: 5,
-    league: "Premier League",
-    homeTeam: "PSG",
-    awayTeam: "Marseille",
-    time: "21:00",
-    odds: { H: 1.5, D: 4.2, A: 5.5, "1X": 1.22, "12": 1.38, O25: 1.55, U25: 2.6, GG: 1.68 },
-  },
-  {
-    id: 6,
-    league: "Premier League",
-    homeTeam: "Ajax",
-    awayTeam: "PSV",
-    time: "16:00",
-    odds: { H: 2.35, D: 3.5, A: 2.9, "1X": 1.40, "12": 1.50, O25: 1.7, U25: 2.25, GG: 1.78 },
-  },
-  {
-    id: 7,
-    league: "Primeira Liga",
-    homeTeam: "Benfica",
-    awayTeam: "Porto",
-    time: "19:15",
-    odds: { H: 2.2, D: 3.25, A: 3.1, "1X": 1.36, "12": 1.49, O25: 1.68, U25: 2.32, GG: 1.83 },
-  },
-  {
-    id: 8,
-    league: "Championship",
-    homeTeam: "Leeds United",
-    awayTeam: "Leicester City",
-    time: "14:45",
-    odds: { H: 2.6, D: 3.2, A: 2.6, "1X": 1.45, "12": 1.53, O25: 1.8, U25: 2.1, GG: 1.9 },
-  },
-  {
-    id: 9,
-    league: "MLS",
-    homeTeam: "LAFC",
-    awayTeam: "Seattle Sounders",
-    time: "22:30",
-    odds: { H: 2.0, D: 3.6, A: 3.5, "1X": 1.38, "12": 1.51, O25: 1.72, U25: 2.28, GG: 1.76 },
-  },
-  {
-    id: 10,
-    league: "La Liga",
-    homeTeam: "Galatasaray",
-    awayTeam: "Fenerbahçe",
-    time: "20:45",
-    odds: { H: 2.1, D: 3.3, A: 3.2, "1X": 1.39, "12": 1.50, O25: 1.74, U25: 2.2, GG: 1.82 },
-  },
-  {
-    id: 11,
-    league: "La Liga",
-    homeTeam: "Kawasaki Frontale",
-    awayTeam: "Urawa Red",
-    time: "11:00",
-    odds: { H: 2.3, D: 3.4, A: 3.0, "1X": 1.41, "12": 1.49, O25: 1.66, U25: 2.35, GG: 1.80 },
-  },
-  {
-    id: 12,
-    league: "Belgian Pro",
-    homeTeam: "Club Brugge",
-    awayTeam: "Anderlecht",
-    time: "13:00",
-    odds: { H: 2.05, D: 3.25, A: 3.4, "1X": 1.37, "12": 1.48, O25: 1.7, U25: 2.2, GG: 1.77 },
-  },
-  {
-    id: 13,
-    league: "Bundesliga",
-    homeTeam: "Celtic",
-    awayTeam: "Rangers",
-    time: "12:30",
-    odds: { H: 2.15, D: 3.3, A: 3.1, "1X": 1.38, "12": 1.50, O25: 1.73, U25: 2.18, GG: 1.84 },
-  },
-  {
-    id: 14,
-    league: "Bundesliga",
-    homeTeam: "Club América",
-    awayTeam: "Chivas",
-    time: "23:00",
-    odds: { H: 2.4, D: 3.2, A: 2.9, "1X": 1.42, "12": 1.52, O25: 1.76, U25: 2.12, GG: 1.88 },
-  },
-  {
-    id: 15,
-    league: "A-League",
-    homeTeam: "Sydney FC",
-    awayTeam: "Melbourne Victory",
-    time: "09:30",
-    odds: { H: 2.6, D: 3.3, A: 2.5, "1X": 1.45, "12": 1.55, O25: 1.82, U25: 2.05, GG: 1.92 },
-  },
-];
-
-type BetSelection = { matchId: number; option: BetOptionKey; odds: number };
+type BetSelection = { matchId: string; matchNumber: number; option: BetOptionKey; odds: number };
 
 const Football = () => {
+  const { user } = useSupabaseUser();
   const [selectedBets, setSelectedBets] = useState<BetSelection[]>([]);
   const [betAmount, setBetAmount] = useState<number>(5000);
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
-  const [odd, setOdd] = useState<string>("");
   const [activeGame, setActiveGame] = useState<Game | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -178,6 +49,7 @@ const Football = () => {
         setActiveGame(data.game);
 
         if (!data.game) {
+          setMatches([]);
           if (!interval) {
             interval = setInterval(fetchActiveGame, 30000);
           }
@@ -186,11 +58,38 @@ const Football = () => {
             clearInterval(interval);
             interval = null;
           }
+          // Fetch matches for this game
+          await fetchMatches(data.game.id);
         }
       } catch (error) {
         console.error("Error fetching active game:", error);
       } finally {
         setIsLoading(false);
+      }
+    };
+
+    const fetchMatches = async (gameId: string) => {
+      try {
+        const { data, error } = await supabase
+          .from("sports")
+          .select("*")
+          .eq("game_id", gameId)
+          .order("number", { ascending: true });
+
+        if (error) throw error;
+
+        const formattedMatches: Match[] = (data || []).map((m: SportsMatch) => ({
+          id: m.id,
+          number: m.number,
+          league: m.league,
+          homeTeam: m.home,
+          awayTeam: m.away,
+          prizes: m.prizes,
+        }));
+
+        setMatches(formattedMatches);
+      } catch (error) {
+        console.error("Error fetching matches:", error);
       }
     };
 
@@ -201,29 +100,28 @@ const Football = () => {
     };
   }, []);
 
-  const prize = activeGame?.prizes?.find((p) => p.id === odd);
-
   const optionLabels: Record<BetOptionKey, string> = {
     H: "1",
     D: "X",
     A: "2",
     "1X": "1X",
     "12": "12",
+    X2: "X2",
     O25: "Over 2.5",
     U25: "Under 2.5",
     GG: "GG",
   };
 
-  const toggleBet = (matchId: number, option: BetOptionKey, odds: number) => {
+  const toggleBet = (matchId: string, matchNumber: number, option: BetOptionKey, odds: number) => {
     const exists = selectedBets.some((b) => b.matchId === matchId && b.option === option);
     if (exists) {
       setSelectedBets((prev) => prev.filter((b) => !(b.matchId === matchId && b.option === option)));
     } else {
-      setSelectedBets((prev) => [...prev, { matchId, option, odds }]);
+      setSelectedBets((prev) => [...prev, { matchId, matchNumber, option, odds }]);
     }
   };
 
-  const isSelected = (matchId: number, option: BetOptionKey) => {
+  const isSelected = (matchId: string, option: BetOptionKey) => {
     return selectedBets.some((b) => b.matchId === matchId && b.option === option);
   };
 
@@ -234,12 +132,74 @@ const Football = () => {
     else setMatchAtLeast([...matchAtLeast, m]);
   };
 
-  const placeBet = () => {
+  const placeBet = async () => {
     if (selectedBets.length === 0) {
       toast.error("Please select at least one option");
       return;
     }
-    toast.success(`Bet placed! ${selectedBets.length} selection(s) at ${totalOdds.toFixed(2)} odds`);
+
+    if (!activeGame) {
+      toast.error("No active game found");
+      return;
+    }
+
+    if (betAmount <= 0) {
+      toast.error("Please enter a valid bet amount");
+      return;
+    }
+
+    if (matchAtLeast.length === 0) {
+      toast.error("Please select under value");
+      return;
+    }
+
+    try {
+      // Build selections object: { [match_number]: ["H", "D", ...] }
+      const selections: Record<number, string[]> = {};
+      selectedBets.forEach((bet) => {
+        if (!selections[bet.matchNumber]) {
+          selections[bet.matchNumber] = [];
+        }
+        selections[bet.matchNumber].push(bet.option);
+      });
+
+      const { data: existingBets, error: countError } = await supabase
+        .from("bets_sport")
+        .select("number")
+        .eq("game_id", activeGame.id)
+        .order("number", { ascending: false })
+        .limit(1);
+
+      if (countError) throw countError;
+
+      const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].number + 1 : 1;
+
+      const betData = {
+        game_id: activeGame.id,
+        number: nextNumber,
+        player: user?.id || null,
+        under: matchAtLeast,
+        staked: betAmount,
+        terminal: user ? "" : "TERMINAL",
+        bet_time: new Date().toISOString(),
+        status: "active",
+        selections,
+      };
+
+      const { error } = await supabase.from("bets_sport").insert(betData);
+
+      if (error) throw error;
+
+      toast.success(`Bet placed! ${selectedBets.length} selection(s) at ${totalOdds.toFixed(2)} odds`);
+
+      // Clear the form
+      setSelectedBets([]);
+      setBetAmount(5000);
+      setMatchAtLeast([]);
+    } catch (error) {
+      console.error("Error placing bet:", error);
+      toast.error("Failed to place bet. Please try again.");
+    }
   };
 
   const clearBets = () => {
@@ -247,7 +207,7 @@ const Football = () => {
   };
 
   const groupedSelections = useMemo(() => {
-    const map = new Map<number, BetSelection[]>();
+    const map = new Map<string, BetSelection[]>();
     selectedBets.forEach((sel) => {
       const arr = map.get(sel.matchId) ?? [];
       arr.push(sel);
@@ -263,18 +223,15 @@ const Football = () => {
       map[m.league].push(m);
     }
     return map;
-  }, []);
+  }, [matches]);
 
   const matchNumberMap = useMemo(() => {
-    const map = new Map<number, number>();
-    let counter = 1;
-    Object.values(groupedMatches).forEach((leagueMatches) => {
-      leagueMatches.forEach((m) => {
-        map.set(m.id, counter++);
-      });
+    const map = new Map<string, number>();
+    matches.forEach((m) => {
+      map.set(m.id, m.number);
     });
     return map;
-  }, [groupedMatches]);
+  }, [matches]);
 
   return (
     <div className="min-h-screen pt-24 pb-8 px-4">
@@ -329,7 +286,7 @@ const Football = () => {
           <>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Column 1: Match at Least */}
-              <div className="lg:col-span-3">
+              <div className="lg:col-span-2">
                 <div className="p-4 rounded-xl bg-card border border-border">
                   <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
                   <div className="flex flex-col gap-2">
@@ -353,15 +310,10 @@ const Football = () => {
                     ))}
                   </div>
                 </div>
-                {!!prize && (
-                  <div className="mt-4">
-                    <PrizeTable prize={prize} />
-                  </div>
-                )}
               </div>
 
               {/* Matches List */}
-              <div className="lg:col-span-6">
+              <div className="lg:col-span-7">
                 <div className="p-4 pr-2 rounded-xl bg-card border border-border">
                   <div className="space-y-4 pr-2 max-h-150 lg:max-h-[calc(100vh-18rem)] overflow-auto scrollbar">
                     <Accordion
@@ -385,7 +337,7 @@ const Football = () => {
                                     <TableRow>
                                       <TableHead></TableHead>
                                       <TableHead></TableHead>
-                                      {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
+                                      {["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"].map((key) => (
                                         <TableHead key={key} className="text-center p-1">
                                           {optionLabels[key as BetOptionKey]}
                                         </TableHead>
@@ -414,26 +366,29 @@ const Football = () => {
                                                 </span>
                                               ) : (
                                                 <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                                                  <Clock className="w-3 h-3" /> {match.time}
+                                                  <Clock className="w-3 h-3" /> {match.time || "TBD"}
                                                 </span>
                                               )}
                                             </div>
                                           </TableCell>
-                                          {["H", "D", "A", "1X", "12", "O25", "U25", "GG"].map((key) => (
-                                            <TableCell key={`${match.id}-${key}`} className="text-center p-1 border border-border">
-                                              <button
-                                                onClick={() => toggleBet(match.id, key as BetOptionKey, match.odds[key as BetOptionKey])}
-                                                className={clsx(
-                                                  "cursor-pointer inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold",
-                                                  isSelected(match.id, key as BetOptionKey)
-                                                    ? "bg-primary text-primary-foreground shadow"
-                                                    : "bg-muted hover:bg-muted/80 text-foreground"
-                                                )}
-                                              >
-                                                {match.odds[key as BetOptionKey].toFixed(2)}
-                                              </button>
-                                            </TableCell>
-                                          ))}
+                                          {["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"].map((key, idx) => {
+                                            const odds = match.prizes[idx] || 0;
+                                            return (
+                                              <TableCell key={`${match.id}-${key}`} className="text-center p-1 border border-border">
+                                                <button
+                                                  onClick={() => toggleBet(match.id, matchNumber, key as BetOptionKey, odds)}
+                                                  className={clsx(
+                                                    "cursor-pointer inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold",
+                                                    isSelected(match.id, key as BetOptionKey)
+                                                      ? "bg-primary text-primary-foreground shadow"
+                                                      : "bg-muted hover:bg-muted/80 text-foreground"
+                                                  )}
+                                                >
+                                                  {odds.toFixed(2)}
+                                                </button>
+                                              </TableCell>
+                                            );
+                                          })}
                                         </TableRow>
                                       )
                                     })}
@@ -451,20 +406,6 @@ const Football = () => {
 
               {/* Bet Slip */}
               <div className="lg:col-span-3 flex flex-col gap-4">
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
-                  <div className="flex flex-col gap-2">
-                    <RadioGroup value={odd} onValueChange={setOdd}>
-                      {['40-1 A', '100-1'].map((oddsValue) => (
-                        <label key={oddsValue} className="cursor-pointer flex items-center gap-2">
-                          <RadioGroupItem key={oddsValue} value={oddsValue} />
-                          <span className="text-sm font-medium">{oddsValue}</span>
-                        </label>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                </div>
-
                 <div className="p-5 rounded-2xl bg-card border border-border animate-slide-up" style={{ animationDelay: "200ms" }}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-foreground">Selected Bets</h3>
@@ -502,7 +443,7 @@ const Football = () => {
                                     <span className="text-muted-foreground">{optionLabels[sel.option]}</span>
                                     <span className="font-semibold">{sel.odds.toFixed(2)}</span>
                                     <button
-                                      onClick={() => toggleBet(sel.matchId, sel.option, sel.odds)}
+                                      onClick={() => toggleBet(sel.matchId, sel.matchNumber, sel.option, sel.odds)}
                                       className="text-muted-foreground hover:text-destructive text-xs"
                                       aria-label="Remove selection"
                                     >

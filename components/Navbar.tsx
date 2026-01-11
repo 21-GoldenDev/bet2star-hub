@@ -11,19 +11,26 @@ import clsx from "clsx";
 import { signOut } from "@/lib/auth";
 import { toast } from "@/components/ui/use-toast";
 import supabase from "@/lib/supabase/client";
+import { isUserAdminByEmail } from "@/lib/admin/auth";
 
 const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (mounted) setIsLoggedIn(!!user);
+      if (mounted) {
+        setIsLoggedIn(!!user);
+        if (user?.email) {
+          setIsAdmin(await isUserAdminByEmail(user.email));
+        }
+      }
     };
 
     checkUser();
@@ -61,6 +68,9 @@ const Navbar = () => {
       { path: "/pools", label: "Pools" },
       { path: "/sports", label: "Sports Betting" }
     );
+    if (isAdmin) {
+      navLinks.push({ path: "/admin", label: "Admin Dashboard" });
+    }
   }
 
   return (

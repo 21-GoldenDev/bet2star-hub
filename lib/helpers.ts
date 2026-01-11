@@ -79,3 +79,107 @@ export const calcAwardLine = (
   }
   return totalAward;
 }
+
+export function calculateBetReward(bet: any, matches: any[]): number {
+  if (!bet || bet.status === "void" || bet.status !== "active") return 0;
+
+  const selections = bet.selections || {};
+  const matchNumbers = Object.keys(selections);
+  const selectedMatchCount = matchNumbers.length;
+
+  if (selectedMatchCount === 0) return 0;
+
+  const unders: number[] = Array.isArray(bet.under)
+    ? bet.under.map((u: any) => Number(u)).filter((u: number) => Number.isFinite(u) && u > 0)
+    : [];
+
+  const totalWays = unders.reduce((sum, u) => sum + calcCombination(selectedMatchCount, u), 0);
+  if (totalWays <= 0) return 0;
+
+  let correctMatchCount = 0, multiple = 1;
+
+  for (const matchNumberStr of matchNumbers) {
+    const matchNumber = Number(matchNumberStr);
+    if (Number.isNaN(matchNumber)) continue;
+
+    const selectedOptions: string[] = selections[matchNumberStr] || [];
+    const match = matches.find((m) => m.number === matchNumber);
+
+    if (!match || match.status === "void") continue;
+
+    const homeGoal = match.home_goal || 0;
+    const awayGoal = match.away_goal || 0;
+    const correctOptions = getCorrectOptions(homeGoal, awayGoal);
+
+    const isMatchCorrect = selectedOptions.length > 0 && selectedOptions.every((opt) => correctOptions.includes(opt));
+
+    if (isMatchCorrect) {
+      correctMatchCount += 1;
+      for (const opt of selectedOptions) {
+        let prizeIndex = -1;
+        switch (opt) {
+          case "H":
+            prizeIndex = 0;
+            break;
+          case "D":
+            prizeIndex = 1;
+            break;
+          case "A":
+            prizeIndex = 2;
+            break;
+          case "1X":
+            prizeIndex = 3;
+            break;
+          case "12":
+            prizeIndex = 4;
+            break;
+          case "X2":
+            prizeIndex = 5;
+            break;
+          case "O25":
+            prizeIndex = 6;
+            break;
+          case "U25":
+            prizeIndex = 7;
+            break;
+          case "GG":
+            prizeIndex = 8;
+            break;
+          default:
+            prizeIndex = -1;
+        }
+        if (prizeIndex >= 0 && match.prizes && match.prizes[prizeIndex]) {
+          multiple *= match.prizes[prizeIndex];
+        }
+      }
+    }
+  }
+
+  const winningCombinations = unders.reduce(
+    (sum, u) => sum + calcCombination(correctMatchCount, u),
+    0
+  );
+
+  if (winningCombinations <= 0) return 0;
+
+  const apl = (bet.staked || 0) / totalWays;
+
+  return apl * winningCombinations * multiple;
+}
+
+function getCorrectOptions(homeGoal: number, awayGoal: number): string[] {
+  const correctOptions: string[] = [];
+
+  if (homeGoal > awayGoal) correctOptions.push("H");
+  if (homeGoal === awayGoal) correctOptions.push("D");
+  if (awayGoal > homeGoal) correctOptions.push("A");
+
+  if (homeGoal > awayGoal || homeGoal === awayGoal) correctOptions.push("1X");
+  if (homeGoal > awayGoal || awayGoal > homeGoal) correctOptions.push("12");
+  if (homeGoal === awayGoal || awayGoal > homeGoal) correctOptions.push("X2");
+  if (homeGoal + awayGoal > 2.5) correctOptions.push("O25");
+  if (homeGoal + awayGoal < 2.5) correctOptions.push("U25");
+  if (homeGoal > 0 && awayGoal > 0) correctOptions.push("GG");
+
+  return correctOptions;
+}

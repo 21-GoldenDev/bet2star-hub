@@ -25,6 +25,7 @@ import {
 import { Plus, Edit2, Trash2, Loader2, ArrowLeft, Power, PowerOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GamePrize, PrizeInfo } from "@/lib/types/gameMode";
+import { SportsMatch } from "@/lib/types/sports";
 
 interface GameInfo {
   id: string;
@@ -37,6 +38,9 @@ interface GameInfo {
 interface GamePrizeWithInfo extends GamePrize {
   prize_name?: string;
 }
+
+const PRIZE_LABELS = ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
+const EMPTY_PRIZES = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
 export default function GameSettingsPage() {
   const router = useRouter();
@@ -53,6 +57,30 @@ export default function GameSettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Sports state
+  const [sports, setSports] = useState<SportsMatch[]>([]);
+  const [stats, setStats] = useState<{ totalBetAmount: number; totalReward: number }>({ totalBetAmount: 0, totalReward: 0 });
+  const [isAddSportsOpen, setIsAddSportsOpen] = useState(false);
+  const [editingSportsId, setEditingSportsId] = useState<string | null>(null);
+  const [sportsForm, setSportsForm] = useState<{
+    league: string;
+    number: number;
+    home: string;
+    away: string;
+    prizes: number[];
+    status: "active" | "void";
+  }>({ league: "", number: 1, home: "", away: "", prizes: [...EMPTY_PRIZES], status: "active" });
+  const [editRowForm, setEditRowForm] = useState<{
+    league: string;
+    number: number;
+    home: string;
+    away: string;
+    home_goal: number;
+    away_goal: number;
+    prizes: number[];
+    status: "active" | "void";
+  }>({ league: "", number: 1, home: "", away: "", home_goal: 0, away_goal: 0, prizes: [...EMPTY_PRIZES], status: "active" });
 
   const [formData, setFormData] = useState<{
     prize_id: string;
@@ -72,34 +100,52 @@ export default function GameSettingsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [gameRes, prizesRes, gamePrizesRes] = await Promise.all([
-        fetch(`/api/admin/games/${gameId}`),
-        fetch("/api/admin/prize"),
-        fetch(`/api/admin/games/${gameId}/prizes`),
-      ]);
-
-      // Fetch game info
+      // Fetch game info first
+      const gameRes = await fetch(`/api/admin/games/${gameId}`);
       if (!gameRes.ok) throw new Error("Failed to fetch game");
       const gameData = await gameRes.json();
       setGame(gameData.game);
 
-      // Fetch all available prizes
-      if (!prizesRes.ok) throw new Error("Failed to fetch prizes");
-      const prizesData = await prizesRes.json();
-      setAllPrizes(prizesData.prizes || []);
+      // If sports type, fetch sports list; otherwise fetch prizes as before
+      if (gameData.game?.type === "sports") {
+        const sportsRes = await fetch(`/api/admin/games/${gameId}/sports`);
+        if (!sportsRes.ok) throw new Error("Failed to fetch sports matches");
+        const sportsData = await sportsRes.json();
+        setSports(
+          (sportsData.matches || []).map((m: SportsMatch) => ({
+            ...m,
+            prizes: Array.isArray(m.prizes) && m.prizes.length === PRIZE_LABELS.length ? m.prizes : [...EMPTY_PRIZES],
+          }))
+        );
 
-      // Fetch game prizes with their names
-      if (!gamePrizesRes.ok) throw new Error("Failed to fetch game prizes");
-      const gamePrizesData = await gamePrizesRes.json();
+        // Fetch stats for sports game
+        const statsRes = await fetch(`/api/admin/games/${gameId}/sports/stats`);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+      } else {
+        const [prizesRes, gamePrizesRes] = await Promise.all([
+          fetch("/api/admin/prize"),
+          fetch(`/api/admin/games/${gameId}/prizes`),
+        ]);
 
-      const gamePrizesWithNames = gamePrizesData.game_prizes.map((gp: GamePrize) => {
-        const prize = (prizesData.prizes || []).find((p: PrizeInfo) => p.id === gp.prize_id);
-        return {
-          ...gp,
-          prize_name: prize?.name || "Unknown Prize",
-        };
-      });
-      setGamePrizes(gamePrizesWithNames);
+        if (!prizesRes.ok) throw new Error("Failed to fetch prizes");
+        const prizesData = await prizesRes.json();
+        setAllPrizes(prizesData.prizes || []);
+
+        if (!gamePrizesRes.ok) throw new Error("Failed to fetch game prizes");
+        const gamePrizesData = await gamePrizesRes.json();
+
+        const gamePrizesWithNames = gamePrizesData.game_prizes.map((gp: GamePrize) => {
+          const prize = (prizesData.prizes || []).find((p: PrizeInfo) => p.id === gp.prize_id);
+          return {
+            ...gp,
+            prize_name: prize?.name || "Unknown Prize",
+          };
+        });
+        setGamePrizes(gamePrizesWithNames);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       toast({
@@ -325,6 +371,130 @@ export default function GameSettingsPage() {
     }
   };
 
+  // Sports handlers
+  const handleOpenAddSports = () => {
+    setSportsForm({ league: "", number: sports.length + 1, home: "", away: "", prizes: [...EMPTY_PRIZES], status: "active" });
+    setIsAddSportsOpen(true);
+  };
+
+  const addSportsMatch = async () => {
+    if (!sportsForm.league || !sportsForm.home || !sportsForm.away) {
+      toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/admin/games/${gameId}/sports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...sportsForm,
+          prizes: sportsForm.prizes,
+          status: sportsForm.status || "active",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to add match");
+      toast({ title: "Success", description: "Match added" });
+      setIsAddSportsOpen(false);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to add match", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startInlineEdit = (row: SportsMatch) => {
+    setEditingSportsId(row.id);
+    setEditRowForm({
+      league: row.league,
+      number: row.number,
+      home: row.home,
+      away: row.away,
+      home_goal: row.home_goal ?? 0,
+      away_goal: row.away_goal ?? 0,
+      prizes: Array.isArray(row.prizes) && row.prizes.length === PRIZE_LABELS.length ? [...row.prizes] : [...EMPTY_PRIZES],
+      status: (row as any).status ?? "active",
+    });
+  };
+
+  const cancelInlineEdit = () => {
+    setEditingSportsId(null);
+  };
+
+  const saveInlineEdit = async () => {
+    if (!editingSportsId) return;
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/admin/games/${gameId}/sports/${editingSportsId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          league: editRowForm.league,
+          number: editRowForm.number,
+          home: editRowForm.home,
+          away: editRowForm.away,
+          home_goal: editRowForm.home_goal,
+          away_goal: editRowForm.away_goal,
+          prizes: editRowForm.prizes,
+          status: editRowForm.status,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update match");
+
+      // Update local sports state
+      setSports((prev) =>
+        prev.map((m) =>
+          m.id === editingSportsId
+            ? {
+              ...m,
+              league: editRowForm.league,
+              number: editRowForm.number,
+              home: editRowForm.home,
+              away: editRowForm.away,
+              home_goal: editRowForm.home_goal,
+              away_goal: editRowForm.away_goal,
+              prizes: editRowForm.prizes,
+              status: editRowForm.status,
+            }
+            : m
+        )
+      );
+
+      // Fetch updated stats
+      const statsRes = await fetch(`/api/admin/games/${gameId}/sports/stats`);
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      }
+
+      toast({ title: "Success", description: "Match updated" });
+      setEditingSportsId(null);
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to update match", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const deleteSportsMatch = async (row: SportsMatch) => {
+    if (!confirm("Delete this match?")) return;
+    try {
+      const res = await fetch(`/api/admin/games/${gameId}/sports/${row.id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete match");
+      toast({ title: "Deleted", description: "Match removed" });
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to delete match", variant: "destructive" });
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -372,190 +542,435 @@ export default function GameSettingsPage() {
         </Card>
       )}
 
-      {/* Prizes Section */}
+      {/* Stats Cards for Sports Games */}
+      {game?.type === "sports" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Betting Amount</p>
+                <p className="text-3xl font-bold mt-2">
+                  {new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(stats.totalBetAmount)}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Reward Payable</p>
+                <p className="text-3xl font-bold mt-2">
+                  {new Intl.NumberFormat("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  }).format(stats.totalReward)}
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Sports vs Prizes Section */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold">Prizes Management</h2>
-            <p className="text-muted-foreground mt-1">
-              Add, update, or remove prizes for this game with commission settings
-            </p>
-          </div>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="lg" disabled={loading}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Prize
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Prize to Game</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Prize</Label>
-                  <Select
-                    value={formData.prize_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, prize_id: value })
-                    }
-                    disabled={submitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a prize" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allPrizes.map((prize) => (
-                        <SelectItem key={prize.id} value={prize.id}>
-                          {prize.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Commission (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={formData.commission}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        commission: Math.min(100, Math.max(0, Number(e.target.value))),
-                      })
-                    }
-                    disabled={submitting}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">0-100</p>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select
-                    value={formData.status}
-                    onValueChange={(value: "active" | "inactive") =>
-                      setFormData({ ...formData, status: value })
-                    }
-                    disabled={submitting}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setIsAddDialogOpen(false)}
-                    disabled={submitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    onClick={handleAdd2}
-                    disabled={submitting}
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Adding...
-                      </>
-                    ) : (
-                      "Add Prize"
-                    )}
-                  </Button>
-                </div>
+          {game?.type === "sports" ? (
+            <>
+              <div>
+                <h2 className="text-2xl font-bold">Sports Matches</h2>
+                <p className="text-muted-foreground mt-1">Manage matches and goals for this sports game</p>
               </div>
-            </DialogContent>
-          </Dialog>
+              <Dialog open={isAddSportsOpen} onOpenChange={setIsAddSportsOpen}>
+                <DialogTrigger asChild>
+                  <Button size="lg" disabled={loading} onClick={handleOpenAddSports}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Match
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Match</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>League</Label>
+                      <Input value={sportsForm.league} onChange={(e) => setSportsForm({ ...sportsForm, league: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Status</Label>
+                      <Select value={sportsForm.status} onValueChange={(value) => setSportsForm({ ...sportsForm, status: value as "active" | "void" })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="void">Void</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Number</Label>
+                      <Input type="number" min="1" value={sportsForm.number} onChange={(e) => setSportsForm({ ...sportsForm, number: Number(e.target.value) })} />
+                    </div>
+                    <div>
+                      <Label>Home Team</Label>
+                      <Input value={sportsForm.home} onChange={(e) => setSportsForm({ ...sportsForm, home: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Away Team</Label>
+                      <Input value={sportsForm.away} onChange={(e) => setSportsForm({ ...sportsForm, away: e.target.value })} />
+                    </div>
+                    <div>
+                      <Label>Prizes</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                        {PRIZE_LABELS.map((label, idx) => (
+                          <div key={label} className="flex items-center gap-2">
+                            <span className="w-24 text-sm text-muted-foreground">{label}</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={sportsForm.prizes[idx] ?? 0}
+                              onChange={(e) => {
+                                const value = Math.max(0, Number(e.target.value));
+                                const updated = [...sportsForm.prizes];
+                                updated[idx] = value;
+                                setSportsForm({ ...sportsForm, prizes: updated });
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setIsAddSportsOpen(false)} disabled={submitting}>Cancel</Button>
+                      <Button className="flex-1" onClick={addSportsMatch} disabled={submitting}>
+                        {submitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adding...</>) : ("Add Match")}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          ) : (
+            <>
+              <div>
+                <h2 className="text-2xl font-bold">Prizes Management</h2>
+                <p className="text-muted-foreground mt-1">Add, update, or remove prizes for this game with commission settings</p>
+              </div>
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button size="lg" disabled={loading}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Prize
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add Prize to Game</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Prize</Label>
+                      <Select
+                        value={formData.prize_id}
+                        onValueChange={(value) => setFormData({ ...formData, prize_id: value })}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a prize" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allPrizes.map((prize) => (
+                            <SelectItem key={prize.id} value={prize.id}>{prize.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Commission (%)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={formData.commission}
+                        onChange={(e) => setFormData({ ...formData, commission: Math.min(100, Math.max(0, Number(e.target.value))) })}
+                        disabled={submitting}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">0-100</p>
+                    </div>
+                    <div>
+                      <Label>Status</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value: "active" | "inactive") => setFormData({ ...formData, status: value })}
+                        disabled={submitting}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="flex-1" onClick={() => setIsAddDialogOpen(false)} disabled={submitting}>Cancel</Button>
+                      <Button className="flex-1" onClick={handleAdd2} disabled={submitting}>
+                        {submitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Adding...</>) : ("Add Prize")}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
         </div>
 
-        {/* Prizes Table */}
+        {/* Content */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="w-8 h-8 animate-spin" />
           </div>
-        ) : gamePrizes.length === 0 ? (
-          <Card className="p-8 text-center">
-            <p className="text-muted-foreground">No prizes added to this game yet</p>
-            <Button className="mt-4" onClick={handleAdd}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add First Prize
-            </Button>
-          </Card>
-        ) : (
-          <DataTable<GamePrizeWithInfo>
-            columns={[
-              { key: "prize_name", label: "Prize Name", sortable: true },
-              {
-                key: "commission",
-                label: "Commission (%)",
-                render: (commission) => <span>{commission}%</span>,
-                sortable: true,
-              },
-              {
-                key: "status",
-                label: "Status",
-                render: (status) => (
-                  <Badge
-                    variant={status === "active" ? "default" : "secondary"}
-                    className="capitalize"
-                  >
-                    {status}
-                  </Badge>
-                ),
-                sortable: true,
-              },
-            ]}
-            data={gamePrizes}
-            searchKey="prize_name"
-            searchPlaceholder="Search by prize name..."
-            actions={(gamePrize) => (
-              <div className="flex gap-2">
-                <Button
-                  variant={gamePrize.status === "active" ? "default" : "secondary"}
-                  size="sm"
-                  onClick={() => handleToggleStatus(gamePrize)}
-                  disabled={togglingStatus === gamePrize.id}
-                  title={gamePrize.status === "active" ? "Disable" : "Enable"}
-                >
-                  {togglingStatus === gamePrize.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : gamePrize.status === "active" ? (
-                    <PowerOff className="w-4 h-4" />
+        ) : game?.type === "sports" ? (
+          sports.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">No matches added yet</p>
+              <Button className="mt-4" onClick={handleOpenAddSports}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Match
+              </Button>
+            </Card>
+          ) : (
+            <DataTable<SportsMatch>
+              columns={[
+                {
+                  key: "number",
+                  label: "#",
+                  sortable: true,
+                  render: (_: any, row: SportsMatch) => (
+                    editingSportsId === row.id ? (
+                      <Input
+                        type="number"
+                        min="1"
+                        className="h-9 w-15"
+                        value={editRowForm.number}
+                        onChange={(e) => setEditRowForm({ ...editRowForm, number: Number(e.target.value) })}
+                      />
+                    ) : (
+                      <span>{row.number}</span>
+                    )
+                  ),
+                },
+                {
+                  key: "league",
+                  label: "League",
+                  sortable: true,
+                  render: (_: any, row: SportsMatch) => (
+                    editingSportsId === row.id ? (
+                      <Input
+                        className="h-9"
+                        value={editRowForm.league}
+                        onChange={(e) => setEditRowForm({ ...editRowForm, league: e.target.value })}
+                      />
+                    ) : (
+                      <span>{row.league}</span>
+                    )
+                  ),
+                },
+                {
+                  key: "home",
+                  label: "Fixture",
+                  render: (_: any, row: SportsMatch) => (
+                    editingSportsId === row.id ? (
+                      <div className="flex flex-col gap-2">
+                        <Input
+                          className="h-9"
+                          value={editRowForm.home}
+                          onChange={(e) => setEditRowForm({ ...editRowForm, home: e.target.value })}
+                        />
+                        <Input
+                          className="h-9"
+                          value={editRowForm.away}
+                          onChange={(e) => setEditRowForm({ ...editRowForm, away: e.target.value })}
+                        />
+                      </div>
+                    ) : (
+                      <span className="font-medium">{row.home} vs {row.away}</span>
+                    )
+                  ),
+                },
+                {
+                  key: "home_goal",
+                  label: "Score",
+                  render: (_: any, row: SportsMatch) => (
+                    editingSportsId === row.id ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          className="h-9 w-15"
+                          value={editRowForm.home_goal}
+                          onChange={(e) => setEditRowForm({ ...editRowForm, home_goal: Math.max(0, Number(e.target.value)) })}
+                        />
+                        <span>-</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          className="h-9 w-15"
+                          value={editRowForm.away_goal}
+                          onChange={(e) => setEditRowForm({ ...editRowForm, away_goal: Math.max(0, Number(e.target.value)) })}
+                        />
+                      </div>
+                    ) : (
+                      <span>{(row.home_goal ?? 0)} - {(row.away_goal ?? 0)}</span>
+                    )
+                  ),
+                },
+                {
+                  key: "status",
+                  label: "Status",
+                  sortable: true,
+                  render: (_: any, row: SportsMatch) => (
+                    editingSportsId === row.id ? (
+                      <Select value={editRowForm.status} onValueChange={(value) => setEditRowForm({ ...editRowForm, status: value as "active" | "void" })}>
+                        <SelectTrigger className="h-9 w-28">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="void">Void</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Badge variant={(row as any).status === "void" ? "secondary" : "default"} className="capitalize">{(row as any).status ?? "active"}</Badge>
+                    )
+                  ),
+                },
+                {
+                  key: "prizes",
+                  label: "Prizes",
+                  render: (_: any, row: SportsMatch) => (
+                    editingSportsId === row.id ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                        {PRIZE_LABELS.map((label, idx) => (
+                          <div key={label} className="flex items-center gap-2">
+                            <span className="w-20 text-muted-foreground">{label}</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              className="h-9"
+                              value={editRowForm.prizes[idx] ?? 0}
+                              onChange={(e) => {
+                                const value = Math.max(0, Number(e.target.value));
+                                const updated = [...editRowForm.prizes];
+                                updated[idx] = value;
+                                setEditRowForm({ ...editRowForm, prizes: updated });
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {PRIZE_LABELS.map((label, idx) => (
+                          <span key={label} className="rounded border px-2 py-1 bg-muted/50">
+                            {label}: {row.prizes?.[idx] ?? 0}
+                          </span>
+                        ))}
+                      </div>
+                    )
+                  ),
+                },
+              ]}
+              data={sports}
+              searchKey="league"
+              searchPlaceholder="Search by league..."
+              actions={(row) => (
+                <div className="flex gap-2">
+                  {editingSportsId === (row as SportsMatch).id ? (
+                    <>
+                      <Button size="sm" onClick={saveInlineEdit} disabled={submitting}>
+                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={cancelInlineEdit} disabled={submitting}>
+                        Cancel
+                      </Button>
+                    </>
                   ) : (
-                    <Power className="w-4 h-4" />
+                    <>
+                      <Button variant="outline" size="sm" onClick={() => startInlineEdit(row as SportsMatch)} title="Edit">
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => deleteSportsMatch(row as SportsMatch)} title="Delete">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
                   )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleEdit(gamePrize)}
-                >
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(gamePrize.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          />
+                </div>
+              )}
+            />
+          )
+        ) : (
+          gamePrizes.length === 0 ? (
+            <Card className="p-8 text-center">
+              <p className="text-muted-foreground">No prizes added to this game yet</p>
+              <Button className="mt-4" onClick={handleAdd}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Prize
+              </Button>
+            </Card>
+          ) : (
+            <DataTable<GamePrizeWithInfo>
+              columns={[
+                { key: "prize_name", label: "Prize Name", sortable: true },
+                { key: "commission", label: "Commission (%)", render: (commission) => <span>{commission}%</span>, sortable: true },
+                {
+                  key: "status",
+                  label: "Status",
+                  render: (status) => (
+                    <Badge variant={status === "active" ? "default" : "secondary"} className="capitalize">{status}</Badge>
+                  ),
+                  sortable: true,
+                },
+              ]}
+              data={gamePrizes}
+              searchKey="prize_name"
+              searchPlaceholder="Search by prize name..."
+              actions={(gamePrize) => (
+                <div className="flex gap-2">
+                  <Button
+                    variant={gamePrize.status === "active" ? "default" : "secondary"}
+                    size="sm"
+                    onClick={() => handleToggleStatus(gamePrize)}
+                    disabled={togglingStatus === gamePrize.id}
+                    title={gamePrize.status === "active" ? "Disable" : "Enable"}
+                  >
+                    {togglingStatus === gamePrize.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : gamePrize.status === "active" ? (
+                      <PowerOff className="w-4 h-4" />
+                    ) : (
+                      <Power className="w-4 h-4" />
+                    )}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(gamePrize)}>
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleDelete(gamePrize.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            />
+          )
         )}
       </div>
 
-      {/* Edit Dialog */}
+      {/* Edit Prize Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
