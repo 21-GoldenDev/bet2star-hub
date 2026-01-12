@@ -80,6 +80,8 @@ export const calcAwardLine = (
   return totalAward;
 }
 
+const sportOptions = ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
+
 export function calculateBetReward(bet: any, matches: any[]): number {
   if (!bet || bet.status === "void" || bet.status !== "active") return 0;
 
@@ -96,75 +98,49 @@ export function calculateBetReward(bet: any, matches: any[]): number {
   const totalWays = unders.reduce((sum, u) => sum + calcCombination(selectedMatchCount, u), 0);
   if (totalWays <= 0) return 0;
 
-  let correctMatchCount = 0, multiple = 1;
+  let winning = 0;
 
-  for (const matchNumberStr of matchNumbers) {
-    const matchNumber = Number(matchNumberStr);
-    if (Number.isNaN(matchNumber)) continue;
-
-    const selectedOptions: string[] = selections[matchNumberStr] || [];
-    const match = matches.find((m) => m.number === matchNumber);
-
-    if (!match || match.status === "void") continue;
-
-    const homeGoal = match.home_goal || 0;
-    const awayGoal = match.away_goal || 0;
-    const correctOptions = getCorrectOptions(homeGoal, awayGoal);
-
-    const isMatchCorrect = selectedOptions.length > 0 && selectedOptions.every((opt) => correctOptions.includes(opt));
-
-    if (isMatchCorrect) {
-      correctMatchCount += 1;
-      for (const opt of selectedOptions) {
-        let prizeIndex = -1;
-        switch (opt) {
-          case "H":
-            prizeIndex = 0;
-            break;
-          case "D":
-            prizeIndex = 1;
-            break;
-          case "A":
-            prizeIndex = 2;
-            break;
-          case "1X":
-            prizeIndex = 3;
-            break;
-          case "12":
-            prizeIndex = 4;
-            break;
-          case "X2":
-            prizeIndex = 5;
-            break;
-          case "O25":
-            prizeIndex = 6;
-            break;
-          case "U25":
-            prizeIndex = 7;
-            break;
-          case "GG":
-            prizeIndex = 8;
-            break;
-          default:
-            prizeIndex = -1;
+  for (const under of unders) {
+    const combinations = generateCombinations(matchNumbers, under);
+    for (const combo of combinations) {
+      let isComboWinning = true;
+      let multiple = 1;
+      for (const matchNumberStr of combo) {
+        const selectedOptions: string[] = selections[matchNumberStr] || [];
+        const match = matches.find((m) => m.number === Number(matchNumberStr));
+        if (!match) {
+          isComboWinning = false;
+          break;
         }
-        if (prizeIndex >= 0 && match.prizes && match.prizes[prizeIndex]) {
-          multiple *= match.prizes[prizeIndex];
+        if (match.status === "void") {
+          isComboWinning = true;
+          break;
         }
+        const homeGoal = match.home_goal || 0;
+        const awayGoal = match.away_goal || 0;
+        const correctOptions = getCorrectOptions(homeGoal, awayGoal);
+        const isMatchCorrect = selectedOptions.length > 0 && selectedOptions.every((opt) => correctOptions.includes(opt));
+        if (!isMatchCorrect) {
+          isComboWinning = false;
+          break;
+        }
+        for (const opt of selectedOptions) {
+          const prizeIndex = sportOptions.indexOf(opt);
+          if (prizeIndex >= 0 && match.prizes && match.prizes[prizeIndex]) {
+            multiple *= match.prizes[prizeIndex];
+          }
+        }
+      }
+      if (isComboWinning) {
+        winning += multiple;
       }
     }
   }
-
-  const winningCombinations = unders.reduce(
-    (sum, u) => sum + calcCombination(correctMatchCount, u),
-    0
-  );
-
-  if (winningCombinations <= 0) return 0;
+  if (winning <= 0) return 0;
 
   const apl = (bet.staked || 0) / totalWays;
 
-  return apl * winningCombinations * multiple;
+  return apl * winning;
 }
 
 function getCorrectOptions(homeGoal: number, awayGoal: number): string[] {

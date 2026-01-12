@@ -14,6 +14,18 @@ function formatDateIso(iso?: string) {
   return new Date(iso).toLocaleString();
 }
 
+const optionLabels: Record<string, string> = {
+  H: "1",
+  D: "X",
+  A: "2",
+  "1X": "1X",
+  "12": "12",
+  X2: "X2",
+  O25: "Over 2.5",
+  U25: "Under 2.5",
+  GG: "GG",
+};
+
 export default function SportsPage() {
   const [dataSports, setDataSports] = useState<SportsBet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -173,7 +185,7 @@ export default function SportsPage() {
                   {Object.entries(value || {}).map(([match, odds], idx) => (
                     <div key={idx} className="text-sm">
                       <span className="font-medium mr-1">Match {match}:</span>
-                      <span className="text-muted-foreground">{(odds as string[]).join(", ")}</span>
+                      <span className="text-muted-foreground">{(odds || []).map((opt) => optionLabels[opt]).filter(Boolean).join(", ")}</span>
                     </div>
                   ))}
                 </div>
