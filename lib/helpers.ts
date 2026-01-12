@@ -113,8 +113,7 @@ export function calculateBetReward(bet: any, matches: any[]): number {
           break;
         }
         if (match.status === "void") {
-          isComboWinning = true;
-          break;
+          continue;
         }
         const homeGoal = match.home_goal || 0;
         const awayGoal = match.away_goal || 0;

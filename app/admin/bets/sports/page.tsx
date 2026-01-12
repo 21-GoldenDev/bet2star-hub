@@ -117,6 +117,14 @@ export default function SportsPage() {
     }
   }
 
+  function renderStatus(status: string | undefined) {
+    switch (status) {
+      case "active": return <span className="text-green-600 font-medium">Active</span>;
+      case "void": return <span className="text-red-600 font-medium">Void</span>;
+      default: return <span className="text-muted-foreground">N/A</span>;
+    }
+  }
+
   if (loading) {
     return <div className="p-6">Loading...</div>;
   }
@@ -198,7 +206,7 @@ export default function SportsPage() {
               render: (value: number) => value ? value.toFixed(2) : "0.00"
             },
             { key: "terminal", label: "Terminal" },
-            { key: "status", label: "Status" },
+            { key: "status", label: "Status", render: renderStatus },
             { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
           ]}
           actions={(row) => (
