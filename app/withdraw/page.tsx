@@ -28,7 +28,7 @@ const Withdraw = () => {
     try {
       const { data: profile } = await getUserProfile(user.id);
       setBalance(profile?.balance || 0);
-      
+
       // Load actual withdrawal transactions from database
       const { data: transactions, error } = await supabase
         .from('transactions')
@@ -158,7 +158,11 @@ const Withdraw = () => {
                     "px-3 py-1 rounded-full text-xs font-medium",
                     withdrawal.status === "completed"
                       ? "bg-secondary/20 text-secondary"
-                      : "bg-primary/20 text-primary"
+                      : withdrawal.status === "pending"
+                        ? "bg-primary/20 text-primary"
+                        : withdrawal.status === "cancelled"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-destructive/20 text-destructive"
                   )}
                 >
                   {withdrawal.status}

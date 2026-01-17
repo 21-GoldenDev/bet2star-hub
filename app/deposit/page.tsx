@@ -192,7 +192,9 @@ const Deposit = () => {
                         ? "bg-secondary/20 text-secondary"
                         : deposit.status === "pending"
                           ? "bg-primary/20 text-primary"
-                          : "bg-destructive/20 text-destructive"
+                          : deposit.status === "cancelled"
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-destructive/20 text-destructive"
                     )}
                   >
                     {deposit.status}
