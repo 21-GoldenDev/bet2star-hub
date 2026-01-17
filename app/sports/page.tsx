@@ -36,6 +36,7 @@ const Football = () => {
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -152,6 +153,12 @@ const Football = () => {
       return;
     }
 
+    if (!user) {
+      toast.error("Please sign in to place a bet");
+      return;
+    }
+
+    setIsPlacingBet(true);
     try {
       // Build selections object: { [match_number]: ["H", "D", ...] }
       const selections: Record<number, string[]> = {};
@@ -162,42 +169,37 @@ const Football = () => {
         selections[bet.matchNumber].push(bet.option);
       });
 
-      const { data: existingBets, error: countError } = await supabase
-        .from("bets_sport")
-        .select("number")
-        .eq("game_id", activeGame.id)
-        .order("number", { ascending: false })
-        .limit(1);
+      const response = await fetch('/api/bets/place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          betType: 'sports',
+          gameId: activeGame.id,
+          betAmount,
+          betData: {
+            selections,
+            under: matchAtLeast,
+          },
+        }),
+      });
 
-      if (countError) throw countError;
+      const result = await response.json();
 
-      const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].number + 1 : 1;
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to place bet');
+      }
 
-      const betData = {
-        game_id: activeGame.id,
-        number: nextNumber,
-        player: user?.id || null,
-        under: matchAtLeast,
-        staked: betAmount,
-        terminal: user ? "" : "TERMINAL",
-        bet_time: new Date().toISOString(),
-        status: "active",
-        selections,
-      };
-
-      const { error } = await supabase.from("bets_sport").insert(betData);
-
-      if (error) throw error;
-
-      toast.success(`Bet placed! ${selectedBets.length} selection(s) at ${totalOdds.toFixed(2)} odds`);
+      toast.success(`Bet placed! Bet #${result.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${result.data.newBalance.toLocaleString()}`);
 
       // Clear the form
       setSelectedBets([]);
       setBetAmount(5000);
       setMatchAtLeast([]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error placing bet:", error);
-      toast.error("Failed to place bet. Please try again.");
+      toast.error(error.message || "Failed to place bet. Please try again.");
+    } finally {
+      setIsPlacingBet(false);
     }
   };
 
@@ -481,8 +483,9 @@ const Football = () => {
                       className="w-full"
                       size="lg"
                       onClick={placeBet}
+                      disabled={isPlacingBet || selectedBets.length === 0}
                     >
-                      Place Bet
+                      {isPlacingBet ? "Placing Bet..." : "Place Bet"}
                     </Button>
                   </div>
                 </div>

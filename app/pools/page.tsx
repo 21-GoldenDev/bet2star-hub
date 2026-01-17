@@ -169,6 +169,7 @@ const PoolsPage = () => {
                 <Direct
                   activeTab={activeTab}
                   gameMode={gameMode}
+                  gameId={activeGame.id}
                   matches={matches}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
@@ -178,6 +179,7 @@ const PoolsPage = () => {
                 <Grouping
                   activeTab={activeTab}
                   gameMode={gameMode}
+                  gameId={activeGame.id}
                   matches={matches}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
@@ -187,6 +189,7 @@ const PoolsPage = () => {
                 <TwoBanker
                   activeTab={activeTab}
                   gameMode={gameMode}
+                  gameId={activeGame.id}
                   matches={matches}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}

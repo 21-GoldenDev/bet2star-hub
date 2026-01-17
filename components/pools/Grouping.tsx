@@ -17,6 +17,7 @@ interface Props {
   matches: string[];
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
+  gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
 }
@@ -26,7 +27,7 @@ interface USelection {
   u: number;
 }
 
-const Grouping = ({ matches, gameMode, prizes, setGameMode }: Props) => {
+const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(0);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
@@ -114,16 +115,20 @@ const Grouping = ({ matches, gameMode, prizes, setGameMode }: Props) => {
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch("/api/bets/pools/grouping", {
+      const response = await fetch("/api/bets/place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          selectedUs,
-          groupSelections,
+          betType: 'pools',
+          gameId,
           betAmount,
-          totalUnder,
-          gameMode,
-          prize: odd,
+          betData: {
+            selectedMatches: Object.values(groupSelections).flat(),
+            matchAtLeast: selectedUs.map(u => u.u),
+            gameMode,
+            prize: odd,
+            grouping: { selectedUs, groupSelections },
+          },
         }),
       });
 
@@ -134,7 +139,7 @@ const Grouping = ({ matches, gameMode, prizes, setGameMode }: Props) => {
         return;
       }
 
-      toast.success(data.message);
+      toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
       clearAll();
       setBetAmount(5000);

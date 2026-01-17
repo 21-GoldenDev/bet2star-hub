@@ -150,6 +150,7 @@ const LottoPage = () => {
                 <Direct
                   activeTab={activeTab}
                   gameMode={gameMode}
+                  gameId={activeGame.id}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -158,6 +159,7 @@ const LottoPage = () => {
                 <Grouping
                   activeTab={activeTab}
                   gameMode={gameMode}
+                  gameId={activeGame.id}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -166,6 +168,7 @@ const LottoPage = () => {
                 <TwoBanker
                   activeTab={activeTab}
                   gameMode={gameMode}
+                  gameId={activeGame.id}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />

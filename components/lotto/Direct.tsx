@@ -14,11 +14,12 @@ import PrizeTable from "../PrizeTable";
 interface Props {
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
+  gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
 }
 
-const Direct = ({ gameMode, prizes, setGameMode }: Props) => {
+const Direct = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
@@ -63,15 +64,19 @@ const Direct = ({ gameMode, prizes, setGameMode }: Props) => {
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch("/api/bets/lotto/direct", {
+      const response = await fetch("/api/bets/place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          selectedNumbers,
+          betType: 'lotto',
+          gameId,
           betAmount,
-          matchAtLeast,
-          gameMode,
-          prize: odd,
+          betData: {
+            selectedNumbers,
+            matchAtLeast,
+            gameMode,
+            prize: odd,
+          },
         }),
       });
 
@@ -82,7 +87,7 @@ const Direct = ({ gameMode, prizes, setGameMode }: Props) => {
         return;
       }
 
-      toast.success(data.message);
+      toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
       setSelectedNumbers([]);
       setMatchAtLeast([]);

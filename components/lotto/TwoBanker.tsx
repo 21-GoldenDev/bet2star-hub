@@ -14,11 +14,12 @@ import { Prize } from "@/lib/types/prize";
 interface Props {
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
+  gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
 }
 
-const TwoBanker = ({ gameMode, prizes, setGameMode }: Props) => {
+const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(0);
   const [groupAU, setGroupAU] = useState<number>(0);
   const [groupANumbers, setGroupANumbers] = useState<number[]>([]);
@@ -67,16 +68,20 @@ const TwoBanker = ({ gameMode, prizes, setGameMode }: Props) => {
 
     setIsPlacingBet(true);
     try {
-      const response = await fetch("/api/bets/lotto/twobanker", {
+      const response = await fetch("/api/bets/place", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          totalUnder,
-          groupAU,
-          groupANumbers,
+          betType: 'lotto',
+          gameId,
           betAmount,
-          gameMode,
-          prize: odd,
+          betData: {
+            selectedNumbers: groupANumbers,
+            matchAtLeast: [groupAU],
+            gameMode,
+            prize: odd,
+            twobanker: { totalUnder, groupAU, groupANumbers },
+          },
         }),
       });
 
@@ -87,7 +92,7 @@ const TwoBanker = ({ gameMode, prizes, setGameMode }: Props) => {
         return;
       }
 
-      toast.success(data.message);
+      toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
       setTotalUnder(0);
       setGroupAU(0);
