@@ -73,7 +73,7 @@ export async function updateSession(request: NextRequest) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
-      .eq("id", user.sub)
+      .eq("user_id", user.sub)
       .single();
 
     const role = profile?.role;

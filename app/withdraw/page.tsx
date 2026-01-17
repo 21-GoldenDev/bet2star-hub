@@ -1,67 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  ArrowLeft,
-  CreditCard,
-  Wallet,
-  Building2,
-  Check,
-  AlertCircle,
-  Clock,
-} from "lucide-react";
+import { ArrowLeft, Clock } from "lucide-react";
+import useSupabaseUser from "@/hooks/use-supabase-user";
+import { getUserProfile } from "@/lib/auth";
+import PaystackWithdrawal from "@/components/payments/PaystackWithdrawal";
+import { toast } from "@/components/ui/use-toast";
 
 const Withdraw = () => {
-  const [amount, setAmount] = useState("");
-  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const { user } = useSupabaseUser();
+  const [balance, setBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [recentWithdrawals, setRecentWithdrawals] = useState<any[]>([]);
 
-  const currentBalance = 1250.0;
-  const minWithdraw = 20;
-  const maxWithdraw = 5000;
+  useEffect(() => {
+    if (user) {
+      loadUserData();
+    }
+  }, [user]);
 
-  const withdrawMethods = [
-    {
-      id: "card",
-      name: "Credit/Debit Card",
-      icon: CreditCard,
-      description: "Visa •••• 4242",
-      time: "1-3 business days",
-    },
-    {
-      id: "crypto",
-      name: "Cryptocurrency",
-      icon: Wallet,
-      description: "Bitcoin Wallet",
-      time: "Within 24 hours",
-    },
-    {
-      id: "bank",
-      name: "Bank Transfer",
-      icon: Building2,
-      description: "Chase Bank •••• 1234",
-      time: "3-5 business days",
-    },
-  ];
+  const loadUserData = async () => {
+    if (!user) return;
 
-  const recentWithdrawals = [
-    { id: 1, amount: 200, method: "Bank Transfer", status: "completed", date: "Dec 10, 2024" },
-    { id: 2, amount: 500, method: "Crypto", status: "pending", date: "Dec 8, 2024" },
-    { id: 3, amount: 150, method: "Card", status: "completed", date: "Dec 5, 2024" },
-  ];
-
-  const handleWithdraw = () => {
-    if (!amount || !selectedMethod) return;
-    console.log("Withdrawing:", { amount, method: selectedMethod });
+    try {
+      const { data: profile } = await getUserProfile(user.id);
+      setBalance(profile?.balance || 0);
+      
+      // TODO: Load recent withdrawals from transactions table
+      // For now, using mock data
+      setRecentWithdrawals([
+        { id: 1, amount: 200, method: "Bank Transfer", status: "completed", date: "Dec 10, 2024" },
+        { id: 2, amount: 500, method: "Paystack", status: "pending", date: "Dec 8, 2024" },
+        { id: 3, amount: 150, method: "Bank Transfer", status: "completed", date: "Dec 5, 2024" },
+      ]);
+    } catch (error) {
+      console.error("Failed to load user data:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const isValidAmount =
-    amount &&
-    parseFloat(amount) >= minWithdraw &&
-    parseFloat(amount) <= Math.min(maxWithdraw, currentBalance);
+  const handleWithdrawalSuccess = async (data: any) => {
+    // Reload user balance after successful withdrawal
+    await loadUserData();
+    toast({
+      title: "Withdrawal Initiated!",
+      description: `₦${data.amount} will be transferred to your account`,
+    });
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-20 pb-8 px-4">
+        <div className="container mx-auto max-w-2xl text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-4">
+            Please Sign In
+          </h1>
+          <p className="text-muted-foreground mb-6">
+            You need to be signed in to make a withdrawal
+          </p>
+          <Link
+            href="/auth"
+            className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Sign In
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-20 pb-8 px-4">
@@ -79,7 +88,7 @@ const Withdraw = () => {
             Withdraw Funds
           </h1>
           <p className="text-muted-foreground">
-            Transfer your winnings to your preferred account
+            Transfer your winnings to your bank account
           </p>
         </div>
 
@@ -87,136 +96,21 @@ const Withdraw = () => {
         <div className="bg-linear-to-r from-secondary/20 to-accent/20 border border-secondary/30 rounded-2xl p-6 mb-6">
           <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
           <p className="text-4xl font-bold text-foreground">
-            ${currentBalance.toFixed(2)}
-          </p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Pending: $500.00
+            {loading ? "..." : `₦${balance.toLocaleString()}`}
           </p>
         </div>
 
-        {/* Amount Input */}
+        {/* Paystack Withdrawal */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            Withdrawal Amount
+            Withdraw to Bank Account
           </h2>
-
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setAmount((currentBalance * 0.25).toFixed(0))}
-              className="flex-1 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
-            >
-              25%
-            </button>
-            <button
-              onClick={() => setAmount((currentBalance * 0.5).toFixed(0))}
-              className="flex-1 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
-            >
-              50%
-            </button>
-            <button
-              onClick={() => setAmount((currentBalance * 0.75).toFixed(0))}
-              className="flex-1 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
-            >
-              75%
-            </button>
-            <button
-              onClick={() => setAmount(currentBalance.toFixed(0))}
-              className="flex-1 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors text-sm"
-            >
-              Max
-            </button>
-          </div>
-
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-muted-foreground">
-              $
-            </span>
-            <Input
-              type="number"
-              placeholder="Enter amount"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="pl-10 h-14 text-xl bg-muted border-border"
-            />
-          </div>
-
-          <p className="text-sm text-muted-foreground mt-2">
-            Min: ${minWithdraw} • Max: ${Math.min(maxWithdraw, currentBalance)}
-          </p>
-
-          {amount && !isValidAmount && (
-            <div className="flex items-center gap-2 mt-3 text-destructive text-sm">
-              <AlertCircle className="w-4 h-4" />
-              <span>
-                {parseFloat(amount) < minWithdraw
-                  ? `Minimum withdrawal is $${minWithdraw}`
-                  : `Maximum withdrawal is $${Math.min(maxWithdraw, currentBalance)}`}
-              </span>
-            </div>
-          )}
+          <PaystackWithdrawal
+            userId={user.id}
+            userBalance={balance}
+            onSuccess={handleWithdrawalSuccess}
+          />
         </div>
-
-        {/* Withdrawal Methods */}
-        <div className="bg-card border border-border rounded-2xl p-6 mb-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">
-            Withdraw To
-          </h2>
-
-          <div className="space-y-3">
-            {withdrawMethods.map((method) => (
-              <button
-                key={method.id}
-                onClick={() => setSelectedMethod(method.id)}
-                className={clsx(
-                  "w-full flex items-center gap-4 p-4 rounded-xl border transition-all",
-                  selectedMethod === method.id
-                    ? "border-secondary bg-secondary/10"
-                    : "border-border hover:border-border/80 hover:bg-muted/50"
-                )}
-              >
-                <div
-                  className={clsx(
-                    "w-12 h-12 rounded-xl flex items-center justify-center",
-                    selectedMethod === method.id
-                      ? "bg-secondary text-secondary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  <method.icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-foreground">{method.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {method.description}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    {method.time}
-                  </div>
-                  {selectedMethod === method.id && (
-                    <Check className="w-5 h-5 text-secondary ml-auto mt-1" />
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Withdraw Button */}
-        <Button
-          variant="cyan"
-          className="w-full h-14 text-lg"
-          disabled={!isValidAmount || !selectedMethod}
-          onClick={handleWithdraw}
-        >
-          Withdraw ${amount || "0"}
-        </Button>
-
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Withdrawals are processed within 24 hours
-        </p>
 
         {/* Recent Withdrawals */}
         <div className="bg-card border border-border rounded-2xl p-6 mt-8">
@@ -231,7 +125,7 @@ const Withdraw = () => {
               >
                 <div>
                   <p className="font-medium text-foreground">
-                    -${withdrawal.amount}
+                    -₦{withdrawal.amount}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {withdrawal.method} • {withdrawal.date}
