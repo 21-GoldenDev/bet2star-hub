@@ -8,6 +8,7 @@ import useSupabaseUser from "@/hooks/use-supabase-user";
 import { getUserProfile } from "@/lib/auth";
 import PaystackWithdrawal from "@/components/payments/PaystackWithdrawal";
 import { toast } from "@/components/ui/use-toast";
+import supabase from "@/lib/supabase/client";
 
 const Withdraw = () => {
   const { user } = useSupabaseUser();
@@ -28,15 +29,36 @@ const Withdraw = () => {
       const { data: profile } = await getUserProfile(user.id);
       setBalance(profile?.balance || 0);
       
-      // TODO: Load recent withdrawals from transactions table
-      // For now, using mock data
-      setRecentWithdrawals([
-        { id: 1, amount: 200, method: "Bank Transfer", status: "completed", date: "Dec 10, 2024" },
-        { id: 2, amount: 500, method: "Paystack", status: "pending", date: "Dec 8, 2024" },
-        { id: 3, amount: 150, method: "Bank Transfer", status: "completed", date: "Dec 5, 2024" },
-      ]);
+      // Load actual withdrawal transactions from database
+      const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'withdrawal')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Failed to load withdrawals:', error);
+        setRecentWithdrawals([]);
+      } else {
+        const formattedWithdrawals = (transactions || []).map((tx: any) => ({
+          id: tx.id,
+          amount: tx.amount,
+          method: tx.payment_method || 'Bank Transfer',
+          status: tx.status,
+          date: new Date(tx.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          reference: tx.reference,
+        }));
+        setRecentWithdrawals(formattedWithdrawals);
+      }
     } catch (error) {
       console.error("Failed to load user data:", error);
+      setRecentWithdrawals([]);
     } finally {
       setLoading(false);
     }

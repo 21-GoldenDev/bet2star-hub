@@ -142,6 +142,11 @@ const Navbar = () => {
                         Deposit
                       </Button>
                     </Link>
+                    <Link href="/withdraw">
+                      <Button variant="cyan" size="sm" className="hidden sm:flex">
+                        Withdraw
+                      </Button>
+                    </Link>
                   </>
                 )}
                 <Link href="/profile">
