@@ -68,25 +68,27 @@ export default function PaystackPayment({
         email: userEmail,
         amount: parseFloat(amount) * 100, // Convert to kobo
         ref: result.data.reference,
-        onClose: async () => {
-          try {
-            const cancelResponse = await fetch(
-              `/api/payments/paystack/cancel?reference=${result.data.reference}`,
-              { method: 'PUT' }
-            );
-            if (!cancelResponse.ok) {
-              console.error('Failed to cancel transaction');
+        onClose: function () {
+          (async () => {
+            try {
+              const cancelResponse = await fetch(
+                `/api/payments/paystack/cancel?reference=${result.data.reference}`,
+                { method: 'PUT' }
+              );
+              if (!cancelResponse.ok) {
+                console.error('Failed to cancel transaction');
+              }
+            } catch (error) {
+              console.error('Error cancelling transaction:', error);
+            } finally {
+              toast({
+                title: "Payment Cancelled",
+                description: "You closed the payment window",
+              });
+              setLoading(false);
+              if (onClose) onClose();
             }
-          } catch (error) {
-            console.error('Error cancelling transaction:', error);
-          }
-
-          toast({
-            title: "Payment Cancelled",
-            description: "You closed the payment window",
-          });
-          setLoading(false);
-          if (onClose) onClose();
+          })();
         },
         callback: (response: any) => {
           (async () => {
