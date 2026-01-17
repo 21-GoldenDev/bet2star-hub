@@ -2,17 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import clsx from "clsx";
 import { ArrowLeft } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { getUserProfile } from "@/lib/auth";
 import PaystackPayment from "@/components/payments/PaystackPayment";
 import { useToast } from "@/hooks/use-toast";
+import supabase from "@/lib/supabase/client";
 
 const Deposit = () => {
   const { user, isLoading: userLoading } = useSupabaseUser();
   const toast = useToast();
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [depositHistory, setDepositHistory] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -22,10 +25,37 @@ const Deposit = () => {
 
   const loadUserBalance = async () => {
     if (!user) return;
-    
+
     try {
       const { data: profile } = await getUserProfile(user.id);
       setBalance(profile?.balance || 0);
+
+      const { data: transactions, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'deposit')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Failed to load deposits:', error);
+        setDepositHistory([]);
+      } else {
+        const formattedDeposits = (transactions || []).map((tx: any) => ({
+          id: tx.id,
+          amount: tx.amount,
+          method: tx.payment_method || 'Paystack',
+          status: tx.status,
+          date: new Date(tx.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          }),
+          reference: tx.reference,
+        }));
+        setDepositHistory(formattedDeposits);
+      }
     } catch (error) {
       toast.toast({
         title: "Error",
@@ -118,7 +148,7 @@ const Deposit = () => {
         </div>
 
         {/* Payment Info */}
-        <div className="bg-card border border-border rounded-2xl p-6">
+        <div className="bg-card border border-border rounded-2xl p-6 mb-6">
           <h3 className="text-sm font-semibold text-foreground mb-3">
             Payment Information
           </h3>
@@ -129,6 +159,48 @@ const Deposit = () => {
             <li>• No hidden fees</li>
             <li>• 24/7 customer support</li>
           </ul>
+        </div>
+
+        {/* Deposit History */}
+        <div className="bg-card border border-border rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Deposit History
+          </h2>
+          {depositHistory.length === 0 ? (
+            <p className="text-center text-muted-foreground py-6">
+              No deposits yet
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {depositHistory.map((deposit) => (
+                <div
+                  key={deposit.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted"
+                >
+                  <div>
+                    <p className="font-medium text-foreground">
+                      +₦{deposit.amount.toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {deposit.method} • {deposit.date}
+                    </p>
+                  </div>
+                  <span
+                    className={clsx(
+                      "px-3 py-1 rounded-full text-xs font-medium",
+                      deposit.status === "completed"
+                        ? "bg-secondary/20 text-secondary"
+                        : deposit.status === "pending"
+                          ? "bg-primary/20 text-primary"
+                          : "bg-destructive/20 text-destructive"
+                    )}
+                  >
+                    {deposit.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
