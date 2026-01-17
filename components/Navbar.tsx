@@ -12,6 +12,7 @@ import { signOut } from "@/lib/auth";
 import { toast } from "@/components/ui/use-toast";
 import supabase from "@/lib/supabase/client";
 import { isUserAdminByEmail } from "@/lib/admin/auth";
+import { getUserProfile } from "@/lib/auth";
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -30,6 +32,15 @@ const Navbar = () => {
         if (user?.email) {
           setIsAdmin(await isUserAdminByEmail(user.email));
         }
+        if (user?.id) {
+          try {
+            const { data: profile } = await getUserProfile(user.id);
+            setBalance(profile?.balance || 0);
+          } catch (error) {
+            console.error("Failed to load balance:", error);
+            setBalance(0);
+          }
+        }
       }
     };
 
@@ -37,6 +48,13 @@ const Navbar = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session?.user);
+      if (session?.user?.id) {
+        getUserProfile(session.user.id).then(({ data: profile }) => {
+          setBalance(profile?.balance || 0);
+        }).catch(() => setBalance(0));
+      } else {
+        setBalance(null);
+      }
     });
 
     return () => {
@@ -115,7 +133,9 @@ const Navbar = () => {
                   <>
                     <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-muted border border-border">
                       <Wallet className="w-4 h-4 text-primary" />
-                      <span className="font-semibold text-foreground">125,000</span>
+                      <span className="font-semibold text-foreground">
+                        {balance !== null ? `₦${balance.toLocaleString()}` : "--"}
+                      </span>
                     </div>
                     <Link href="/deposit">
                       <Button variant="gold" size="sm" className="hidden sm:flex">
@@ -179,7 +199,9 @@ const Navbar = () => {
                     <>
                       <div className="flex items-center gap-2 px-4 py-3 mt-2 rounded-lg bg-muted border border-border">
                         <Wallet className="w-4 h-4 text-primary" />
-                        <span className="font-semibold text-foreground">125,000</span>
+                        <span className="font-semibold text-foreground">
+                          {balance !== null ? `₦${balance.toLocaleString()}` : "--"}
+                        </span>
                       </div>
                       <Link href="/deposit" onClick={() => setMobileMenuOpen(false)}>
                         <Button variant="gold" className="w-full mt-2">

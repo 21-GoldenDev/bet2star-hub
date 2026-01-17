@@ -9,7 +9,7 @@ import PaystackPayment from "@/components/payments/PaystackPayment";
 import { useToast } from "@/hooks/use-toast";
 
 const Deposit = () => {
-  const { user } = useSupabaseUser();
+  const { user, isLoading: userLoading } = useSupabaseUser();
   const toast = useToast();
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -46,6 +46,17 @@ const Deposit = () => {
       description: `₦${data.amount} has been added to your account`,
     });
   };
+
+  if (userLoading) {
+    return (
+      <div className="min-h-screen pt-20 pb-8 px-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
