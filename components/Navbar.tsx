@@ -36,6 +36,28 @@ const Navbar = () => {
           try {
             const { data: profile } = await getUserProfile(user.id);
             setBalance(profile?.balance || 0);
+
+            const subscription = supabase
+              .channel(`profiles:${user.id}`)
+              .on(
+                'postgres_changes',
+                {
+                  event: 'UPDATE',
+                  schema: 'public',
+                  table: 'profiles',
+                  filter: `user_id=eq.${user.id}`,
+                },
+                (payload) => {
+                  if (payload.new?.balance !== undefined) {
+                    setBalance(payload.new.balance);
+                  }
+                }
+              )
+              .subscribe();
+
+            return () => {
+              subscription.unsubscribe();
+            };
           } catch (error) {
             console.error("Failed to load balance:", error);
             setBalance(0);
