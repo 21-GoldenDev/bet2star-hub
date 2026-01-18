@@ -171,25 +171,41 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
           <StatCard
             title="Total Sales Amount"
-            value={`₦${stats.totalSalesAmount.toLocaleString()}`}
+            value={
+              <span className={stats.totalSalesAmount < 0 ? "text-red-500" : ""}>
+                ₦{Math.abs(stats.totalSalesAmount).toLocaleString()}{stats.totalSalesAmount < 0 ? " (-)" : ""}
+              </span>
+            }
             icon={DollarSign}
             description="All bets placed"
           />
           <StatCard
             title="Total Commission paid to Agents"
-            value={`₦${stats.totalCommission.toLocaleString()}`}
+            value={
+              <span className={stats.totalCommission < 0 ? "text-red-500" : ""}>
+                ₦{Math.abs(stats.totalCommission).toLocaleString()}{stats.totalCommission < 0 ? " (-)" : ""}
+              </span>
+            }
             icon={TrendingUp}
             description="Agent commissions"
           />
           <StatCard
             title="Winnings paid to Agents"
-            value={`₦${stats.totalWinningsAmount.toLocaleString()}`}
+            value={
+              <span className={stats.totalWinningsAmount < 0 ? "text-red-500" : ""}>
+                ₦{Math.abs(stats.totalWinningsAmount).toLocaleString()}{stats.totalWinningsAmount < 0 ? " (-)" : ""}
+              </span>
+            }
             icon={Gamepad2}
             description="Player winnings"
           />
           <StatCard
             title="Balance Profit or Loss"
-            value={`₦${stats.balanceProfitOrLoss.toLocaleString()}`}
+            value={
+              <span className={stats.balanceProfitOrLoss < 0 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>
+                ₦{Math.abs(stats.balanceProfitOrLoss).toLocaleString()}{stats.balanceProfitOrLoss < 0 ? " (-)" : ""}
+              </span>
+            }
             icon={TrendingUp}
             description="Net profit/loss"
           />
