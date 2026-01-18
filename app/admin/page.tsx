@@ -173,7 +173,7 @@ export default function AdminDashboard() {
             title="Total Sales Amount"
             value={
               <span className={stats.totalSalesAmount < 0 ? "text-red-500" : ""}>
-                ₦{Math.abs(stats.totalSalesAmount).toLocaleString()}{stats.totalSalesAmount < 0 ? " (-)" : ""}
+                {stats.totalSalesAmount < 0 ? "-" : ""}₦{Math.abs(stats.totalSalesAmount).toLocaleString()}
               </span>
             }
             icon={DollarSign}
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
             title="Total Commission paid to Agents"
             value={
               <span className={stats.totalCommission < 0 ? "text-red-500" : ""}>
-                ₦{Math.abs(stats.totalCommission).toLocaleString()}{stats.totalCommission < 0 ? " (-)" : ""}
+                {stats.totalCommission < 0 ? "-" : ""}₦{Math.abs(stats.totalCommission).toLocaleString()}
               </span>
             }
             icon={TrendingUp}
@@ -193,7 +193,7 @@ export default function AdminDashboard() {
             title="Winnings paid to Agents"
             value={
               <span className={stats.totalWinningsAmount < 0 ? "text-red-500" : ""}>
-                ₦{Math.abs(stats.totalWinningsAmount).toLocaleString()}{stats.totalWinningsAmount < 0 ? " (-)" : ""}
+                {stats.totalWinningsAmount < 0 ? "-" : ""}₦{Math.abs(stats.totalWinningsAmount).toLocaleString()}
               </span>
             }
             icon={Gamepad2}
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
             title="Balance Profit or Loss"
             value={
               <span className={stats.balanceProfitOrLoss < 0 ? "text-red-500 font-bold" : "text-green-500 font-bold"}>
-                ₦{Math.abs(stats.balanceProfitOrLoss).toLocaleString()}{stats.balanceProfitOrLoss < 0 ? " (-)" : ""}
+                {stats.balanceProfitOrLoss < 0 ? "-" : ""}₦{Math.abs(stats.balanceProfitOrLoss).toLocaleString()}
               </span>
             }
             icon={TrendingUp}
