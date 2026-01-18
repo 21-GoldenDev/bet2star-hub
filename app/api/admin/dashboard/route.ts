@@ -11,6 +11,10 @@ export async function GET(request: NextRequest) {
       ? createClient(supabaseUrl, supabaseServiceKey)
       : null;
 
+    // Get game type filter from query params
+    const searchParams = request.nextUrl.searchParams;
+    const gameTypeFilter = searchParams.get("gameType") || "all"; // all, lotto, pools, sports
+
     // Fetch all profiles to get user counts
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
@@ -29,11 +33,18 @@ export async function GET(request: NextRequest) {
 
     // Get active games per type (current time between start_time and end_time)
     const now = new Date().toISOString();
-    const { data: activeGamesData, error: activeGamesError } = await supabase
+    let activeGamesQuery = supabase
       .from("games")
       .select("id, type")
       .lte("start_time", now)
       .gte("end_time", now);
+
+    // Filter by game type if specified
+    if (gameTypeFilter !== "all") {
+      activeGamesQuery = activeGamesQuery.eq("type", gameTypeFilter);
+    }
+
+    const { data: activeGamesData, error: activeGamesError } = await activeGamesQuery;
 
     if (activeGamesError && activeGamesError.code !== "PGRST116") {
       console.error("Error fetching active games:", activeGamesError);
@@ -44,7 +55,7 @@ export async function GET(request: NextRequest) {
     const activeSportsId = activeGamesData?.find((g: any) => g.type === "sports")?.id;
     const activeGamesCount = [activeLottoId, activePoolsId, activeSportsId].filter(Boolean).length;
 
-    // Fetch bets only for the current active games
+    // Fetch bets only for the current active games, respecting game type filter
     let lottoQuery = supabase
       .from("bets_lotto")
       .select("staked, bet_time, award, status");
@@ -57,10 +68,24 @@ export async function GET(request: NextRequest) {
       .from("bets_sport")
       .select("staked, bet_time, award, status");
 
-    // Filter by active game per type; if none, return zero bets for that type
-    lottoQuery = activeLottoId ? lottoQuery.eq("game_id", activeLottoId) : lottoQuery.limit(0);
-    poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
-    sportsQuery = activeSportsId ? sportsQuery.eq("game_id", activeSportsId) : sportsQuery.limit(0);
+    // Apply filters based on gameTypeFilter
+    if (gameTypeFilter === "all") {
+      lottoQuery = activeLottoId ? lottoQuery.eq("game_id", activeLottoId) : lottoQuery.limit(0);
+      poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
+      sportsQuery = activeSportsId ? sportsQuery.eq("game_id", activeSportsId) : sportsQuery.limit(0);
+    } else if (gameTypeFilter === "lotto") {
+      lottoQuery = activeLottoId ? lottoQuery.eq("game_id", activeLottoId) : lottoQuery.limit(0);
+      poolsQuery = poolsQuery.limit(0);
+      sportsQuery = sportsQuery.limit(0);
+    } else if (gameTypeFilter === "pools") {
+      lottoQuery = lottoQuery.limit(0);
+      poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
+      sportsQuery = sportsQuery.limit(0);
+    } else if (gameTypeFilter === "sports") {
+      lottoQuery = lottoQuery.limit(0);
+      poolsQuery = poolsQuery.limit(0);
+      sportsQuery = activeSportsId ? sportsQuery.eq("game_id", activeSportsId) : sportsQuery.limit(0);
+    }
 
     const [
       { data: lottoBets, error: lottoError },
@@ -207,7 +232,7 @@ function generateChartData(bets: any[], profiles: any[]) {
       return createdDate >= weekStart && createdDate <= weekEnd;
     });
 
-    const revenue = weekBets.reduce((sum, bet) => sum + (bet.staked || 0), 0);
+    const revenue = weekBets.reduce((sum, bet) => sum + (bet.staked || 0) - (bet.award || 0), 0);
 
     weeks.push({
       date: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),

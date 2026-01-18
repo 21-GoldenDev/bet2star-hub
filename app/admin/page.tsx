@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Users, Gamepad2, DollarSign, TrendingUp, Building2, CheckCircle2, XCircle } from "lucide-react";
 import StatCard from "@/components/admin/StatCard";
 import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   LineChart,
   Line,
@@ -71,15 +73,19 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gameType, setGameType] = useState<string>("all");
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [gameType]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/admin/dashboard");
+      const url = gameType === "all"
+        ? "/api/admin/dashboard"
+        : `/api/admin/dashboard?gameType=${gameType}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error("Failed to fetch dashboard data");
 
       const data = await response.json();
@@ -115,11 +121,27 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome to Admin Panel!
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome to Admin Panel!
+          </p>
+        </div>
+        <div className="w-56 p-4 rounded-lg border-2 border-primary bg-primary/5 shadow-md">
+          <Label className="text-sm font-semibold">Filter by Game Type</Label>
+          <Select value={gameType} onValueChange={setGameType}>
+            <SelectTrigger className="mt-2 border-primary/50 bg-background font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Games</SelectItem>
+              <SelectItem value="lotto">Lotto</SelectItem>
+              <SelectItem value="pools">Pools</SelectItem>
+              <SelectItem value="sports">Sports</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Stats Grid - General */}
