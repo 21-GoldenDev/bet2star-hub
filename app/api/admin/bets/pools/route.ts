@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
       betTime: bet.bet_time,
       prize: bet.prize_id ? prizeMap[bet.prize_id] : undefined,
       prizeCommission: bet.prize_id ? prizeMap[bet.prize_id]?.commission : undefined,
+      award: bet.award,
       status: bet.status,
     }));
 

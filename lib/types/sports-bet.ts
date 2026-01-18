@@ -16,7 +16,7 @@ export interface SportsBet {
   bet_time: string;
   status: string;
   selections: SportsBetSelection;
-  reward?: number;
+  award?: number;
 }
 
 export interface CreateSportsBetInput {

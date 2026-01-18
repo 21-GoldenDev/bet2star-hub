@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Edit2, Trash2, Loader2, ArrowLeft, Power, PowerOff } from "lucide-react";
+import { XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GamePrize, PrizeInfo } from "@/lib/types/gameMode";
 import { SportsMatch } from "@/lib/types/sports";
@@ -33,6 +34,7 @@ interface GameInfo {
   type: string;
   start_time: string;
   end_time: string;
+  results?: string[] | number[] | null;
 }
 
 interface GamePrizeWithInfo extends GamePrize {
@@ -81,6 +83,8 @@ export default function GameSettingsPage() {
     prizes: number[];
     status: "active" | "void";
   }>({ league: "", number: 1, home: "", away: "", home_goal: 0, away_goal: 0, prizes: [...EMPTY_PRIZES], status: "active" });
+  // Result update state for lotto/pools
+  const [weekResult, setWeekResult] = useState<Array<number | string>>([]);
 
   const [formData, setFormData] = useState<{
     prize_id: string;
@@ -105,9 +109,24 @@ export default function GameSettingsPage() {
       if (!gameRes.ok) throw new Error("Failed to fetch game");
       const gameData = await gameRes.json();
       setGame(gameData.game);
+      if (Array.isArray(gameData.game?.results)) {
+        setWeekResult(gameData.game.results as Array<number | string>);
+      } else {
+        setWeekResult([]);
+      }
+
+      // Fetch stats for all game types
+      const gameType = gameData.game?.type;
+      if (gameType) {
+        const statsRes = await fetch(`/api/admin/games/${gameId}/${gameType}/stats`);
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats(statsData);
+        }
+      }
 
       // If sports type, fetch sports list; otherwise fetch prizes as before
-      if (gameData.game?.type === "sports") {
+      if (gameType === "sports") {
         const sportsRes = await fetch(`/api/admin/games/${gameId}/sports`);
         if (!sportsRes.ok) throw new Error("Failed to fetch sports matches");
         const sportsData = await sportsRes.json();
@@ -117,13 +136,6 @@ export default function GameSettingsPage() {
             prizes: Array.isArray(m.prizes) && m.prizes.length === PRIZE_LABELS.length ? m.prizes : [...EMPTY_PRIZES],
           }))
         );
-
-        // Fetch stats for sports game
-        const statsRes = await fetch(`/api/admin/games/${gameId}/sports/stats`);
-        if (statsRes.ok) {
-          const statsData = await statsRes.json();
-          setStats(statsData);
-        }
       } else {
         const [prizesRes, gamePrizesRes] = await Promise.all([
           fetch("/api/admin/prize"),
@@ -494,6 +506,31 @@ export default function GameSettingsPage() {
       toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to delete match", variant: "destructive" });
     }
   };
+  // Handler for updating week results (lotto/pools) similar to admin bets pages
+  const updateWeekResult = async (result: Array<number | string>) => {
+    if (!game?.type) {
+      toast({ title: "Error", description: "Game type not found", variant: "destructive" });
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/admin/bets/${game.type}/result`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ game_id: gameId, result }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update result");
+      toast({ title: "Success", description: "Week result updated and awards recomputed" });
+      setWeekResult(result);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to update result", variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -542,8 +579,8 @@ export default function GameSettingsPage() {
         </Card>
       )}
 
-      {/* Stats Cards for Sports Games */}
-      {game?.type === "sports" && (
+      {/* Stats Cards for All Game Types */}
+      {game && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -572,6 +609,61 @@ export default function GameSettingsPage() {
             </div>
           </Card>
         </div>
+      )}
+
+      {/* Week Result Update Section for Lotto/Pools */}
+      {game && (game.type === "lotto" || game.type === "pools") && (
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-3">Week Result</h2>
+          <Label className="text-sm text-muted-foreground">Enter-separated values and press Enter to add</Label>
+          <div className="mt-2 flex items-center gap-2">
+            <Input
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const value = e.currentTarget.value.trim();
+                  if (!value) return;
+                  if (game.type === "lotto") {
+                    const num = Number(value);
+                    if (isNaN(num)) return;
+                    const newSet = new Set(weekResult.map((v) => Number(v)));
+                    newSet.add(num);
+                    const updatedResult = Array.from(newSet).sort((a, b) => Number(a) - Number(b));
+                    setWeekResult(updatedResult);
+                    updateWeekResult(updatedResult);
+                  } else {
+                    const newSet = new Set(weekResult.map((v) => String(v)));
+                    newSet.add(value);
+                    const updatedResult = Array.from(newSet).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+                    setWeekResult(updatedResult);
+                    updateWeekResult(updatedResult);
+                  }
+                  e.currentTarget.value = "";
+                }
+              }}
+              className="w-32"
+              placeholder={game.type === "lotto" ? "e.g. 25" : "e.g. 12"}
+              disabled={submitting}
+            />
+            <div className="flex flex-wrap items-center gap-1">
+              {weekResult.map((num, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium flex items-center gap-1"
+                >
+                  {num}
+                  <XCircle
+                    className="w-3 h-3 cursor-pointer hover:text-red-600"
+                    onClick={() => {
+                      const updatedResult = weekResult.filter((_, i) => i !== idx);
+                      setWeekResult(updatedResult);
+                      updateWeekResult(updatedResult);
+                    }}
+                  />
+                </span>
+              ))}
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Sports vs Prizes Section */}

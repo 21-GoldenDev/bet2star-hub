@@ -10,6 +10,7 @@ export type BaseBet = {
   player?: Player;
   under: number[];
   staked: number;
+  award?: number;
   terminal: string;
   betTime: string;
   prize?: string;

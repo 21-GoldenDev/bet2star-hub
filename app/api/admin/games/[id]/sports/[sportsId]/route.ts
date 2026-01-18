@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { calculateBetReward } from "@/lib/helpers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -49,6 +50,48 @@ export async function PUT(
 
     if (!data) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
+    }
+
+    try {
+      const { data: matchesData, error: matchesError } = await supabase
+        .from("sports")
+        .select("*")
+        .eq("game_id", id);
+
+      if (matchesError) {
+        console.error("Error fetching matches for award recompute:", matchesError.message);
+      } else {
+        const matches = matchesData || [];
+
+        const { data: betsData, error: betsError } = await supabase
+          .from("bets_sport")
+          .select("*")
+          .eq("game_id", id);
+
+        if (betsError) {
+          console.error("Error fetching bets_sport for award recompute:", betsError.message);
+        } else if (betsData && betsData.length > 0) {
+          for (const bet of betsData) {
+            let award = 0;
+            if (bet.status === "void") {
+              award = bet.staked || 0;
+            } else {
+              award = calculateBetReward(bet, matches) || 0;
+            }
+
+            const { error: updateBetError } = await supabase
+              .from("bets_sport")
+              .update({ award })
+              .eq("id", bet.id);
+
+            if (updateBetError) {
+              console.error(`Error updating award for bet ${bet.id}:`, updateBetError.message);
+            }
+          }
+        }
+      }
+    } catch (awardError) {
+      console.error("Unexpected error during sports awards recompute:", awardError);
     }
 
     return NextResponse.json({ match: data }, { status: 200 });

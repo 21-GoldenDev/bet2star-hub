@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
-import { calculateBetReward } from "@/lib/helpers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -67,14 +66,9 @@ export async function GET(request: NextRequest) {
     }
 
     const transformedData = data?.map((bet) => {
-      const gameId = bet.games?.id;
-      const matches = matchesMap[gameId] || [];
-      const reward = calculateBetReward(bet, matches);
-
       return {
         ...bet,
         player: bet.player ? playersMap[bet.player] || null : null,
-        reward,
       };
     });
 

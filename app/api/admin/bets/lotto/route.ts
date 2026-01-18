@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
       prize: bet.prize_id ? prizeMap[bet.prize_id] : undefined,
       prizeCommission: bet.prize_id ? prizeMap[bet.prize_id]?.commission : undefined,
       status: bet.status,
+      award: bet.award || 0,
     }));
 
     return NextResponse.json({ data: transformedData }, { status: 200 });

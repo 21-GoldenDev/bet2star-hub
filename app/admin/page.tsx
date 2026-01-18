@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Gamepad2, DollarSign, TrendingUp } from "lucide-react";
+import { Users, Gamepad2, DollarSign, TrendingUp, Building2, CheckCircle2, XCircle } from "lucide-react";
 import StatCard from "@/components/admin/StatCard";
 import { Card } from "@/components/ui/card";
 import {
@@ -17,35 +17,100 @@ import {
   Bar,
 } from "recharts";
 
-// Mock data - replace with real API calls
-const chartData = [
-  { date: "Jan 1", users: 400, revenue: 2400, bets: 240 },
-  { date: "Jan 8", users: 520, revenue: 2210, bets: 221 },
-  { date: "Jan 15", users: 750, revenue: 2290, bets: 229 },
-  { date: "Jan 22", users: 920, revenue: 2000, bets: 200 },
-  { date: "Jan 29", users: 1200, revenue: 2181, bets: 218 },
-  { date: "Feb 5", users: 1450, revenue: 2500, bets: 250 },
-];
+interface DashboardStats {
+  totalUsers: number;
+  onlinePlayers: number;
+  offlinePlayers: number;
+  staffMembers: number;
+  totalBetsCount: number;
+  totalSalesAmount: number;
+  totalCommission: number;
+  totalWinningsAmount: number;
+  balanceProfitOrLoss: number;
+}
 
-const recentUsers = [
-  { id: 1, name: "John Doe", email: "john@example.com", type: "online_player", signupDate: "2024-12-20" },
-  { id: 2, name: "Jane Smith", email: "jane@example.com", type: "online_player", signupDate: "2024-12-20" },
-  { id: 3, name: "Bob Johnson", email: "bob@example.com", type: "offline_player", signupDate: "2024-12-19" },
-];
+interface VoidStats {
+  totalRequests: number;
+  approvedRequests: number;
+  dismissedRequests: number;
+}
+
+interface RecentUser {
+  user_id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  phone?: string | null;
+  created_at: string;
+}
+
+interface ChartDataPoint {
+  date: string;
+  users: number;
+  revenue: number;
+  bets: number;
+}
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
-    totalUsers: 1250,
-    onlinePlayers: 750,
-    offlinePlayers: 400,
-    staffMembers: 100,
-    activeGames: 45,
-    totalRevenue: 15420,
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    onlinePlayers: 0,
+    offlinePlayers: 0,
+    staffMembers: 0,
+    totalBetsCount: 0,
+    totalSalesAmount: 0,
+    totalCommission: 0,
+    totalWinningsAmount: 0,
+    balanceProfitOrLoss: 0,
   });
+  const [voidStats, setVoidStats] = useState<VoidStats>({
+    totalRequests: 0,
+    approvedRequests: 0,
+    dismissedRequests: 0,
+  });
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch real data from API
+    fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/admin/dashboard");
+      if (!response.ok) throw new Error("Failed to fetch dashboard data");
+
+      const data = await response.json();
+      setStats(data.stats);
+      setVoidStats(data.voidStats);
+      setChartData(data.chartData);
+      setRecentUsers(data.recentUsers);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <p className="text-muted-foreground">Loading dashboard data...</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="p-6 animate-pulse">
+              <div className="h-20 bg-muted rounded"></div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -53,40 +118,118 @@ export default function AdminDashboard() {
       <div>
         <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back! Here's what's happening with your platform.
+          Welcome to Admin Panel!
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+      {/* Stats Grid - General */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
         <StatCard
-          title="Total Users"
-          value={stats.totalUsers}
-          icon={Users}
-          description="All user types"
-          trend={{ value: 12.5, isPositive: true }}
+          title="Total Bets"
+          value={stats.totalBetsCount}
+          icon={DollarSign}
         />
         <StatCard
-          title="Online Players"
-          value={stats.onlinePlayers}
+          title="Total Agents"
+          value={stats.onlinePlayers + stats.offlinePlayers}
           icon={Users}
-          description="Web players"
-          trend={{ value: 8.2, isPositive: true }}
         />
         <StatCard
-          title="Offline Players"
+          title="Total Terminals"
           value={stats.offlinePlayers}
-          icon={Users}
-          description="Controller players"
-          trend={{ value: 5.1, isPositive: true }}
+          icon={Building2}
         />
-        <StatCard
-          title="Staff Members"
-          value={stats.staffMembers}
-          icon={Users}
-          description="Admin staff"
-          trend={{ value: 2.0, isPositive: true }}
-        />
+      </div>
+
+      {/* Finance Dashboard */}
+      <div>
+        <h2 className="text-xl font-bold mb-4 px-4 py-2 bg-primary/20 rounded">
+          FINANCE DASHBOARD FOR THE WEEK
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+          <StatCard
+            title="Total Sales Amount"
+            value={`₦${stats.totalSalesAmount.toLocaleString()}`}
+            icon={DollarSign}
+            description="All bets placed"
+          />
+          <StatCard
+            title="Total Commission paid to Agents"
+            value={`₦${stats.totalCommission.toLocaleString()}`}
+            icon={TrendingUp}
+            description="Agent commissions"
+          />
+          <StatCard
+            title="Winnings paid to Agents"
+            value={`₦${stats.totalWinningsAmount.toLocaleString()}`}
+            icon={Gamepad2}
+            description="Player winnings"
+          />
+          <StatCard
+            title="Balance Profit or Loss"
+            value={`₦${stats.balanceProfitOrLoss.toLocaleString()}`}
+            icon={TrendingUp}
+            description="Net profit/loss"
+          />
+        </div>
+      </div>
+
+      {/* Void Bets Dashboard */}
+      <div>
+        <h2 className="text-xl font-bold mb-4 px-4 py-2 bg-primary/20 rounded">
+          VOID BETS DASHBOARD FOR THE WEEK
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
+          <StatCard
+            title="Total Requests"
+            value={voidStats.totalRequests}
+            icon={DollarSign}
+            description="All void requests"
+          />
+          <StatCard
+            title="Approved Requests"
+            value={voidStats.approvedRequests}
+            icon={CheckCircle2}
+            description="Approved voids"
+          />
+          <StatCard
+            title="Dismissed Requests"
+            value={voidStats.dismissedRequests}
+            icon={XCircle}
+            description="Rejected voids"
+          />
+        </div>
+      </div>
+
+      {/* User Stats */}
+      <div>
+        <h2 className="text-xl font-bold mb-4">User Statistics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3">
+          <StatCard
+            title="Total Users"
+            value={stats.totalUsers}
+            icon={Users}
+            description="All user types"
+          />
+          <StatCard
+            title="Online Players"
+            value={stats.onlinePlayers}
+            icon={Users}
+            description="Web players"
+          />
+          <StatCard
+            title="Offline Players"
+            value={stats.offlinePlayers}
+            icon={Users}
+            description="Controller players"
+          />
+          <StatCard
+            title="Staff Members"
+            value={stats.staffMembers}
+            icon={Users}
+            description="Admin staff"
+          />
+        </div>
       </div>
 
       {/* Charts */}
@@ -148,26 +291,39 @@ export default function AdminDashboard() {
               <tr className="border-b border-border">
                 <th className="text-left py-3 px-4 font-medium">Name</th>
                 <th className="text-left py-3 px-4 font-medium">Email</th>
+                <th className="text-left py-3 px-4 font-medium">Phone</th>
                 <th className="text-left py-3 px-4 font-medium">User Type</th>
                 <th className="text-left py-3 px-4 font-medium">Sign-up Date</th>
               </tr>
             </thead>
             <tbody>
-              {recentUsers.map((user) => {
-                const typeLabels: Record<string, string> = {
-                  online_player: "Online Player (Web)",
-                  offline_player: "Offline Player (Controller)",
-                  staff: "Staff",
-                };
-                return (
-                  <tr key={user.id} className="border-b border-border hover:bg-accent/50">
-                    <td className="py-3 px-4">{user.name}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{typeLabels[user.type]}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{user.signupDate}</td>
-                  </tr>
-                );
-              })}
+              {recentUsers.length > 0 ? (
+                recentUsers.map((user) => {
+                  const typeLabels: Record<string, string> = {
+                    user: "Online Player (Web)",
+                    offline_player: "Offline Player (Controller)",
+                    staff: "Staff",
+                    admin: "Admin",
+                  };
+                  return (
+                    <tr key={user.user_id} className="border-b border-border hover:bg-accent/50">
+                      <td className="py-3 px-4">{user.full_name || "N/A"}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{user.phone || "--"}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{typeLabels[user.role] || user.role}</td>
+                      <td className="py-3 px-4 text-muted-foreground">
+                        {new Date(user.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-muted-foreground">
+                    No recent sign-ups
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

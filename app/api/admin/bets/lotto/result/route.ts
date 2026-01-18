@@ -1,4 +1,5 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { calcAplDirect, calcAplGrouping, calcAwardLine, parseDraws } from "@/lib/helpers";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -28,9 +29,143 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    // Recalculate awards for bets in this game based on the new result
+    const { data: bets, error: betsError } = await supabase
+      .from("bets_lotto")
+      .select("id, gameType, staked, under, numbers, prize_id, player, status")
+      .eq("game_id", gameId);
+
+    if (betsError) {
+      console.error("Error fetching bets for award recompute:", betsError);
+      return NextResponse.json({ error: betsError.message }, { status: 500 });
+    }
+
+    const uniquePrizeIds = Array.from(new Set((bets || []).map((b: any) => b.prize_id).filter((id): id is string => !!id)));
+
+    let prizeMap: Record<string, any> = {};
+    if (uniquePrizeIds.length > 0) {
+      const { data: prizesData, error: prizesError } = await supabase
+        .from("prize")
+        .select("id, name, data")
+        .in("id", uniquePrizeIds);
+
+      const { data: gamePrizesData, error: gamePrizesError } = await supabase
+        .from("game_prizes")
+        .select("prize_id, commission")
+        .in("prize_id", uniquePrizeIds);
+
+      if (prizesError) {
+        console.error("Error fetching prize data:", prizesError);
+      }
+      if (gamePrizesError) {
+        console.error("Error fetching game_prizes data:", gamePrizesError);
+      }
+
+      const commissionMap = (gamePrizesData || []).reduce((acc: Record<string, number>, gp: any) => {
+        acc[gp.prize_id] = gp.commission || 0;
+        return acc;
+      }, {});
+
+      prizeMap = (prizesData || []).reduce((acc: Record<string, any>, prize: any) => {
+        acc[prize.id] = {
+          ...prize,
+          commission: commissionMap[prize.id] || 0,
+        };
+        return acc;
+      }, {});
+    }
+
+    const computeAward = (bet: any, prize: any, weekResult: number[]) => {
+      // If bet is void, award equals staked amount
+      if (bet.status === "void") return bet.staked || 0;
+      if (!prize || !prize.data || !prize.data.data || !prize.data.columns) return 0;
+      const isNapPerm = bet.gameType === "nap_perm";
+      const apl = isNapPerm
+        ? calcAplDirect(bet.staked || 0, bet.under || [], (bet.numbers || []).length)
+        : calcAplGrouping(bet.staked || 0, bet.numbers || {});
+
+      let award = 0;
+
+      Object.keys(prize.data.data).forEach((drawKey: string) => {
+        const parsedDraw = parseDraws(drawKey);
+        if (!parsedDraw) return;
+        const { start, end } = parsedDraw;
+        if (weekResult.length < start || weekResult.length > end) return;
+
+        let multiplier = 0;
+        if (isNapPerm) {
+          (bet.under || []).forEach((u: number) => {
+            const columnIndex = prize.data.columns.findIndex((col: string) => col.toUpperCase() === `U${u}`);
+            if (columnIndex !== -1) {
+              const colVal = (prize.data.data?.[drawKey]?.[columnIndex] || 0) as number;
+              multiplier += colVal * calcAwardLine(bet.numbers || [], weekResult, u);
+            }
+          });
+        } else {
+          const awardLine = Object.keys(bet.numbers || {}).reduce((acc: number, gid: string) => {
+            const nums = (bet.numbers as any)?.[gid] || [];
+            const u = Number(gid.split("-")[0]);
+            return acc * calcAwardLine(nums, weekResult, u);
+          }, 1);
+
+          (bet.under || []).forEach((u: number) => {
+            const columnIndex = prize.data.columns.findIndex((col: string) => col.toUpperCase() === `U${u}`);
+            if (columnIndex !== -1) {
+              const colVal = (prize.data.data?.[drawKey]?.[columnIndex] || 0) as number;
+              multiplier += colVal;
+            }
+          });
+
+          multiplier *= awardLine;
+        }
+
+        award = multiplier * apl;
+      });
+
+      if (!bet.player) {
+        award *= prize?.commission ? prize.commission / 100 : 1;
+      }
+
+      if (!Number.isFinite(award)) return 0;
+      return award;
+    };
+
+    const updates = (bets || []).map((bet: any) => {
+      const prize = bet.prize_id ? prizeMap[bet.prize_id] : null;
+      const award = computeAward(bet, prize, validResult);
+      return { id: bet.id, award };
+    });
+
+    const nonNullUpdates = updates.filter((u) => Number.isFinite(u.award));
+    if (nonNullUpdates.length > 0) {
+      const updateChunks = chunkArray(nonNullUpdates, 50);
+      for (const chunk of updateChunks) {
+        const promises = chunk.map((u) =>
+          supabase
+            .from("bets_lotto")
+            .update({ award: u.award })
+            .eq("id", u.id)
+        );
+        const results = await Promise.all(promises);
+        const failed = results.find((r) => (r as any).error);
+        if (failed && (failed as any).error) {
+          console.error("Error updating awards:", (failed as any).error);
+          return NextResponse.json({ error: (failed as any).error.message }, { status: 500 });
+        }
+      }
+    }
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error setting lotto result:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
+}
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
 }

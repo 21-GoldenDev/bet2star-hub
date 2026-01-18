@@ -78,7 +78,7 @@ export default function SportsPage() {
 
   async function voidBet(betId: string) {
     try {
-      const response = await fetch(`/api/admin/bets/pools/void`, {
+      const response = await fetch(`/api/admin/bets/sports/void`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: betId }),
@@ -201,8 +201,8 @@ export default function SportsPage() {
             },
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(2) },
             {
-              key: "reward",
-              label: "Reward",
+              key: "award",
+              label: "Award",
               render: (value: number) => value ? value.toFixed(2) : "0.00"
             },
             { key: "terminal", label: "Terminal" },
