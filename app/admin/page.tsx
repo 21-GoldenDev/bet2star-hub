@@ -190,7 +190,7 @@ export default function AdminDashboard() {
             description="Agent commissions"
           />
           <StatCard
-            title="Winnings paid to Agents"
+            title="Winning for online users"
             value={
               <span className={stats.totalWinningsAmount < 0 ? "text-red-500" : ""}>
                 {stats.totalWinningsAmount < 0 ? "-" : ""}₦{Math.abs(stats.totalWinningsAmount).toLocaleString()}

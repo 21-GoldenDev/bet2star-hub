@@ -112,9 +112,9 @@ export async function GET(request: NextRequest) {
     const totalSalesAmount = allBets.reduce((sum, bet) => sum + (bet.staked || 0), 0);
 
     // Sum of awards (commission paid to agents)
-    const totalCommission = allBets.reduce((sum, bet) => sum + (bet.award || 0), 0);
+    const totalCommission = 0;
 
-    const totalWinningsAmount = 0;
+    const totalWinningsAmount = allBets.reduce((sum, bet) => sum + (bet.award || 0), 0);
 
     const balanceProfitOrLoss = totalSalesAmount - totalWinningsAmount - totalCommission;
 
