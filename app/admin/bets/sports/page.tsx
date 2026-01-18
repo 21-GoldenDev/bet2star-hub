@@ -5,6 +5,16 @@ import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Trash2, XCircle } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +42,8 @@ export default function SportsPage() {
   const [weekFilter, setWeekFilter] = useState<number | "">("");
   const [weeksAll, setWeeksAll] = useState<number[]>([]);
   const { toast } = useToast();
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [betToDelete, setBetToDelete] = useState<SportsBet | null>(null);
 
   useEffect(() => {
     async function fetchWeeks() {
@@ -104,16 +116,35 @@ export default function SportsPage() {
     }
   }
 
-  async function deleteBet(row: SportsBet) {
+  const openDeleteDialog = (row: SportsBet) => {
+    setBetToDelete(row);
+    setIsDeleteAlertOpen(true);
+  };
+
+  async function deleteBet() {
+    if (!betToDelete) return;
+
     try {
-      const response = await fetch(`/api/admin/bets/sports?id=${row.id}`, {
+      const response = await fetch(`/api/admin/bets/sports?id=${betToDelete.id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) throw new Error("Failed to delete");
-      setDataSports((d) => d.filter((b) => b.id !== row.id));
+      setDataSports((d) => d.filter((b) => b.id !== betToDelete.id));
+      toast({
+        title: "Success",
+        description: "Bet deleted successfully.",
+      });
     } catch (error) {
       console.error("Error deleting bet:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete bet. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteAlertOpen(false);
+      setBetToDelete(null);
     }
   }
 
@@ -216,13 +247,34 @@ export default function SportsPage() {
                   <XCircle className="w-4 h-4" />
                 </Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => deleteBet(row as SportsBet)}>
+              <Button variant="outline" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
           )}
         />
       </section>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the bet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteBet}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

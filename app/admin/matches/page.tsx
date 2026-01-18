@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -33,6 +43,8 @@ export default function MatchesPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
   const { toast } = useToast();
   const [formData, setFormData] = useState<{
     number: number;
@@ -185,11 +197,16 @@ export default function MatchesPage() {
     }
   };
 
-  const handleDelete = async (matchId: string) => {
-    if (!confirm("Are you sure you want to delete this match?")) return;
+  const openDeleteDialog = (matchId: string) => {
+    setMatchToDelete(matchId);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!matchToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/matches/${matchId}`, {
+      const response = await fetch(`/api/admin/matches/${matchToDelete}`, {
         method: "DELETE",
       });
 
@@ -215,6 +232,9 @@ export default function MatchesPage() {
         description: "Failed to delete match",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleteAlertOpen(false);
+      setMatchToDelete(null);
     }
   };
 
@@ -463,7 +483,7 @@ export default function MatchesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleDelete(match.id)}
+                onClick={() => openDeleteDialog(match.id)}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -570,6 +590,29 @@ export default function MatchesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the match.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={submitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -87,6 +97,8 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -152,10 +164,17 @@ export default function UsersPage() {
     }
   };
 
-  const handleDelete = (userId: number) => {
-    if (confirm("Are you sure you want to delete this user?")) {
-      setUsers(users.filter((u) => u.id !== userId));
-    }
+  const openDeleteDialog = (userId: number) => {
+    setUserToDelete(userId);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleDelete = () => {
+    if (userToDelete === null) return;
+
+    setUsers(users.filter((u) => u.id !== userToDelete));
+    setIsDeleteAlertOpen(false);
+    setUserToDelete(null);
   };
 
   return (
@@ -271,7 +290,7 @@ export default function UsersPage() {
                 <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDelete(user.id)}>
+                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(user.id)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -290,7 +309,7 @@ export default function UsersPage() {
                 <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDelete(user.id)}>
+                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(user.id)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -309,7 +328,7 @@ export default function UsersPage() {
                 <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDelete(user.id)}>
+                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(user.id)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -395,6 +414,27 @@ export default function UsersPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user account.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

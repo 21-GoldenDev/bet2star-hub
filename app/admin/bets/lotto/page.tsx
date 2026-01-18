@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { DateRange } from "react-day-picker";
 import { Trash2, XCircle } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
@@ -26,6 +36,8 @@ export default function LottoPage() {
   const [allData, setAllData] = useState<LottoBet[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeksAll, setWeeksAll] = useState<Game[]>([]);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [betToDelete, setBetToDelete] = useState<LottoBet | null>(null);
 
   // Unified filters
   const [weekFilter, setWeekFilter] = useState<string | undefined>(undefined);
@@ -143,9 +155,16 @@ export default function LottoPage() {
       });
   }, [allData, weekFilter, gameFilter, rangeFilter]);
 
-  async function deleteBet(row: LottoBet) {
+  const openDeleteDialog = (row: LottoBet) => {
+    setBetToDelete(row);
+    setIsDeleteAlertOpen(true);
+  };
+
+  async function deleteBet() {
+    if (!betToDelete) return;
+
     try {
-      const response = await fetch(`/api/admin/bets/lotto/${row.id}`, {
+      const response = await fetch(`/api/admin/bets/lotto/${betToDelete.id}`, {
         method: "DELETE",
       });
 
@@ -153,7 +172,7 @@ export default function LottoPage() {
         throw new Error("Failed to delete bet");
       }
 
-      setAllData((prev) => prev.filter((b) => b.id !== row.id));
+      setAllData((prev) => prev.filter((b) => b.id !== betToDelete.id));
 
       toast({
         title: "Success",
@@ -166,6 +185,9 @@ export default function LottoPage() {
         description: "Failed to delete bet. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleteAlertOpen(false);
+      setBetToDelete(null);
     }
   }
 
@@ -394,13 +416,34 @@ export default function LottoPage() {
                   <XCircle className="w-4 h-4" />
                 </Button>
               )}
-              <Button variant="outline" title="Delete bet" size="sm" onClick={() => deleteBet(row)}>
+              <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
           )}
         />
       </section>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the bet.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteBet}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

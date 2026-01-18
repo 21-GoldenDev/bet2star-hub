@@ -12,6 +12,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GameType } from "@/lib/types/gameMode";
@@ -60,6 +70,8 @@ export default function GamesPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+  const [gameToDelete, setGameToDelete] = useState<string | null>(null);
   const { toast } = useToast();
   const [formData, setFormData] = useState<{
     week: number;
@@ -213,11 +225,16 @@ export default function GamesPage() {
     }
   };
 
-  const handleDelete = async (gameId: string) => {
-    if (!confirm("Are you sure you want to delete this game?")) return;
+  const openDeleteDialog = (gameId: string) => {
+    setGameToDelete(gameId);
+    setIsDeleteAlertOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!gameToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/games/${gameId}`, {
+      const response = await fetch(`/api/admin/games/${gameToDelete}`, {
         method: "DELETE",
       });
 
@@ -243,6 +260,9 @@ export default function GamesPage() {
         description: "Failed to delete game",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleteAlertOpen(false);
+      setGameToDelete(null);
     }
   };
 
@@ -453,7 +473,7 @@ export default function GamesPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleDelete(game.id)}
+                onClick={() => openDeleteDialog(game.id)}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -540,6 +560,29 @@ export default function GamesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the game.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={submitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

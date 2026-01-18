@@ -13,6 +13,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,6 +68,10 @@ export default function GameSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
+  const [isPrizeDeleteAlertOpen, setIsPrizeDeleteAlertOpen] = useState(false);
+  const [prizeToDelete, setPrizeToDelete] = useState<string | null>(null);
+  const [isMatchDeleteAlertOpen, setIsMatchDeleteAlertOpen] = useState(false);
+  const [matchToDelete, setMatchToDelete] = useState<SportsMatch | null>(null);
   const { toast } = useToast();
 
   // Sports state
@@ -350,11 +364,16 @@ export default function GameSettingsPage() {
     }
   };
 
-  const handleDelete = async (gamePrizeId: string) => {
-    if (!confirm("Are you sure you want to remove this prize from the game?")) return;
+  const openPrizeDeleteDialog = (gamePrizeId: string) => {
+    setPrizeToDelete(gamePrizeId);
+    setIsPrizeDeleteAlertOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!prizeToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/games/${gameId}/prizes/${gamePrizeId}`, {
+      const response = await fetch(`/api/admin/games/${gameId}/prizes/${prizeToDelete}`, {
         method: "DELETE",
       });
 
@@ -380,6 +399,9 @@ export default function GameSettingsPage() {
         description: "Failed to remove prize",
         variant: "destructive",
       });
+    } finally {
+      setIsPrizeDeleteAlertOpen(false);
+      setPrizeToDelete(null);
     }
   };
 
@@ -493,10 +515,16 @@ export default function GameSettingsPage() {
     }
   };
 
-  const deleteSportsMatch = async (row: SportsMatch) => {
-    if (!confirm("Delete this match?")) return;
+  const openMatchDeleteDialog = (row: SportsMatch) => {
+    setMatchToDelete(row);
+    setIsMatchDeleteAlertOpen(true);
+  };
+
+  const deleteSportsMatch = async () => {
+    if (!matchToDelete) return;
+
     try {
-      const res = await fetch(`/api/admin/games/${gameId}/sports/${row.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/games/${gameId}/sports/${matchToDelete.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete match");
       toast({ title: "Deleted", description: "Match removed" });
@@ -504,6 +532,9 @@ export default function GameSettingsPage() {
     } catch (e) {
       console.error(e);
       toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to delete match", variant: "destructive" });
+    } finally {
+      setIsMatchDeleteAlertOpen(false);
+      setMatchToDelete(null);
     }
   };
   // Handler for updating week results (lotto/pools) similar to admin bets pages
@@ -997,7 +1028,7 @@ export default function GameSettingsPage() {
                       <Button variant="outline" size="sm" onClick={() => startInlineEdit(row as SportsMatch)} title="Edit">
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => deleteSportsMatch(row as SportsMatch)} title="Delete">
+                      <Button variant="outline" size="sm" onClick={() => openMatchDeleteDialog(row as SportsMatch)} title="Delete">
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </>
@@ -1052,7 +1083,7 @@ export default function GameSettingsPage() {
                   <Button variant="outline" size="sm" onClick={() => handleEdit(gamePrize)}>
                     <Edit2 className="w-4 h-4" />
                   </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleDelete(gamePrize.id)}>
+                  <Button variant="outline" size="sm" onClick={() => openPrizeDeleteDialog(gamePrize.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
@@ -1138,6 +1169,48 @@ export default function GameSettingsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Prize Delete Confirmation Dialog */}
+      <AlertDialog open={isPrizeDeleteAlertOpen} onOpenChange={setIsPrizeDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently remove the prize from this game.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Sports Match Delete Confirmation Dialog */}
+      <AlertDialog open={isMatchDeleteAlertOpen} onOpenChange={setIsMatchDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the match.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteSportsMatch}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
