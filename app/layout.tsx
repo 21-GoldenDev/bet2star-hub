@@ -31,7 +31,7 @@ export default function RootLayout({
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </head>
       <body className={clsx(geistSans.variable, geistMono.variable, "antialiased")}>
-        <div className="dark min-h-screen bg-background">
+        <div className="min-h-screen bg-background">
           <Navbar />
           <Providers>
             {children}

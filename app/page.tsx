@@ -13,8 +13,8 @@ const Home = () => {
       <section className="relative pt-32 pb-20 px-4 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-linear-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
-        <div className="absolute top-40 right-1/4 w-72 h-72 bg-secondary/10 rounded-full blur-3xl" />
+        <div className="absolute top-20 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute top-40 right-1/4 w-72 h-72 bg-secondary/5 rounded-full blur-3xl" />
 
         <div className="container mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto">
@@ -24,7 +24,7 @@ const Home = () => {
             </div>
             <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 animate-slide-up" style={{ animationDelay: "100ms" }}>
               Experience Premium{" "}
-              <span className="bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/70">
+              <span className="bg-clip-text text-transparent bg-linear-to-r from-primary via-primary to-amber-500">
                 Betting
               </span>
             </h1>
@@ -85,7 +85,7 @@ const Home = () => {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 px-4 bg-linear-to-b from-muted/50 to-transparent">
+      <section className="py-20 px-4 bg-linear-to-b from-muted/30 to-transparent">
         <div className="container mx-auto">
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="text-center p-6 rounded-2xl bg-card/50 border border-border/50 animate-slide-up">
