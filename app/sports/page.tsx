@@ -24,6 +24,9 @@ interface Match {
   time?: string;
   isLive?: boolean;
   prizes: number[]; // [H, D, A, 1X, 12, O25, U25, GG]
+  status?: "active" | "void";
+  start_time?: string;
+  end_time?: string;
 }
 
 type BetSelection = { matchId: string; matchNumber: number; option: BetOptionKey; odds: number };
@@ -85,6 +88,9 @@ const Football = () => {
           homeTeam: m.home,
           awayTeam: m.away,
           prizes: m.prizes,
+          status: m.status,
+          start_time: m.start_time,
+          end_time: m.end_time,
         }));
 
         setMatches(formattedMatches);
@@ -99,6 +105,14 @@ const Football = () => {
       if (interval) clearInterval(interval);
     };
   }, []);
+
+  const isMatchLive = (startTime?: string, endTime?: string): boolean => {
+    if (!startTime || !endTime) return false;
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    return now >= start && now <= end;
+  };
 
   const optionLabels: Record<BetOptionKey, string> = {
     H: "1",
@@ -337,7 +351,7 @@ const Football = () => {
                                   <TableHeader>
                                     <TableRow>
                                       <TableHead></TableHead>
-                                      <TableHead></TableHead>
+                                      <TableHead className="text-center p-1">Time</TableHead>
                                       {["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"].map((key) => (
                                         <TableHead key={key} className="text-center p-1">
                                           {optionLabels[key as BetOptionKey]}
@@ -360,15 +374,30 @@ const Football = () => {
                                             </div>
                                           </TableCell>
                                           <TableCell className="p-1 border border-border">
-                                            <div className="flex justify-center">
-                                              {match.isLive ? (
+                                            <div className="flex flex-col items-center justify-center gap-1 text-[10px] text-muted-foreground">
+                                              {isMatchLive(match.start_time, match.end_time) ? (
                                                 <span className="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-medium">
                                                   <Zap className="w-3 h-3" /> LIVE
                                                 </span>
                                               ) : (
-                                                <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                                                  <Clock className="w-3 h-3" /> {match.time || "TBD"}
-                                                </span>
+                                                <>
+                                                  {match.start_time && (
+                                                    <div className="flex items-center gap-1">
+                                                      <Clock className="w-3 h-3" />
+                                                      <span>{new Date(match.start_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                  )}
+                                                  {match.end_time && (
+                                                    <div className="text-[9px]">
+                                                      End: {new Date(match.end_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                  )}
+                                                  {!match.start_time && !match.end_time && (
+                                                    <span className="flex items-center gap-1">
+                                                      <Clock className="w-3 h-3" /> TBD
+                                                    </span>
+                                                  )}
+                                                </>
                                               )}
                                             </div>
                                           </TableCell>

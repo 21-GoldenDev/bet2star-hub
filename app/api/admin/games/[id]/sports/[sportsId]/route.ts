@@ -18,7 +18,7 @@ export async function PUT(
   try {
     const { id, sportsId } = await params;
     const body = await request.json();
-    const { league, number, home, away, home_goal, away_goal, prizes, status } = body ?? {};
+    const { league, number, home, away, home_goal, away_goal, prizes, status, start_time, end_time } = body ?? {};
 
     const updateData: Record<string, any> = {};
     if (league !== undefined) updateData.league = league;
@@ -35,6 +35,8 @@ export async function PUT(
     if (status !== undefined) {
       updateData.status = status === "void" ? "void" : "active";
     }
+    if (start_time !== undefined) updateData.start_time = start_time;
+    if (end_time !== undefined) updateData.end_time = end_time;
 
     const { data, error } = await supabase
       .from("sports")

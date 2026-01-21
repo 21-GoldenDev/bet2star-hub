@@ -41,7 +41,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { league, number, home, away, prizes, status } = body ?? {};
+    const { league, number, home, away, prizes, status, start_time, end_time } = body ?? {};
 
     if (!league || number === undefined || !home || !away) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -62,6 +62,8 @@ export async function POST(
           away,
           prizes: prizesArray,
           status: status === "void" ? "void" : "active",
+          start_time,
+          end_time,
         },
       ])
       .select()
