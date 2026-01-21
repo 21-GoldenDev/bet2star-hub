@@ -125,6 +125,7 @@ export default function UsersPage() {
               ? "destructive"
               : "secondary"
           }
+          className="capitalize"
         >
           {status}
         </Badge>

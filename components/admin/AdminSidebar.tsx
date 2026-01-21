@@ -66,7 +66,7 @@ export default function AdminSidebar() {
       {/* Sidebar */}
       <aside
         className={clsx(
-          "fixed left-0 top-0 h-screen w-64 bg-sidebar-background border-r border-sidebar-border shadow-lg transition-transform duration-300 z-40",
+          "dark fixed left-0 top-0 h-screen w-64 bg-sidebar-background border-r border-sidebar-border shadow-lg transition-transform duration-300 z-40",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
