@@ -383,8 +383,7 @@ const Football = () => {
                                                 <>
                                                   {match.start_time && (
                                                     <div className="flex items-center gap-1">
-                                                      <Clock className="w-3 h-3" />
-                                                      <span>{new Date(match.start_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                      Start: {new Date(match.start_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                   )}
                                                   {match.end_time && (

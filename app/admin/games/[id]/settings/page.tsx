@@ -713,7 +713,7 @@ export default function GameSettingsPage() {
                     Add Match
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="sm:max-w-125 max-h-screen overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Add Match</DialogTitle>
                   </DialogHeader>
