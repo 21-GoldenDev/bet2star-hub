@@ -13,6 +13,7 @@ import { Game } from "@/lib/types/game";
 import { SportsMatch } from "@/lib/types/sports";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
+import { calculateBetReward } from "@/lib/helpers";
 
 type BetOptionKey = "H" | "D" | "A" | "1X" | "12" | "X2" | "O25" | "U25" | "GG";
 
@@ -159,54 +160,54 @@ const Football = () => {
     return factorial(n) / (factorial(r) * factorial(n - r));
   };
 
-  const generateCombinations = (arr: number[], r: number): number[][] => {
-    const result: number[][] = [];
-    const helper = (start: number, combo: number[]) => {
-      if (combo.length === r) {
-        result.push([...combo]);
-        return;
-      }
-      for (let i = start; i < arr.length; i++) {
-        combo.push(arr[i]);
-        helper(i + 1, combo);
-        combo.pop();
-      }
-    };
-    helper(0, []);
+  const generateCombinations = (array: any[], length: number): any[][] => {
+    if (length === 0) return [[]];
+    if (length > array.length) return [];
+    if (length === 1) return array.map(item => [item]);
+
+    const result: any[][] = [];
+    for (let i = 0; i <= array.length - length; i++) {
+      const head = array[i];
+      const tail = generateCombinations(array.slice(i + 1), length - 1);
+      result.push(...tail.map(combination => [head, ...combination]));
+    }
     return result;
-  };
+  }
 
   const calculatePermutationWinnings = () => {
     if (selectedBets.length === 0 || matchAtLeast.length === 0 || betAmount <= 0) {
       return null;
     }
 
-    const numLines = combination(selectedBets.length, matchAtLeast[0]);
+    const numLines = matchAtLeast.reduce((acc, val) => acc + combination(selectedBets.length, val), 0);
     if (numLines === 0) return null;
 
     const apl = betAmount / numLines;
-    const indices = selectedBets.map((_, i) => i);
     const allWinnings: number[] = [];
 
+    const selections: Record<number, number[]> = {};
+    selectedBets.forEach((bet) => {
+      if (!selections[bet.matchNumber]) {
+        selections[bet.matchNumber] = [];
+      }
+      selections[bet.matchNumber].push(bet.odds);
+    });
+    const odds = Object.values(selections).map(bet => bet.reduce((a, b) => a * b, 1));
+
     for (let winCount of matchAtLeast) {
-      if (winCount > selectedBets.length) continue;
+      if (winCount > odds.length) continue;
 
-      const winCombinations = generateCombinations(indices, winCount);
+      const combinations = generateCombinations(odds, winCount);
 
-      for (const winIndices of winCombinations) {
-        let lineWinning = apl;
-        for (const idx of winIndices) {
-          lineWinning *= selectedBets[idx].odds;
-        }
-        allWinnings.push(lineWinning);
+      for (const combo of combinations) {
+        const product = combo.reduce((acc, val) => acc * val, 1);
+        allWinnings.push(product * apl);
       }
     }
 
-    if (allWinnings.length === 0) return null;
-
     return {
       min: Math.min(...allWinnings),
-      max: Math.max(...allWinnings),
+      max: allWinnings.reduce((a, b) => a + b, 0),
       numLines,
     };
   };
