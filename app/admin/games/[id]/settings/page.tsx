@@ -51,8 +51,34 @@ interface GamePrizeWithInfo extends GamePrize {
   prize_name?: string;
 }
 
+interface MatchInfo {
+  league: string;
+  number: number;
+  home: string;
+  away: string;
+  prizes: number[];
+  status: "active" | "void";
+  start_time?: string;
+  end_time?: string;
+}
+
+interface MatchEditInfo extends MatchInfo {
+  home_goal: number;
+  away_goal: number;
+}
+
 const PRIZE_LABELS = ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
 const EMPTY_PRIZES = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+const DEFAULT_MATCH = {
+  league: "",
+  number: 1,
+  home: "",
+  away: "",
+  prizes: [...EMPTY_PRIZES],
+  status: "active" as "active" | "void",
+  start_time: "",
+  end_time: "",
+};
 
 export default function GameSettingsPage() {
   const router = useRouter();
@@ -79,24 +105,8 @@ export default function GameSettingsPage() {
   const [stats, setStats] = useState<{ totalBetAmount: number; totalReward: number }>({ totalBetAmount: 0, totalReward: 0 });
   const [isAddSportsOpen, setIsAddSportsOpen] = useState(false);
   const [editingSportsId, setEditingSportsId] = useState<string | null>(null);
-  const [sportsForm, setSportsForm] = useState<{
-    league: string;
-    number: number;
-    home: string;
-    away: string;
-    prizes: number[];
-    status: "active" | "void";
-  }>({ league: "", number: 1, home: "", away: "", prizes: [...EMPTY_PRIZES], status: "active" });
-  const [editRowForm, setEditRowForm] = useState<{
-    league: string;
-    number: number;
-    home: string;
-    away: string;
-    home_goal: number;
-    away_goal: number;
-    prizes: number[];
-    status: "active" | "void";
-  }>({ league: "", number: 1, home: "", away: "", home_goal: 0, away_goal: 0, prizes: [...EMPTY_PRIZES], status: "active" });
+  const [sportsForm, setSportsForm] = useState<MatchInfo>(DEFAULT_MATCH);
+  const [editRowForm, setEditRowForm] = useState<MatchEditInfo>({ ...DEFAULT_MATCH, home_goal: 0, away_goal: 0 });
   // Result update state for lotto/pools
   const [weekResult, setWeekResult] = useState<Array<number | string>>([]);
 
@@ -407,8 +417,17 @@ export default function GameSettingsPage() {
 
   // Sports handlers
   const handleOpenAddSports = () => {
-    setSportsForm({ league: "", number: sports.length + 1, home: "", away: "", prizes: [...EMPTY_PRIZES], status: "active" });
+    setSportsForm({ ...DEFAULT_MATCH, number: Math.max(...sports.map(s => s.number)) + 1 });
     setIsAddSportsOpen(true);
+  };
+
+  const formatDateTimeLocal = (value?: string) => {
+    if (!value) return "";
+    const date = new Date(value);
+    if (isNaN(date.getTime())) return "";
+    const offset = date.getTimezoneOffset();
+    const local = new Date(date.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
   };
 
   const addSportsMatch = async () => {
@@ -418,6 +437,8 @@ export default function GameSettingsPage() {
     }
     try {
       setSubmitting(true);
+      const startIso = sportsForm.start_time ? new Date(sportsForm.start_time).toISOString() : null;
+      const endIso = sportsForm.end_time ? new Date(sportsForm.end_time).toISOString() : null;
       const res = await fetch(`/api/admin/games/${gameId}/sports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -425,6 +446,8 @@ export default function GameSettingsPage() {
           ...sportsForm,
           prizes: sportsForm.prizes,
           status: sportsForm.status || "active",
+          start_time: startIso,
+          end_time: endIso,
         }),
       });
       const data = await res.json();
@@ -451,6 +474,8 @@ export default function GameSettingsPage() {
       away_goal: row.away_goal ?? 0,
       prizes: Array.isArray(row.prizes) && row.prizes.length === PRIZE_LABELS.length ? [...row.prizes] : [...EMPTY_PRIZES],
       status: (row as any).status ?? "active",
+      start_time: row.start_time ?? "",
+      end_time: row.end_time ?? "",
     });
   };
 
@@ -462,6 +487,8 @@ export default function GameSettingsPage() {
     if (!editingSportsId) return;
     try {
       setSubmitting(true);
+      const startIso = editRowForm.start_time ? new Date(editRowForm.start_time).toISOString() : null;
+      const endIso = editRowForm.end_time ? new Date(editRowForm.end_time).toISOString() : null;
       const res = await fetch(`/api/admin/games/${gameId}/sports/${editingSportsId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -474,6 +501,8 @@ export default function GameSettingsPage() {
           away_goal: editRowForm.away_goal,
           prizes: editRowForm.prizes,
           status: editRowForm.status,
+          start_time: startIso,
+          end_time: endIso,
         }),
       });
       const data = await res.json();
@@ -493,6 +522,8 @@ export default function GameSettingsPage() {
               away_goal: editRowForm.away_goal,
               prizes: editRowForm.prizes,
               status: editRowForm.status,
+              start_time: startIso ?? "",
+              end_time: endIso ?? "",
             }
             : m
         )
@@ -722,33 +753,55 @@ export default function GameSettingsPage() {
                       <Label>League</Label>
                       <Input value={sportsForm.league} onChange={(e) => setSportsForm({ ...sportsForm, league: e.target.value })} />
                     </div>
-                    <div>
-                      <Label>Status</Label>
-                      <Select value={sportsForm.status} onValueChange={(value) => setSportsForm({ ...sportsForm, status: value as "active" | "void" })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="void">Void</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label>Number</Label>
+                        <Input type="number" min="1" value={sportsForm.number} onChange={(e) => setSportsForm({ ...sportsForm, number: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <Label>Status</Label>
+                        <Select value={sportsForm.status} onValueChange={(value) => setSportsForm({ ...sportsForm, status: value as "active" | "void" })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="void">Void</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Number</Label>
-                      <Input type="number" min="1" value={sportsForm.number} onChange={(e) => setSportsForm({ ...sportsForm, number: Number(e.target.value) })} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <Label>Start Time</Label>
+                        <Input
+                          type="datetime-local"
+                          value={formatDateTimeLocal(sportsForm.start_time)}
+                          onChange={(e) => setSportsForm({ ...sportsForm, start_time: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label>End Time</Label>
+                        <Input
+                          type="datetime-local"
+                          value={formatDateTimeLocal(sportsForm.end_time)}
+                          onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <Label>Home Team</Label>
-                      <Input value={sportsForm.home} onChange={(e) => setSportsForm({ ...sportsForm, home: e.target.value })} />
-                    </div>
-                    <div>
-                      <Label>Away Team</Label>
-                      <Input value={sportsForm.away} onChange={(e) => setSportsForm({ ...sportsForm, away: e.target.value })} />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label>Home Team</Label>
+                        <Input value={sportsForm.home} onChange={(e) => setSportsForm({ ...sportsForm, home: e.target.value })} />
+                      </div>
+                      <div>
+                        <Label>Away Team</Label>
+                        <Input value={sportsForm.away} onChange={(e) => setSportsForm({ ...sportsForm, away: e.target.value })} />
+                      </div>
                     </div>
                     <div>
                       <Label>Prizes</Label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {PRIZE_LABELS.map((label, idx) => (
                           <div key={label} className="flex items-center gap-2">
                             <span className="w-24 text-sm text-muted-foreground">{label}</span>
@@ -868,174 +921,202 @@ export default function GameSettingsPage() {
               </Button>
             </Card>
           ) : (
-            <DataTable<SportsMatch>
-              columns={[
-                {
-                  key: "number",
-                  label: "#",
-                  sortable: true,
-                  render: (_: any, row: SportsMatch) => (
-                    editingSportsId === row.id ? (
-                      <Input
-                        type="number"
-                        min="1"
-                        className="h-9 w-15"
-                        value={editRowForm.number}
-                        onChange={(e) => setEditRowForm({ ...editRowForm, number: Number(e.target.value) })}
-                      />
-                    ) : (
-                      <span>{row.number}</span>
-                    )
-                  ),
-                },
-                {
-                  key: "league",
-                  label: "League",
-                  sortable: true,
-                  render: (_: any, row: SportsMatch) => (
-                    editingSportsId === row.id ? (
-                      <Input
-                        className="h-9"
-                        value={editRowForm.league}
-                        onChange={(e) => setEditRowForm({ ...editRowForm, league: e.target.value })}
-                      />
-                    ) : (
-                      <span>{row.league}</span>
-                    )
-                  ),
-                },
-                {
-                  key: "home",
-                  label: "Fixture",
-                  render: (_: any, row: SportsMatch) => (
-                    editingSportsId === row.id ? (
-                      <div className="flex flex-col gap-2">
+            <div className="space-y-4">
+              {sports.map((match) => (
+                <Card key={match.id} className="p-4">
+                  {editingSportsId === match.id ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Number</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            className="h-9"
+                            value={editRowForm.number}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, number: Number(e.target.value) })}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Status</Label>
+                          <Select value={editRowForm.status} onValueChange={(value) => setEditRowForm({ ...editRowForm, status: value as "active" | "void" })}>
+                            <SelectTrigger className="h-9">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="void">Void</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">League</Label>
                         <Input
                           className="h-9"
-                          value={editRowForm.home}
-                          onChange={(e) => setEditRowForm({ ...editRowForm, home: e.target.value })}
-                        />
-                        <Input
-                          className="h-9"
-                          value={editRowForm.away}
-                          onChange={(e) => setEditRowForm({ ...editRowForm, away: e.target.value })}
+                          value={editRowForm.league}
+                          onChange={(e) => setEditRowForm({ ...editRowForm, league: e.target.value })}
                         />
                       </div>
-                    ) : (
-                      <span className="font-medium">{row.home} vs {row.away}</span>
-                    )
-                  ),
-                },
-                {
-                  key: "home_goal",
-                  label: "Score",
-                  render: (_: any, row: SportsMatch) => (
-                    editingSportsId === row.id ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          className="h-9 w-15"
-                          value={editRowForm.home_goal}
-                          onChange={(e) => setEditRowForm({ ...editRowForm, home_goal: Math.max(0, Number(e.target.value)) })}
-                        />
-                        <span>-</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          className="h-9 w-15"
-                          value={editRowForm.away_goal}
-                          onChange={(e) => setEditRowForm({ ...editRowForm, away_goal: Math.max(0, Number(e.target.value)) })}
-                        />
+                      <div className="space-y-2">
+                        <Label className="text-xs">Teams</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input
+                            placeholder="Home Team"
+                            className="h-9"
+                            value={editRowForm.home}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, home: e.target.value })}
+                          />
+                          <Input
+                            placeholder="Away Team"
+                            className="h-9"
+                            value={editRowForm.away}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, away: e.target.value })}
+                          />
+                        </div>
                       </div>
-                    ) : (
-                      <span>{(row.home_goal ?? 0)} - {(row.away_goal ?? 0)}</span>
-                    )
-                  ),
-                },
-                {
-                  key: "status",
-                  label: "Status",
-                  sortable: true,
-                  render: (_: any, row: SportsMatch) => (
-                    editingSportsId === row.id ? (
-                      <Select value={editRowForm.status} onValueChange={(value) => setEditRowForm({ ...editRowForm, status: value as "active" | "void" })}>
-                        <SelectTrigger className="h-9 w-28">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="void">Void</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Badge variant={(row as any).status === "void" ? "secondary" : "default"} className="capitalize">{(row as any).status ?? "active"}</Badge>
-                    )
-                  ),
-                },
-                {
-                  key: "prizes",
-                  label: "Prizes",
-                  render: (_: any, row: SportsMatch) => (
-                    editingSportsId === row.id ? (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
-                        {PRIZE_LABELS.map((label, idx) => (
-                          <div key={label} className="flex items-center gap-2">
-                            <span className="w-20 text-muted-foreground">{label}</span>
-                            <Input
-                              type="number"
-                              min="0"
-                              className="h-9"
-                              value={editRowForm.prizes[idx] ?? 0}
-                              onChange={(e) => {
-                                const value = Math.max(0, Number(e.target.value));
-                                const updated = [...editRowForm.prizes];
-                                updated[idx] = value;
-                                setEditRowForm({ ...editRowForm, prizes: updated });
-                              }}
-                            />
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Start Time</Label>
+                          <Input
+                            type="datetime-local"
+                            className="h-9 text-xs"
+                            value={formatDateTimeLocal(editRowForm.start_time)}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, start_time: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">End Time</Label>
+                          <Input
+                            type="datetime-local"
+                            className="h-9 text-xs"
+                            value={formatDateTimeLocal(editRowForm.end_time)}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, end_time: e.target.value })}
+                          />
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                        {PRIZE_LABELS.map((label, idx) => (
-                          <span key={label} className="rounded border px-2 py-1 bg-muted/50">
-                            {label}: {row.prizes?.[idx] ?? 0}
-                          </span>
-                        ))}
+                      <div>
+                        <Label className="text-xs">Score</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-9"
+                            placeholder="Home"
+                            value={editRowForm.home_goal}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, home_goal: Math.max(0, Number(e.target.value)) })}
+                          />
+                          <span>-</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            className="h-9"
+                            placeholder="Away"
+                            value={editRowForm.away_goal}
+                            onChange={(e) => setEditRowForm({ ...editRowForm, away_goal: Math.max(0, Number(e.target.value)) })}
+                          />
+                        </div>
                       </div>
-                    )
-                  ),
-                },
-              ]}
-              data={sports}
-              searchKey="league"
-              searchPlaceholder="Search by league..."
-              actions={(row) => (
-                <div className="flex gap-2">
-                  {editingSportsId === (row as SportsMatch).id ? (
-                    <>
-                      <Button size="sm" onClick={saveInlineEdit} disabled={submitting}>
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={cancelInlineEdit} disabled={submitting}>
-                        Cancel
-                      </Button>
-                    </>
+                      <div>
+                        <Label className="text-xs mb-2 block">Prizes</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
+                          {PRIZE_LABELS.map((label, idx) => (
+                            <div key={label} className="flex items-center gap-2">
+                              <span className="w-16 text-xs text-muted-foreground">{label}</span>
+                              <Input
+                                type="number"
+                                min="0"
+                                className="h-9 text-xs"
+                                value={editRowForm.prizes[idx] ?? 0}
+                                onChange={(e) => {
+                                  const value = Math.max(0, Number(e.target.value));
+                                  const updated = [...editRowForm.prizes];
+                                  updated[idx] = value;
+                                  setEditRowForm({ ...editRowForm, prizes: updated });
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1" onClick={saveInlineEdit} disabled={submitting}>
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1" onClick={cancelInlineEdit} disabled={submitting}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => startInlineEdit(row as SportsMatch)} title="Edit">
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => openMatchDeleteDialog(row as SportsMatch)} title="Delete">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </>
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Badge variant="outline" className="text-sm font-bold px-2.5 py-0.5 bg-primary/10 border-primary/30">
+                              #{match.number}
+                            </Badge>
+                            <Badge 
+                              variant={(match as any).status === "void" ? "secondary" : "default"} 
+                              className={`text-xs font-semibold px-2.5 py-0.5 capitalize ${
+                                (match as any).status === "void" 
+                                  ? "bg-gray-500" 
+                                  : "bg-green-600 hover:bg-green-700"
+                              }`}
+                            >
+                              {(match as any).status ?? "active"}
+                            </Badge>
+                            <span className="text-xs font-medium text-primary/80 truncate">{match.league}</span>
+                          </div>
+                          <div className="bg-linear-to-r from-primary/5 to-transparent rounded px-2 py-1.5 mb-1.5">
+                            <p className="font-bold text-sm truncate">{match.home} <span className="text-primary font-extrabold mx-1">vs</span> {match.away}</p>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="font-semibold text-nowrap">Score: <span className="text-primary font-bold">{(match.home_goal ?? 0)} - {(match.away_goal ?? 0)}</span></span>
+                            <span>Start: {match.start_time ? new Date(match.start_time).toLocaleString('en-NG', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : "-"}</span>
+                            <span>End: {match.end_time ? new Date(match.end_time).toLocaleString('en-NG', { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : "-"}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => startInlineEdit(match)}
+                            className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => openMatchDeleteDialog(match)}
+                            className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="pt-1.5 border-t border-black/10">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-bold text-foreground">Betting Odds</span>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-9 gap-1.5">
+                          {PRIZE_LABELS.map((label, idx) => (
+                            <div 
+                              key={label} 
+                              className="bg-linear-to-br from-primary/10 to-primary/5 rounded px-2 py-1 border border-primary/20 flex items-center justify-between"
+                            >
+                              <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                              <span className="text-sm font-bold text-primary">{match.prizes?.[idx] ?? 0}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </div>
-              )}
-            />
+                </Card>
+              ))}
+            </div>
           )
         ) : (
           gamePrizes.length === 0 ? (
