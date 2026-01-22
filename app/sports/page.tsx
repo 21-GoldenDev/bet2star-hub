@@ -129,9 +129,15 @@ const Football = () => {
   };
 
   const toggleBet = (matchId: string, matchNumber: number, option: BetOptionKey, odds: number) => {
-    const exists = selectedBets.some((b) => b.matchId === matchId && b.option === option);
-    if (exists) {
+    const matchExists = selectedBets.some((b) => b.matchId === matchId);
+    const optionExists = selectedBets.some((b) => b.matchId === matchId && b.option === option);
+
+    if (optionExists) {
       setSelectedBets((prev) => prev.filter((b) => !(b.matchId === matchId && b.option === option)));
+    } else if (matchExists) {
+      setSelectedBets((prev) =>
+        prev.map((b) => (b.matchId === matchId ? { matchId, matchNumber, option, odds } : b))
+      );
     } else {
       setSelectedBets((prev) => [...prev, { matchId, matchNumber, option, odds }]);
     }
@@ -194,7 +200,7 @@ const Football = () => {
           betAmount,
           betData: {
             selections,
-            under: mode === "direct" ? [3] : matchAtLeast,
+            under: mode === "direct" ? [selectedBets.length] : matchAtLeast,
             mode,
           },
         }),

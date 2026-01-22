@@ -161,8 +161,8 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
     throw new Error('For permutation mode, "under" must be a non-empty array');
   }
 
-  if (mode === 'direct' && (!Array.isArray(under) || under.length !== 1 || under[0] != 3)) {
-    throw new Error('For direct mode, "under" must be an array with a single element equal to 3');
+  if (mode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
+    throw new Error('For direct mode, "under" must be an array with a single value');
   }
 
   const { data: existingBets, error: countError } = await supabase
