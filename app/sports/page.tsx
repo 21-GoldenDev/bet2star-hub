@@ -149,6 +149,70 @@ const Football = () => {
 
   const totalOdds = selectedBets.reduce((acc, bet) => acc * bet.odds, 1);
 
+  const factorial = (n: number): number => {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+  };
+
+  const combination = (n: number, r: number): number => {
+    if (r > n) return 0;
+    return factorial(n) / (factorial(r) * factorial(n - r));
+  };
+
+  const generateCombinations = (arr: number[], r: number): number[][] => {
+    const result: number[][] = [];
+    const helper = (start: number, combo: number[]) => {
+      if (combo.length === r) {
+        result.push([...combo]);
+        return;
+      }
+      for (let i = start; i < arr.length; i++) {
+        combo.push(arr[i]);
+        helper(i + 1, combo);
+        combo.pop();
+      }
+    };
+    helper(0, []);
+    return result;
+  };
+
+  const calculatePermutationWinnings = () => {
+    if (selectedBets.length === 0 || matchAtLeast.length === 0 || betAmount <= 0) {
+      return null;
+    }
+
+    const numLines = combination(selectedBets.length, matchAtLeast[0]);
+    if (numLines === 0) return null;
+
+    const apl = betAmount / numLines;
+    const indices = selectedBets.map((_, i) => i);
+    const allWinnings: number[] = [];
+
+    for (let winCount of matchAtLeast) {
+      if (winCount > selectedBets.length) continue;
+
+      const winCombinations = generateCombinations(indices, winCount);
+
+      for (const winIndices of winCombinations) {
+        let lineWinning = apl;
+        for (const idx of winIndices) {
+          lineWinning *= selectedBets[idx].odds;
+        }
+        allWinnings.push(lineWinning);
+      }
+    }
+
+    if (allWinnings.length === 0) return null;
+
+    return {
+      min: Math.min(...allWinnings),
+      max: Math.max(...allWinnings),
+      numLines,
+    };
+  };
+
+  const permutationWinnings = calculatePermutationWinnings();
+
   const toggleMatch = (m: number) => {
     if (matchAtLeast.includes(m)) setMatchAtLeast(matchAtLeast.filter((x) => x !== m));
     else setMatchAtLeast([...matchAtLeast, m]);
@@ -170,7 +234,7 @@ const Football = () => {
       return;
     }
 
-    if (matchAtLeast.length === 0) {
+    if (mode === "permutation" && matchAtLeast.length === 0) {
       toast.error("Please select under value");
       return;
     }
@@ -533,6 +597,28 @@ const Football = () => {
                         }}
                       />
                     </div>
+
+                    {mode === "direct" && selectedBets.length > 0 && betAmount > 0 && (
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-sm font-medium text-foreground">Possible Winning:</span>
+                          <span className="font-bold text-lg text-primary">₦{(betAmount * totalOdds).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {mode === "permutation" && permutationWinnings && betAmount > 0 && (
+                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Min Winning:</span>
+                          <span className="font-semibold text-foreground">₦{permutationWinnings.min.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-foreground">Max Winning:</span>
+                          <span className="font-bold text-lg text-primary">₦{permutationWinnings.max.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <Button
                       variant="gold"

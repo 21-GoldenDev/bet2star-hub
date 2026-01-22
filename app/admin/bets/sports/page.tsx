@@ -215,6 +215,7 @@ export default function SportsPage() {
                   <div>Agent</div>
                 ),
             },
+            { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
             { key: "under", label: "Under" },
             {
               key: "selections",

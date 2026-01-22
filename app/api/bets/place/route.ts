@@ -189,6 +189,7 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
       bet_time: new Date().toISOString(),
       status: 'active',
       selections,
+      award: 0,
     })
     .select()
     .single();
@@ -225,6 +226,7 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
       terminal: '',
       bet_time: new Date().toISOString(),
       prize_id: prize,
+      award: 0,
     })
     .select()
     .single();
@@ -261,6 +263,7 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
       terminal: '',
       bet_time: new Date().toISOString(),
       prize_id: prize,
+      award: 0,
     })
     .select()
     .single();
