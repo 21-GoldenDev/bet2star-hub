@@ -150,7 +150,20 @@ export async function POST(request: NextRequest) {
 }
 
 async function placeSportsBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
-  const { selections, under } = betData;
+  const { selections, under, mode } = betData;
+
+  const normalizedMode = typeof mode === 'string' ? mode.toLowerCase() : '';
+  if (!['direct', 'permutation'].includes(normalizedMode)) {
+    throw new Error('Invalid mode. Must be "direct" or "permutation"');
+  }
+
+  if (mode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
+    throw new Error('For permutation mode, "under" must be a non-empty array');
+  }
+
+  if (mode === 'direct' && (!Array.isArray(under) || under.length !== 1 || under[0] != 3)) {
+    throw new Error('For direct mode, "under" must be an array with a single element equal to 3');
+  }
 
   const { data: existingBets, error: countError } = await supabase
     .from('bets_sport')
@@ -169,6 +182,7 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
       game_id: gameId,
       number: nextNumber,
       player: userId,
+      mode: normalizedMode,
       under: under,
       staked: betAmount,
       terminal: '',

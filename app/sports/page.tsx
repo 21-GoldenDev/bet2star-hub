@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Clock, Zap } from "lucide-react";
@@ -36,6 +37,7 @@ const Football = () => {
   const [selectedBets, setSelectedBets] = useState<BetSelection[]>([]);
   const [betAmount, setBetAmount] = useState<number>(5000);
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
+  const [mode, setMode] = useState<"direct" | "permutation">("direct");
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -192,7 +194,8 @@ const Football = () => {
           betAmount,
           betData: {
             selections,
-            under: matchAtLeast,
+            under: mode === "direct" ? [3] : matchAtLeast,
+            mode,
           },
         }),
       });
@@ -209,6 +212,7 @@ const Football = () => {
       setSelectedBets([]);
       setBetAmount(5000);
       setMatchAtLeast([]);
+      setMode("direct");
     } catch (error: any) {
       console.error("Error placing bet:", error);
       toast.error(error.message || "Failed to place bet. Please try again.");
@@ -303,28 +307,46 @@ const Football = () => {
               {/* Column 1: Match at Least */}
               <div className="lg:col-span-2">
                 <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
-                  <div className="flex flex-col gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7].map((u) => (
-                      <label
-                        key={u}
-                        onClick={() => toggleMatch(u)}
-                        className="cursor-pointer flex items-center gap-2"
-                      >
-                        <div>
-                          <div className="size-4 rounded-full bg-transparent border border-primary flex items-center justify-center">
-                            {matchAtLeast.includes(u) && (
-                              <div className="bg-primary size-2 rounded-full" />
-                            )}
-                          </div>
-                        </div>
-                        <span className="text-sm font-medium">
-                          {u}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
+                  <RadioGroup
+                    value={mode}
+                    onValueChange={(val) => setMode(val as "direct" | "permutation")}
+                  >
+                    <label className="cursor-pointer flex items-center gap-2">
+                      <RadioGroupItem id="mode-direct" value="direct" />
+                      <span className="text-sm">Direct</span>
+                    </label>
+                    <label className="cursor-pointer flex items-center gap-2">
+                      <RadioGroupItem id="mode-permutation" value="permutation" />
+                      <span className="text-sm">Permutation</span>
+                    </label>
+                  </RadioGroup>
                 </div>
+
+                {mode === "permutation" && (
+                  <div className="p-4 rounded-xl bg-card border border-border mt-3">
+                    <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
+                    <div className="flex flex-col gap-2">
+                      {[1, 2, 3, 4, 5, 6, 7].map((u) => (
+                        <label
+                          key={u}
+                          onClick={() => toggleMatch(u)}
+                          className="cursor-pointer flex items-center gap-2"
+                        >
+                          <div>
+                            <div className="size-4 rounded-full bg-transparent border border-primary flex items-center justify-center">
+                              {matchAtLeast.includes(u) && (
+                                <div className="bg-primary size-2 rounded-full" />
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-sm font-medium">
+                            {u}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Matches List */}
