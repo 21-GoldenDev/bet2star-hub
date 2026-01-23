@@ -214,6 +214,7 @@ const Football = () => {
       min: Math.min(...allWinnings),
       max: allWinnings.reduce((a, b) => a + b, 0),
       numLines,
+      apl,
     };
   };
 
@@ -615,6 +616,10 @@ const Football = () => {
 
                     {mode === "permutation" && permutationWinnings && betAmount > 0 && (
                       <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">APL:</span>
+                          <span className="font-semibold text-foreground">₦{permutationWinnings.apl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Min Winning:</span>
                           <span className="font-semibold text-foreground">₦{permutationWinnings.min.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
