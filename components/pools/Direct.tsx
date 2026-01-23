@@ -164,7 +164,7 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
         {/* Column 2: Matches Grid */}
         <div className="lg:col-span-6">
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {matches.map((match, index) => (
                 <button
                   key={index}
