@@ -213,7 +213,7 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
           )}
         </div>
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-7 lg:grid-cols-10 gap-2 bg-card border border-border rounded-xl p-4">
+          <div className="flex flex-wrap gap-2 bg-card border border-border rounded-xl p-4">
             {numbers.map((num) => {
               const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(num);
               const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(num));
@@ -222,7 +222,7 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
                   key={num}
                   onClick={() => toggleNumberForActive(num)}
                   className={clsx(
-                    "aspect-square rounded-xl font-bold text-lg transition-all duration-300",
+                    "aspect-square w-12 rounded-xl font-bold text-lg transition-all duration-300",
                     inActiveGroup
                       ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                       : inOtherGroup
