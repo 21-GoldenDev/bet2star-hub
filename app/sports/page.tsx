@@ -45,6 +45,11 @@ const Football = () => {
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   useEffect(() => {
+    const maxValidValue = selectedBets.length - 1;
+    setMatchAtLeast(prev => prev.filter(val => val <= maxValidValue));
+  }, [selectedBets.length]);
+
+  useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
     const fetchActiveGame = async () => {
@@ -397,7 +402,7 @@ const Football = () => {
                   <div className="p-4 rounded-xl bg-card border border-border mt-3">
                     <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
                     <div className="flex flex-col gap-2">
-                      {[1, 2, 3, 4, 5, 6, 7].map((u) => (
+                      {Array.from({ length: Math.max(0, selectedBets.length - 1) }, (_, i) => i + 1).map((u) => (
                         <label
                           key={u}
                           onClick={() => toggleMatch(u)}
