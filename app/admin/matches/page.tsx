@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit2, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit2, Trash2, Loader2, Eye, EyeOff, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Match } from "@/lib/types/matches";
 
@@ -45,6 +45,7 @@ export default function MatchesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const [formData, setFormData] = useState<{
     number: number;
@@ -280,6 +281,14 @@ export default function MatchesPage() {
     }
   };
 
+  const filteredMatches = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return matches;
+    return matches.filter((m) =>
+      m.home.toLowerCase().includes(term) || m.away.toLowerCase().includes(term)
+    );
+  }, [matches, searchTerm]);
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -436,60 +445,84 @@ export default function MatchesPage() {
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
       ) : (
-        <DataTable<Match>
-          columns={[
-            { key: "number", label: "Match #", sortable: true },
-            { key: "home", label: "Home Team", sortable: true },
-            { key: "away", label: "Away Team", sortable: true },
-            { key: "week", label: "Week", sortable: true },
-            {
-              key: "status",
-              label: "Status",
-              render: (status) => (
-                <Badge
-                  variant={status === "enable" ? "default" : "outline"}
-                  className={status === "enable" ? "bg-green-600" : ""}
+        <>
+          <div className="flex justify-end mb-4">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by home or away team..."
+                className="pl-9 pr-10"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
                 >
-                  {status}
-                </Badge>
-              ),
-              sortable: true,
-            },
-          ]}
-          data={matches}
-          searchKey="home"
-          searchPlaceholder="Search by home team..."
-          actions={(match) => (
-            <div className="flex gap-2">
-              <Button
-                variant={match.status === "enable" ? "outline" : "default"}
-                size="sm"
-                onClick={() => handleToggleStatus(match)}
-                title={match.status === "enable" ? "Disable" : "Enable"}
-              >
-                {match.status === "enable" ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleEdit(match)}
-              >
-                <Edit2 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openDeleteDialog(match.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-          )}
-        />
+          </div>
+          <DataTable<Match>
+            columns={[
+              { key: "number", label: "Match #", sortable: true },
+              { key: "home", label: "Home Team", sortable: true },
+              { key: "away", label: "Away Team", sortable: true },
+              { key: "week", label: "Week", sortable: true },
+              {
+                key: "status",
+                label: "Status",
+                render: (status) => (
+                  <Badge
+                    variant={status === "enable" ? "default" : "outline"}
+                    className={clsx(
+                      "capitalize",
+                      { "bg-green-600": status === "enable" },
+                    )}
+                  >
+                    {status}
+                  </Badge>
+                ),
+                sortable: true,
+              },
+            ]}
+            data={filteredMatches}
+            actions={(match) => (
+              <div className="flex gap-2">
+                <Button
+                  variant={match.status === "enable" ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => handleToggleStatus(match)}
+                  title={match.status === "enable" ? "Disable" : "Enable"}
+                >
+                  {match.status === "enable" ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleEdit(match)}
+                >
+                  <Edit2 className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDeleteDialog(match.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          />
+        </>
       )}
 
       {/* Edit Dialog */}

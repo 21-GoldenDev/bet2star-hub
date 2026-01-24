@@ -318,6 +318,14 @@ const Football = () => {
       if (!map[m.league]) map[m.league] = [];
       map[m.league].push(m);
     }
+    Object.keys(map).forEach((league) => {
+      map[league].sort((a, b) => {
+        if (!a.start_time && !b.start_time) return 0;
+        if (!a.start_time) return 1;
+        if (!b.start_time) return -1;
+        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+      });
+    });
     return map;
   }, [matches]);
 
@@ -482,12 +490,12 @@ const Football = () => {
                                                 <>
                                                   {match.start_time && (
                                                     <div className="flex items-center gap-1">
-                                                      Start: {new Date(match.start_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                      Start: {new Date(match.start_time).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                   )}
                                                   {match.end_time && (
                                                     <div className="text-[9px]">
-                                                      End: {new Date(match.end_time).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                      End: {new Date(match.end_time).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                   )}
                                                   {!match.start_time && !match.end_time && (

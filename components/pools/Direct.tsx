@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx"
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -24,11 +24,17 @@ interface Props {
 const Direct = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
-  const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
+  const [matchAtLeast, setMatchAtLeast] = useState<number[]>([3]);
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const prize = prizes?.find((p) => p.id === odd);
+
+  useEffect(() => {
+    if (!odd && prizes && prizes.length > 0) {
+      setOdd(prizes[0].id);
+    }
+  }, [prizes]);
 
   const toggleMatch = (match: string) => {
     if (selectedMatches.includes(match)) {

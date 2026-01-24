@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import clsx from "clsx"
@@ -23,11 +23,17 @@ const Direct = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
-  const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
+  const [matchAtLeast, setMatchAtLeast] = useState<number[]>([3]);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
   const prize = prizes?.find((p) => p.id === odd);
+
+  useEffect(() => {
+    if (!odd && prizes && prizes.length > 0) {
+      setOdd(prizes[0].id);
+    }
+  }, [prizes]);
 
   const toggleNumber = (num: number) => {
     if (selectedNumbers.includes(num)) {

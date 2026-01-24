@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ interface Props {
 }
 
 const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(0);
+  const [totalUnder, setTotalUnder] = useState<number>(3);
   const [groupAU, setGroupAU] = useState<number>(0);
   const [groupAMatches, setGroupAMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
@@ -31,6 +31,12 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
   const prize = prizes?.find((p) => p.id === odd);
   const groupBU = totalUnder - groupAU;
   const groupBMatches = matches.filter((m) => !groupAMatches.includes(m));
+
+  useEffect(() => {
+    if (!odd && prizes && prizes.length > 0) {
+      setOdd(prizes[0].id);
+    }
+  }, [prizes]);
 
   const toggleMatchForGroupA = (match: string) => {
     if (groupAMatches.includes(match)) {
@@ -177,7 +183,7 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
                   key={match}
                   onClick={() => toggleMatchForGroupA(match)}
                   className={clsx(
-                    "aspect-square rounded-xl font-bold text-lg transition-all duration-300",
+                    "p-3 rounded-xl font-medium text-sm transition-all duration-300",
                     inGroupA
                       ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                       : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"

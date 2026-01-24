@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ interface Props {
 }
 
 const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(0);
+  const [totalUnder, setTotalUnder] = useState<number>(3);
   const [groupAU, setGroupAU] = useState<number>(0);
   const [groupANumbers, setGroupANumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
@@ -31,6 +31,12 @@ const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
   const prize = prizes?.find((p) => p.id === odd);
   const groupBU = totalUnder - groupAU;
   const groupBNumbers = numbers.filter((n) => !groupANumbers.includes(n));
+
+  useEffect(() => {
+    if (!odd && prizes && prizes.length > 0) {
+      setOdd(prizes[0].id);
+    }
+  }, [prizes]);
 
   const toggleNumberForGroupA = (num: number) => {
     if (groupANumbers.includes(num)) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ interface USelection {
 }
 
 const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(0);
+  const [totalUnder, setTotalUnder] = useState<number>(3);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
   const [groupSelections, setGroupSelections] = useState<Record<string, string[]>>({});
@@ -38,6 +38,12 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => 
 
   const currentSum = selectedUs.reduce((acc, sel) => acc + sel.u, 0);
   const prize = prizes?.find((p) => p.id === odd);
+
+  useEffect(() => {
+    if (!odd && prizes && prizes.length > 0) {
+      setOdd(prizes[0].id);
+    }
+  }, [prizes]);
 
   const handleUpdateU = (id: string, newU: number) => {
     const index = selectedUs.findIndex((sel) => sel.id === id);
