@@ -49,6 +49,12 @@ interface Prize {
   updated_at?: string;
 }
 
+interface TurboPrize {
+  turbo1: number;
+  turbo2: number;
+  turbo3: number;
+}
+
 const defaultData = {
   name: "",
   columns: ["U1", "U2", "U3", "U4", "U5", "U6", "U7"],
@@ -74,8 +80,18 @@ export default function PrizePage() {
 
   const [formData, setFormData] = useState(defaultData);
 
+  const [turboPrize, setTurboPrize] = useState<TurboPrize>({
+    turbo1: 50,
+    turbo2: 150,
+    turbo3: 300,
+  });
+  const [turboPrizeExists, setTurboPrizeExists] = useState(false);
+  const [turboPrizeId, setTurboPrizeId] = useState<string | null>(null);
+  const [savingTurbo, setSavingTurbo] = useState(false);
+
   useEffect(() => {
     fetchPrizes();
+    fetchTurboPrize();
   }, []);
 
   const fetchPrizes = async () => {
@@ -102,6 +118,24 @@ export default function PrizePage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTurboPrize = async () => {
+    try {
+      const response = await fetch("/api/admin/prize/turbo");
+      const data = await response.json();
+
+      if (response.ok && data.turboPrize) {
+        setTurboPrize(data.turboPrize.data);
+        setTurboPrizeId(data.turboPrize.id);
+        setTurboPrizeExists(true);
+      } else {
+        setTurboPrizeExists(false);
+      }
+    } catch (error) {
+      console.error("Error fetching turbo prize:", error);
+      setTurboPrizeExists(false);
     }
   };
 
@@ -337,6 +371,52 @@ export default function PrizePage() {
     setFormData({ ...formData, rows: newRows });
   };
 
+  const saveTurboPrize = async () => {
+    try {
+      setSavingTurbo(true);
+
+      const method = turboPrizeExists ? "PUT" : "POST";
+      const url = turboPrizeExists
+        ? `/api/admin/prize/turbo/${turboPrizeId}`
+        : "/api/admin/prize/turbo";
+
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          turbo1: turboPrize.turbo1,
+          turbo2: turboPrize.turbo2,
+          turbo3: turboPrize.turbo3,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Turbo prize saved successfully",
+        });
+        fetchTurboPrize();
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to save turbo prize",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error saving turbo prize:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save turbo prize",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTurbo(false);
+    }
+  };
+
   const columns = [
     {
       key: "name" as keyof Prize,
@@ -420,6 +500,61 @@ export default function PrizePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Turbo Prize Section */}
+      <Card className="p-6">
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Turbo Game Prize</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Configure prize values for turbo game
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="turbo1">Turbo1</Label>
+              <Input
+                id="turbo1"
+                type="number"
+                value={turboPrize.turbo1}
+                onChange={(e) =>
+                  setTurboPrize({ ...turboPrize, turbo1: parseFloat(e.target.value) || 0 })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="turbo2">Turbo2</Label>
+              <Input
+                id="turbo2"
+                type="number"
+                value={turboPrize.turbo2}
+                onChange={(e) =>
+                  setTurboPrize({ ...turboPrize, turbo2: parseFloat(e.target.value) || 0 })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="turbo3">Turbo3</Label>
+              <Input
+                id="turbo3"
+                type="number"
+                value={turboPrize.turbo3}
+                onChange={(e) =>
+                  setTurboPrize({ ...turboPrize, turbo3: parseFloat(e.target.value) || 0 })
+                }
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button onClick={saveTurboPrize} disabled={savingTurbo}>
+              {savingTurbo && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {turboPrizeExists ? "Update" : "Save"} Turbo Prize
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       <Card className="p-6">
         <DataTable
