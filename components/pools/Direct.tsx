@@ -203,10 +203,10 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
               {selectedMatches.length === 0 ? (
                 <div className="text-xs text-muted-foreground">No matches selected</div>
               ) : (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap gap-1.5">
                   {matches.map((m, i) => (
                     selectedMatches.includes(m) ? (
-                      <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
+                      <div key={`${i}-${m}`} className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium">
                         {m}
                       </div>
                     ) : null
