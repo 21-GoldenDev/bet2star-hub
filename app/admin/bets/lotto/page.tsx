@@ -133,6 +133,8 @@ export default function LottoPage() {
     { value: "nap_perm", label: "NAP/PERM" },
     { value: "grouping", label: "Grouping" },
     { value: "two_banker", label: "2 Banker" },
+    { value: "one_banker", label: "1 Banker" },
+    { value: "turbo", label: "Turbo" },
   ];
 
   const filteredAll = useMemo(() => {
@@ -150,7 +152,8 @@ export default function LottoPage() {
       })
       .map((b) => {
         const isNapPerm = b.gameType === "nap_perm";
-        const apl = isNapPerm ? calcAplDirect(b.staked, b.under, b.numbers.length) : calcAplGrouping(b.staked, b.numbers);
+        const isTurbo = b.gameType === "turbo";
+        const apl = isNapPerm ? calcAplDirect(b.staked, b.under, b.numbers.length) : isTurbo ? 0 : calcAplGrouping(b.staked, b.numbers);
         return { ...b, apl };
       });
   }, [allData, weekFilter, gameFilter, rangeFilter]);
@@ -224,6 +227,8 @@ export default function LottoPage() {
       case "nap_perm": return "NAP/PERM";
       case "grouping": return "Grouping";
       case "two_banker": return "2 Banker";
+      case "one_banker": return "1 Banker";
+      case "turbo": return "Turbo";
       default: return gameType;
     }
   }
@@ -386,9 +391,9 @@ export default function LottoPage() {
                 return (
                   <div className="space-y-1">
                     {Object.entries(value).map(([gid, nums]) => (
-                      <div key={gid} className="text-sm">
-                        <span className="font-medium mr-1">{gid.split("-")[0]}:</span>
-                        <span className="text-muted-foreground">{nums.sort((a, b) => a - b).join(", ")}</span>
+                      <div key={gid} className="text-sm flex gap-1">
+                        <div className="font-bold">{gid.split("-")[0]}:</div>
+                        <div className="text-muted-foreground min-w-50">{nums.sort((a, b) => a - b).join(", ")}</div>
                       </div>
                     ))}
                   </div>

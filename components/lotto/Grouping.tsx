@@ -24,9 +24,10 @@ interface Props {
   gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
+  visibleNumbers?: number[];
 }
 
-const Grouping = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
+const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [] }: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(3);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
@@ -35,7 +36,7 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
-  const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
+  const numbers = visibleNumbers.length > 0 ? visibleNumbers : Array.from({ length: 99 }, (_, i) => i + 1);
   const prize = prizes?.find((p) => p.id === odd);
 
   const currentSum = selectedUs.reduce((acc, sel) => acc + sel.u, 0);
@@ -124,8 +125,8 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
           gameId,
           betAmount,
           betData: {
-            selectedNumbers: Object.values(groupSelections).flat(),
-            matchAtLeast: selectedUs.map(u => u.u),
+            selectedNumbers: [],
+            matchAtLeast: [totalUnder],
             gameMode,
             prize: odd,
             grouping: { selectedUs, groupSelections },
@@ -144,8 +145,12 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
       // Reset form
       clearAll();
       setBetAmount(5000);
-      setOdd("");
-      setTotalUnder(0);
+      if (prizes && prizes.length > 0) {
+        setOdd(prizes[0].id);
+      } else {
+        setOdd("");
+      }
+      setTotalUnder(3);
     } catch (error) {
       toast.error("Error placing bet");
       console.error(error);

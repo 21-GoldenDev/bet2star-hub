@@ -17,16 +17,17 @@ interface Props {
   gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
+  visibleNumbers?: number[];
 }
 
-const Direct = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
+const Direct = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [] }: Props) => {
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([3]);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
-  const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
+  const numbers = visibleNumbers.length > 0 ? visibleNumbers : Array.from({ length: 99 }, (_, i) => i + 1);
   const prize = prizes?.find((p) => p.id === odd);
 
   useEffect(() => {
@@ -96,9 +97,13 @@ const Direct = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
       toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
       setSelectedNumbers([]);
-      setMatchAtLeast([]);
+      setMatchAtLeast([3]);
       setBetAmount(5000);
-      setOdd("");
+      if (prizes && prizes.length > 0) {
+        setOdd(prizes[0].id);
+      } else {
+        setOdd("");
+      }
     } catch (error) {
       toast.error("Error placing bet");
       console.error(error);

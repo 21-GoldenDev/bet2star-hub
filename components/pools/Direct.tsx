@@ -101,9 +101,13 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
       toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
       setSelectedMatches([]);
-      setMatchAtLeast([]);
+      setMatchAtLeast([3]);
       setBetAmount(5000);
-      setOdd("");
+      if (prizes && prizes.length > 0) {
+        setOdd(prizes[0].id);
+      } else {
+        setOdd("");
+      }
     } catch (error) {
       toast.error("Error placing bet");
       console.error(error);

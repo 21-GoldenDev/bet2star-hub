@@ -202,6 +202,17 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
 async function placeLottoBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
   const { selectedNumbers, matchAtLeast, gameMode, prize } = betData;
 
+  const { data: gameData, error: gameError } = await supabase
+    .from('games')
+    .select('visible_numbers')
+    .eq('id', gameId)
+    .single();
+
+  if (gameError) throw gameError;
+
+  const visibleNumbers: number[] = gameData?.visible_numbers || Array.from({ length: 99 }, (_, i) => i + 1);
+
+
   const { data: existingBets, error: countError } = await supabase
     .from('bets_lotto')
     .select('bet_id')
@@ -213,13 +224,43 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
 
   const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].bet_id + 1 : 1;
 
+  let numbersObj: Record<string, number[]> | number[];
+
+  if (gameMode === "nap_perm" || gameMode === "turbo") {
+    numbersObj = selectedNumbers;
+  } else if (gameMode === "grouping") {
+    const { selectedUs, groupSelections } = betData.grouping;
+    numbersObj = {};
+    selectedUs.forEach((sel: { id: string; u: number }) => {
+      const nums = groupSelections[sel.id] || [];
+      (numbersObj as Record<string, number[]>)[`${sel.u}-${sel.id}`] = nums;
+    });
+  } else if (gameMode === "two_banker") {
+    const { groupAU, groupANumbers, totalUnder } = betData.twobanker;
+    const groupBU = totalUnder - groupAU;
+    const groupBNumbers = visibleNumbers.filter((n) => !groupANumbers.includes(n));
+    numbersObj = {
+      [`${groupAU}-groupA`]: groupANumbers,
+      [`${groupBU}-groupB`]: groupBNumbers,
+    };
+  } else if (gameMode === "one_banker") {
+    const { groupANumbers } = betData.onebanker;
+    const groupBNumbers = visibleNumbers.filter((n) => !groupANumbers.includes(n));
+    numbersObj = {
+      [`1-groupA`]: groupANumbers,
+      [`1-groupB`]: groupBNumbers,
+    };
+  } else {
+    numbersObj = selectedNumbers;
+  }
+
   const { data, error } = await supabase
     .from('bets_lotto')
     .insert({
       game_id: gameId,
       bet_id: nextNumber,
       player: userId,
-      numbers: selectedNumbers,
+      numbers: numbersObj,
       gameType: gameMode,
       under: matchAtLeast,
       staked: betAmount,
@@ -239,6 +280,18 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
 async function placePoolsBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
   const { selectedMatches, matchAtLeast, gameMode, prize } = betData;
 
+  const { data: matchData, error: matchError } = await supabase
+    .from("matches")
+    .select("*")
+    .eq("status", "enable")
+    .order("created_at", { ascending: false });
+
+  if (matchError) throw matchError;
+
+  const visibleMatches: string[] =
+    matchData?.map((match: { number: number }) => match.number).sort((a: number, b: number) => a - b)
+    || Array.from({ length: 49 }, (_, i) => i + 1);
+
   const { data: existingBets, error: countError } = await supabase
     .from('bets_pools')
     .select('bet_id')
@@ -250,13 +303,43 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
 
   const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].bet_id + 1 : 1;
 
+  let matchesObj: Record<string, string[]> | string[];
+
+  if (gameMode === "nap_perm" || gameMode === "turbo") {
+    matchesObj = selectedMatches;
+  } else if (gameMode === "grouping") {
+    const { selectedUs, groupSelections } = betData.grouping;
+    matchesObj = {};
+    selectedUs.forEach((sel: { id: string; u: number }) => {
+      const matches = groupSelections[sel.id] || [];
+      (matchesObj as Record<string, string[]>)[`${sel.u}-${sel.id}`] = matches;
+    });
+  } else if (gameMode === "two_banker") {
+    const { groupAU, groupAMatches, totalUnder } = betData.twobanker;
+    const groupBU = totalUnder - groupAU;
+    const groupBMatches = visibleMatches.filter((n) => !groupAMatches.includes(n));
+    matchesObj = {
+      [`${groupAU}-groupA`]: groupAMatches,
+      [`${groupBU}-groupB`]: groupBMatches,
+    };
+  } else if (gameMode === "one_banker") {
+    const { groupAMatches } = betData.onebanker;
+    const groupBMatches = visibleMatches.filter((n) => !groupAMatches.includes(n));
+    matchesObj = {
+      [`1-groupA`]: groupAMatches,
+      [`1-groupB`]: groupBMatches,
+    };
+  } else {
+    matchesObj = selectedMatches;
+  }
+
   const { data, error } = await supabase
     .from('bets_pools')
     .insert({
       game_id: gameId,
       bet_id: nextNumber,
       player: userId,
-      matches: selectedMatches,
+      matches: matchesObj,
       gameType: gameMode,
       under: matchAtLeast,
       staked: betAmount,

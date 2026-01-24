@@ -20,17 +20,14 @@ interface Props {
   setGameMode: (mode: GameModeType) => void;
 }
 
-const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(3);
-  const [groupAU, setGroupAU] = useState<number>(0);
+const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => {
   const [groupAMatches, setGroupAMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const prize = prizes?.find((p) => p.id === odd);
-  const groupBU = totalUnder - groupAU;
-  const groupBMatches = matches.filter((m) => !groupAMatches.includes(m));
+  const groupBMatches = matches.filter((n) => !groupAMatches.includes(n));
 
   useEffect(() => {
     if (!odd && prizes && prizes.length > 0) {
@@ -43,8 +40,8 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
       setGroupAMatches(groupAMatches.filter((n) => n !== match));
       return;
     }
-    if (groupAMatches.length >= 2) {
-      toast.error(`Group A requires exactly 2 matches`);
+    if (groupAMatches.length >= 1) {
+      toast.error(`Group A requires exactly 1 match`);
       return;
     }
     setGroupAMatches([...groupAMatches, match]);
@@ -55,16 +52,8 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
   };
 
   const placeBet = async () => {
-    if (!totalUnder) {
-      toast.error("Select a total U value");
-      return;
-    }
-    if (groupAU === 0) {
-      toast.error("Select U value for Group A");
-      return;
-    }
-    if (groupAMatches.length < 2) {
-      toast.error(`Select 2 matches for Group A`);
+    if (groupAMatches.length < 1) {
+      toast.error(`Select 1 match for Group A`);
       return;
     }
     if (betAmount <= 0) {
@@ -83,10 +72,10 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
           betAmount,
           betData: {
             selectedMatches: [],
-            matchAtLeast: [totalUnder],
+            matchAtLeast: [2],
             gameMode,
             prize: odd,
-            twobanker: { totalUnder, groupAU, groupAMatches },
+            onebanker: { groupAMatches },
           },
         }),
       });
@@ -100,8 +89,6 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
 
       toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
-      setTotalUnder(3);
-      setGroupAU(0);
       setGroupAMatches([]);
       setBetAmount(5000);
       if (prizes && prizes.length > 0) {
@@ -154,22 +141,9 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
             <div className="flex flex-col gap-2">
-              <RadioGroup
-                value={totalUnder.toString()}
-                onValueChange={(e) => setTotalUnder(Number(e))}
-              >
-                {[3, 4, 5, 6, 7].map((u) => (
-                  <label
-                    key={u}
-                    className="cursor-pointer flex items-center gap-2"
-                  >
-                    <RadioGroupItem key={u} value={u.toString()} />
-                    <span className="text-sm font-medium">
-                      {u}
-                    </span>
-                  </label>
-                ))}
-              </RadioGroup>
+              <div className="px-2 py-1 rounded text-xs bg-muted border border-border text-foreground text-center font-medium">
+                Under 2 (Fixed)
+              </div>
             </div>
           </div>
           {!!prize && (
@@ -179,7 +153,7 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
           )}
         </div>
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
+          <div className="flex flex-wrap gap-2 bg-card border border-border rounded-xl p-4">
             {matches.map((match) => {
               const inGroupA = groupAMatches.includes(match);
               return (
@@ -187,7 +161,7 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
                   key={match}
                   onClick={() => toggleMatchForGroupA(match)}
                   className={clsx(
-                    "p-3 rounded-xl font-medium text-sm transition-all duration-300",
+                    "aspect-square w-12 rounded-xl font-bold text-lg transition-all duration-300",
                     inGroupA
                       ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                       : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
@@ -213,23 +187,6 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm">A</span>
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <select
-                        value={groupAU}
-                        onChange={(e) => {
-                          const newU = Number(e.target.value);
-                          setGroupAU(newU);
-                        }}
-                        className="px-2 py-0.5 rounded text-xs bg-muted border border-primary text-foreground cursor-pointer"
-                      >
-                        <option value="0">Select</option>
-                        {[1, 2].map((val) => (
-                          <option key={val} value={val} disabled={val >= totalUnder}>
-                            {val}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                   </div>
                   <Button
                     variant="ghost"
@@ -257,18 +214,10 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
               </div>
 
               {/* Group B */}
-              <div
-                className={clsx(
-                  "p-3 rounded-lg transition-all",
-                  totalUnder && groupAU ? "bg-muted/50 border border-border/50" : "bg-muted/30 border border-border/30 opacity-50"
-                )}
-              >
+              <div className="p-3 rounded-lg bg-muted/50 border border-border/50 transition-all">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm">B</span>
-                    <div className="px-2 py-0.5 rounded text-xs bg-muted border border-border text-foreground">
-                      {groupBU}
-                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -300,14 +249,14 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
             </div>
           </div>
 
-          {totalUnder && groupAU > 0 && groupAMatches.length === 2 && (
+          {groupAMatches.length === 1 && (
             <div className="p-4 rounded-xl bg-card border border-border">
               <div className="text-sm font-semibold mb-3 text-muted-foreground">APL</div>
               <div className="flex items-center justify-center">
                 <span className="text-lg font-bold text-foreground">
                   {calcAplGrouping(betAmount, {
-                    [`${groupAU}-groupA`]: groupAMatches,
-                    [`${groupBU}-groupB`]: groupBMatches
+                    ["1-groupA"]: groupAMatches,
+                    ["1-groupB"]: groupBMatches
                   }).toFixed(2)}
                 </span>
               </div>
@@ -332,17 +281,15 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
             variant="gold"
             size="lg"
             onClick={placeBet}
-            disabled={!totalUnder || groupAU === 0 || groupAMatches.length !== 2 || isPlacingBet || betAmount <= 0}
+            disabled={groupAMatches.length !== 1 || isPlacingBet || betAmount <= 0}
             className="w-full py-3"
           >
             {isPlacingBet ? "Placing..." : "Stake"}
           </Button>
 
-          {(!totalUnder || groupAU === 0 || groupAMatches.length !== 2 || betAmount <= 0) && (
+          {(groupAMatches.length !== 1 || betAmount <= 0) && (
             <div className="text-xs text-red-400 text-left space-y-1 ml-2">
-              {!totalUnder && <div>• Select a total U value</div>}
-              {totalUnder && groupAU === 0 && <div>• Select U value for Group A</div>}
-              {totalUnder && groupAU > 0 && groupAMatches.length < 2 && <div>• Select {2 - groupAMatches.length} more matches for Group A</div>}
+              {groupAMatches.length < 1 && <div>• Select 1 number for Group A</div>}
               {betAmount <= 0 && <div>• Enter a valid bet amount</div>}
             </div>
           )}
@@ -352,5 +299,4 @@ const TwoBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
   );
 };
 
-export default TwoBanker;
-
+export default OneBanker;

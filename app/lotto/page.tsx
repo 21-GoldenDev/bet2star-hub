@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import clsx from "clsx";
 import Direct from "@/components/lotto/Direct";
 import Grouping from "@/components/lotto/Grouping";
+import OneBanker from "@/components/lotto/OneBanker";
 import TwoBanker from "@/components/lotto/TwoBanker";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
@@ -12,6 +13,7 @@ const LottoPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
   const [gameMode, setGameMode] = useState<GameModeType>("nap_perm");
   const [activeGame, setActiveGame] = useState<Game | null>(null);
+  const [visibleNumbers, setVisibleNumbers] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -23,6 +25,17 @@ const LottoPage = () => {
         const response = await fetch("/api/games/lotto/active");
         const data = await response.json();
         setActiveGame(data.game);
+
+        if (data.game) {
+          try {
+            const numbersResponse = await fetch(`/api/games/${data.game.id}/lotto/numbers`);
+            const numbersData = await numbersResponse.json();
+            setVisibleNumbers(numbersData.visibleNumbers || []);
+          } catch (error) {
+            console.error("Error fetching visible numbers:", error);
+            setVisibleNumbers([]);
+          }
+        }
 
         if (!data.game) {
           if (!interval) {
@@ -153,6 +166,7 @@ const LottoPage = () => {
                   gameId={activeGame.id}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
+                  visibleNumbers={visibleNumbers}
                 />
               )}
               {gameMode === "grouping" && (
@@ -162,15 +176,27 @@ const LottoPage = () => {
                   gameId={activeGame.id}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
+                  visibleNumbers={visibleNumbers}
                 />
               )}
-              {gameMode === "2banker" && (
+              {gameMode === "one_banker" && (
+                <OneBanker
+                  activeTab={activeTab}
+                  gameMode={gameMode}
+                  gameId={activeGame.id}
+                  prizes={activeGame.prizes}
+                  setGameMode={setGameMode}
+                  visibleNumbers={visibleNumbers}
+                />
+              )}
+              {gameMode === "two_banker" && (
                 <TwoBanker
                   activeTab={activeTab}
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
+                  visibleNumbers={visibleNumbers}
                 />
               )}
             </div>

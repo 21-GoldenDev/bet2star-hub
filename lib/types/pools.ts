@@ -32,7 +32,17 @@ export type TwoBankerBet = BaseBet & {
   matches: Record<string, string[]>;
 };
 
-export type PoolsBet = DirectBet | GroupingBet | TwoBankerBet;
+export type OneBankerBet = BaseBet & {
+  gameType: "one_banker";
+  matches: Record<string, string[]>;
+};
+
+export type TurboBet = BaseBet & {
+  gameType: "turbo";
+  matches: string[];
+};
+
+export type PoolsBet = DirectBet | GroupingBet | TwoBankerBet | OneBankerBet | TurboBet;
 
 export type PoolsBetFilters = {
   week?: number;

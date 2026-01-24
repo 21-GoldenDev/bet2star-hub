@@ -32,7 +32,17 @@ export type TwoBankerBet = BaseBet & {
   numbers: Record<string, number[]>;
 };
 
-export type LottoBet = NapPermBet | GroupingBet | TwoBankerBet;
+export type OneBankerBet = BaseBet & {
+  gameType: "one_banker";
+  numbers: Record<string, number[]>;
+};
+
+export type TurboBet = BaseBet & {
+  gameType: "turbo";
+  numbers: number[];
+};
+
+export type LottoBet = NapPermBet | GroupingBet | TwoBankerBet | OneBankerBet | TurboBet;
 
 export type LottoBetFilters = {
   week?: number;

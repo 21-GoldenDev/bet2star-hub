@@ -17,9 +17,10 @@ interface Props {
   gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
+  visibleNumbers?: number[];
 }
 
-const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
+const TwoBanker = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [] }: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(3);
   const [groupAU, setGroupAU] = useState<number>(0);
   const [groupANumbers, setGroupANumbers] = useState<number[]>([]);
@@ -27,7 +28,7 @@ const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
-  const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
+  const numbers = visibleNumbers.length > 0 ? visibleNumbers : Array.from({ length: 99 }, (_, i) => i + 1);
   const prize = prizes?.find((p) => p.id === odd);
   const groupBU = totalUnder - groupAU;
   const groupBNumbers = numbers.filter((n) => !groupANumbers.includes(n));
@@ -82,8 +83,8 @@ const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
           gameId,
           betAmount,
           betData: {
-            selectedNumbers: groupANumbers,
-            matchAtLeast: [groupAU],
+            selectedNumbers: [],
+            matchAtLeast: [totalUnder],
             gameMode,
             prize: odd,
             twobanker: { totalUnder, groupAU, groupANumbers },
@@ -100,11 +101,15 @@ const TwoBanker = ({ gameMode, gameId, prizes, setGameMode }: Props) => {
 
       toast.success(`Bet placed! Bet #${data.data.betNumber} - ₦${betAmount.toLocaleString()} deducted. New balance: ₦${data.data.newBalance.toLocaleString()}`);
       // Reset form
-      setTotalUnder(0);
+      setTotalUnder(3);
       setGroupAU(0);
       setGroupANumbers([]);
       setBetAmount(5000);
-      setOdd("");
+      if (prizes && prizes.length > 0) {
+        setOdd(prizes[0].id);
+      } else {
+        setOdd("");
+      }
     } catch (error) {
       toast.error("Error placing bet");
       console.error(error);

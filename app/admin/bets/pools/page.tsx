@@ -138,6 +138,8 @@ export default function PoolsPage() {
     { value: "nap_perm", label: "NAP/PERM" },
     { value: "grouping", label: "Grouping" },
     { value: "two_banker", label: "2 Banker" },
+    { value: "one_banker", label: "1 Banker" },
+    { value: "turbo", label: "Turbo" },
   ];
 
   const filteredAll = useMemo(() => {
@@ -154,7 +156,10 @@ export default function PoolsPage() {
       })
       .map((b) => {
         const isNapPerm = b.gameType === "nap_perm";
-        const apl = isNapPerm ? calcAplDirect(b.staked, b.under as any, (Array.isArray(b.matches) ? b.matches : Object.values(b.matches).flat()).length) : calcAplGrouping(b.staked, b.matches as any);
+        const isTurbo = b.gameType === "turbo";
+        const apl = isNapPerm
+          ? calcAplDirect(b.staked, b.under as any, (Array.isArray(b.matches) ? b.matches : Object.values(b.matches).flat()).length)
+          : isTurbo ? 0 : calcAplGrouping(b.staked, b.matches as any);
         return { ...b, apl };
       });
   }, [allData, weekFilter, gameFilter, rangeFilter]);
@@ -227,7 +232,9 @@ export default function PoolsPage() {
     switch (gameType) {
       case "nap_perm": return "NAP/PERM";
       case "grouping": return "Grouping";
-      case "2banker": return "2 Banker";
+      case "two_banker": return "2 Banker";
+      case "one_banker": return "1 Banker";
+      case "turbo": return "Turbo";
       default: return gameType;
     }
   }
@@ -240,6 +247,21 @@ export default function PoolsPage() {
       default: return <span className="text-muted-foreground">N/A</span>;
     }
   }
+
+  const compareMatches = (a: string, b: string) => {
+    const aNum = Number(a);
+    const bNum = Number(b);
+    const aIsNum = !isNaN(aNum);
+    const bIsNum = !isNaN(bNum);
+    if (aIsNum && bIsNum) {
+      return aNum - bNum;
+    } else if (aIsNum) {
+      return -1;
+    } else if (bIsNum) {
+      return 1;
+    }
+    return a.localeCompare(b);
+  };
 
   return (
     <div className="p-6">
@@ -385,14 +407,18 @@ export default function PoolsPage() {
                 label: "Matches",
                 render: (value: string[] | Record<string, string[]>) => {
                   if (Array.isArray(value)) {
-                    return value.join(", ");
+                    return (
+                      <div className="min-w-50">
+                        {value.sort((a, b) => compareMatches(a, b)).join(", ")}
+                      </div>
+                    );
                   }
                   return (
                     <div className="space-y-1">
                       {Object.entries(value).map(([gid, ms]) => (
-                        <div key={gid} className="text-sm">
-                          <span className="font-medium mr-1">{gid.split('-')[0]}:</span>
-                          <span className="text-muted-foreground">{ms.join(", ")}</span>
+                        <div key={gid} className="text-sm flex gap-1">
+                          <div className="font-bold">{gid.split("-")[0]}:</div>
+                          <div className="text-muted-foreground min-w-50">{ms.sort((a, b) => compareMatches(a, b)).join(", ")}</div>
                         </div>
                       ))}
                     </div>

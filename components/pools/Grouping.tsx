@@ -129,8 +129,8 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => 
           gameId,
           betAmount,
           betData: {
-            selectedMatches: Object.values(groupSelections).flat(),
-            matchAtLeast: selectedUs.map(u => u.u),
+            selectedMatches: [],
+            matchAtLeast: [totalUnder],
             gameMode,
             prize: odd,
             grouping: { selectedUs, groupSelections },
@@ -149,8 +149,12 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) => 
       // Reset form
       clearAll();
       setBetAmount(5000);
-      setOdd("");
-      setTotalUnder(0);
+      if (prizes && prizes.length > 0) {
+        setOdd(prizes[0].id);
+      } else {
+        setOdd("");
+      }
+      setTotalUnder(3);
     } catch (error) {
       toast.error("Error placing bet");
       console.error(error);

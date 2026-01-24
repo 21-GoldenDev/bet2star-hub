@@ -1,7 +1,9 @@
 export const gameModes = {
   "nap_perm": "NAP/PERM",
   "grouping": "Grouping",
-  "2banker": "2 Banker",
+  "one_banker": "1 Banker",
+  "two_banker": "2 Banker",
+  "turbo": "Turbo",
 }
 export type GameModeType = keyof typeof gameModes;
 

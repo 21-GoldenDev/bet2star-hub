@@ -5,6 +5,7 @@ import clsx from "clsx";
 import Direct from "@/components/pools/Direct";
 import Grouping from "@/components/pools/Grouping";
 import TwoBanker from "@/components/pools/TwoBanker";
+import OneBanker from "@/components/pools/OneBanker";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
 
@@ -185,7 +186,17 @@ const PoolsPage = () => {
                   setGameMode={setGameMode}
                 />
               )}
-              {gameMode === "2banker" && (
+              {gameMode === "one_banker" && (
+                <OneBanker
+                  activeTab={activeTab}
+                  gameMode={gameMode}
+                  gameId={activeGame.id}
+                  matches={matches}
+                  prizes={activeGame.prizes}
+                  setGameMode={setGameMode}
+                />
+              )}
+              {gameMode === "two_banker" && (
                 <TwoBanker
                   activeTab={activeTab}
                   gameMode={gameMode}
