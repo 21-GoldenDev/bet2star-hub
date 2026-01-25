@@ -74,9 +74,39 @@ export async function POST(request: NextRequest) {
       }, {});
     }
 
+    const { data: turboPrizeData, error: turboPrizeError } = await supabase
+      .from("turbo_prize")
+      .select("*")
+      .single();
+
+    if (turboPrizeError) {
+      console.error("Error fetching turbo prize data:", turboPrizeError);
+    }
+
     const computeAward = (bet: any, prize: any, weekResult: string[]) => {
       // If bet is void, award equals staked amount
       if (bet.status === "void") return bet.staked || 0;
+
+      if (bet.gameType === "turbo") {
+        let turboPrize: number[];
+        if (turboPrizeData && turboPrizeData.data) {
+          turboPrize = Object.values(turboPrizeData.data) as number[];
+        } else {
+          turboPrize = [50, 150, 300];
+        }
+        const betMatches = bet.matches || [];
+        if (!Array.isArray(betMatches)) return 0;
+        if (betMatches.length === 0) return 0;
+
+        if (weekResult.join(",").includes(betMatches.join(","))) {
+          const matchCount = betMatches.length;
+          const prizeIndex = Math.min(matchCount - 1, turboPrize.length - 1);
+          const award = (turboPrize[prizeIndex] || 0) * (bet.staked || 0);
+          return award;
+        }
+        return 0;
+      }
+
       if (!prize || !prize.data || !prize.data.data || !prize.data.columns) return 0;
 
       const isNapPerm = bet.gameType === "nap_perm";

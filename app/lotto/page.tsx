@@ -8,6 +8,7 @@ import OneBanker from "@/components/lotto/OneBanker";
 import TwoBanker from "@/components/lotto/TwoBanker";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
+import Turbo from "@/components/lotto/Turbo";
 
 const LottoPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
@@ -195,6 +196,15 @@ const LottoPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   prizes={activeGame.prizes}
+                  setGameMode={setGameMode}
+                  visibleNumbers={visibleNumbers}
+                />
+              )}
+              {gameMode === "turbo" && (
+                <Turbo
+                  activeTab={activeTab}
+                  gameMode={gameMode}
+                  gameId={activeGame.id}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
                 />

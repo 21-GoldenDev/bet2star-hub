@@ -8,6 +8,7 @@ import TwoBanker from "@/components/pools/TwoBanker";
 import OneBanker from "@/components/pools/OneBanker";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
+import Turbo from "@/components/pools/Turbo";
 
 const PoolsPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
@@ -203,6 +204,15 @@ const PoolsPage = () => {
                   gameId={activeGame.id}
                   matches={matches}
                   prizes={activeGame.prizes}
+                  setGameMode={setGameMode}
+                />
+              )}
+              {gameMode === "turbo" && (
+                <Turbo
+                  activeTab={activeTab}
+                  gameMode={gameMode}
+                  gameId={activeGame.id}
+                  matches={matches}
                   setGameMode={setGameMode}
                 />
               )}
