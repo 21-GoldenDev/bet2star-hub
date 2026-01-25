@@ -153,7 +153,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
           )}
         </div>
         <div className="lg:col-span-6">
-          <div className="flex flex-wrap gap-2 bg-card border border-border rounded-xl p-4">
+          <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
             {matches.map((match) => {
               const inGroupA = groupAMatches.includes(match);
               return (
@@ -161,7 +161,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode }: Props) =>
                   key={match}
                   onClick={() => toggleMatchForGroupA(match)}
                   className={clsx(
-                    "aspect-square w-12 rounded-xl font-bold text-lg transition-all duration-300",
+                    "p-3 rounded-xl font-medium text-sm transition-all duration-300",
                     inGroupA
                       ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                       : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"

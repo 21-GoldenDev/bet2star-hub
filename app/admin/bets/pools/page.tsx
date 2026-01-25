@@ -138,7 +138,7 @@ export default function PoolsPage() {
     { value: "nap_perm", label: "NAP/PERM" },
     { value: "grouping", label: "Grouping" },
     { value: "two_banker", label: "2 Banker" },
-    { value: "one_banker", label: "1 Banker" },
+    { value: "one_banker", label: "1 Against" },
     { value: "turbo", label: "Turbo" },
   ];
 
@@ -233,7 +233,7 @@ export default function PoolsPage() {
       case "nap_perm": return "NAP/PERM";
       case "grouping": return "Grouping";
       case "two_banker": return "2 Banker";
-      case "one_banker": return "1 Banker";
+      case "one_banker": return "1 Against";
       case "turbo": return "Turbo";
       default: return gameType;
     }

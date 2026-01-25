@@ -1,7 +1,7 @@
 export const gameModes = {
   "nap_perm": "NAP/PERM",
   "grouping": "Grouping",
-  "one_banker": "1 Banker",
+  "one_banker": "1 Against",
   "two_banker": "2 Banker",
   "turbo": "Turbo",
 }
