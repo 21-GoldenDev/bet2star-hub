@@ -31,7 +31,7 @@ const LottoPage = () => {
           try {
             const numbersResponse = await fetch(`/api/games/${data.game.id}/lotto/numbers`);
             const numbersData = await numbersResponse.json();
-            setVisibleNumbers(numbersData.visibleNumbers || []);
+            setVisibleNumbers((numbersData.visibleNumbers || []).sort((a: number, b: number) => a - b));
           } catch (error) {
             console.error("Error fetching visible numbers:", error);
             setVisibleNumbers([]);
