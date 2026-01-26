@@ -185,7 +185,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
                 <TableBody>
                   {prize.map((value, index) => (
                     <TableRow key={index}>
-                      <TableCell className="px-1 border border-gray-600 text-gray-400 text-center">Turbo{index + 1}</TableCell>
+                      <TableCell className="px-1 border border-gray-600 text-gray-400 text-center">Turbo{index + 2}</TableCell>
                       <TableCell className="px-1 border border-gray-600 text-gray-400 text-center">{value}</TableCell>
                     </TableRow>
                   ))}
