@@ -75,7 +75,6 @@ export default function PrizePage() {
   const [prizeToDelete, setPrizeToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState(defaultData);
@@ -513,7 +512,7 @@ export default function PrizePage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="turbo1">Turbo1</Label>
+              <Label htmlFor="turbo1">Turbo2</Label>
               <Input
                 id="turbo1"
                 type="number"
@@ -524,7 +523,7 @@ export default function PrizePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="turbo2">Turbo2</Label>
+              <Label htmlFor="turbo2">Turbo3</Label>
               <Input
                 id="turbo2"
                 type="number"
@@ -535,7 +534,7 @@ export default function PrizePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="turbo3">Turbo3</Label>
+              <Label htmlFor="turbo3">Turbo4</Label>
               <Input
                 id="turbo3"
                 type="number"
