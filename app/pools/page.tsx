@@ -175,6 +175,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -185,6 +186,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -195,6 +197,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -205,6 +208,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -215,6 +219,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   setGameMode={setGameMode}
                 />
               )}
@@ -224,6 +229,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
@@ -234,6 +240,7 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  maxStakes={activeGame.max_stake}
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />

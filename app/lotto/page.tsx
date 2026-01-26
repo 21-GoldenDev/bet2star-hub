@@ -170,6 +170,7 @@ const LottoPage = () => {
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
               {gameMode === "grouping" && (
@@ -180,6 +181,7 @@ const LottoPage = () => {
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
               {gameMode === "one_banker" && (
@@ -190,6 +192,7 @@ const LottoPage = () => {
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
               {gameMode === "two_banker" && (
@@ -200,6 +203,7 @@ const LottoPage = () => {
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
               {gameMode === "turbo" && (
@@ -209,6 +213,7 @@ const LottoPage = () => {
                   gameId={activeGame.id}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
               {gameMode === "under1" && (
@@ -219,6 +224,7 @@ const LottoPage = () => {
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
               {gameMode === "under2" && (
@@ -229,6 +235,7 @@ const LottoPage = () => {
                   prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                   visibleNumbers={visibleNumbers}
+                  maxStake={activeGame.max_stake?.amount}
                 />
               )}
             </div>

@@ -15,9 +15,10 @@ interface Props {
   gameId: string;
   setGameMode: (mode: GameModeType) => void;
   matches: string[];
+  maxStakes?: { "1"?: number; "2"?: number; "3"?: number };
 }
 
-const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
+const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [prize, setPrize] = useState<number[]>([50, 150, 300]);
@@ -25,6 +26,13 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const requiredSelectionCount = Math.min(4, matchAtLeast || 1);
+
+  const currentMaxStake = (() => {
+    if (!maxStakes) return undefined;
+    if (matchAtLeast === 1) return maxStakes["1"];
+    if (matchAtLeast === 2) return maxStakes["2"];
+    return maxStakes["3"];
+  })();
 
   useEffect(() => {
     const fetchTurboPrize = async () => {
@@ -74,6 +82,10 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
     }
     if (betAmount <= 0) {
       toast.error("Enter a valid bet amount");
+      return;
+    }
+    if (currentMaxStake && betAmount > currentMaxStake) {
+      toast.error(`Maximum stake is ₦${currentMaxStake.toLocaleString()}`);
       return;
     }
 
@@ -244,11 +256,19 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
           </div>
 
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-muted-foreground">Amount</div>
+              {currentMaxStake && (
+                <div className="text-xs text-muted-foreground">
+                  Max: ₦{currentMaxStake.toLocaleString()}
+                </div>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
               <Input
                 type="number"
                 min={1}
+                max={currentMaxStake}
                 step={1}
                 value={betAmount.toString()}
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}

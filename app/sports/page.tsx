@@ -241,6 +241,11 @@ const Football = () => {
       return;
     }
 
+    if (activeGame.max_stake?.amount && betAmount > activeGame.max_stake.amount) {
+      toast.error(`Maximum stake is ₦${activeGame.max_stake.amount.toLocaleString()}`);
+      return;
+    }
+
     if (mode === "permutation" && matchAtLeast.length === 0) {
       toast.error("Please select under value");
       return;
@@ -597,12 +602,20 @@ const Football = () => {
 
                   <div className="border-t border-border pt-4 space-y-4">
                     <div className="space-y-2">
-                      <label className="text-sm text-muted-foreground" htmlFor="bet-amount">Bet Amount</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm text-muted-foreground" htmlFor="bet-amount">Bet Amount</label>
+                        {activeGame?.max_stake?.amount && (
+                          <div className="text-xs text-muted-foreground">
+                            Max: ₦{activeGame.max_stake.amount.toLocaleString()}
+                          </div>
+                        )}
+                      </div>
                       <Input
                         id="bet-amount"
                         type="number"
                         inputMode="numeric"
                         min={0}
+                        max={activeGame?.max_stake?.amount}
                         step={1}
                         placeholder="Enter amount"
                         value={betAmount}

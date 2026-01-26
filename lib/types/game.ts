@@ -11,4 +11,5 @@ export interface Game {
   endTime?: string; // for form compatibility
   prizes?: Prize[];
   results?: number[] | string[] | object[] | null;
+  max_stake?: any; // JSONB field
 }

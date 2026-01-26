@@ -1,0 +1,337 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Edit2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { MaxStake } from "@/lib/types/maxStake";
+
+interface Props {
+  gameId: string;
+  gameType: "lotto" | "pools" | "sports";
+  maxStakes: MaxStake[];
+  loading: boolean;
+  onRefresh: () => void;
+}
+
+export default function MaxStakeSection({
+  gameId,
+  gameType,
+  maxStakes,
+  loading,
+  onRefresh,
+}: Props) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const { toast } = useToast();
+
+  // For lotto and sports: single max stake
+  const [singleMaxStake, setSingleMaxStake] = useState<string>(
+    maxStakes.length > 0 ? maxStakes[0].max_amount.toString() : ""
+  );
+
+  // For pools: three max stakes based on matchAtLeast
+  const [poolsMaxStakes, setPoolsMaxStakes] = useState({
+    match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
+    match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
+    match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
+      ?.max_amount || "",
+  });
+
+  const updateMaxStakes = async () => {
+    try {
+      setSubmitting(true);
+
+      let stakesToUpdate: any[] = [];
+
+      if (gameType === "pools") {
+        if (
+          !poolsMaxStakes.match1 ||
+          !poolsMaxStakes.match2 ||
+          !poolsMaxStakes.match3plus
+        ) {
+          toast({
+            title: "Error",
+            description: "Please fill in all maximum stake amounts",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        stakesToUpdate = [
+          { match_at_least: 1, max_amount: Number(poolsMaxStakes.match1) },
+          { match_at_least: 2, max_amount: Number(poolsMaxStakes.match2) },
+          { match_at_least: 3, max_amount: Number(poolsMaxStakes.match3plus) },
+        ];
+      } else {
+        if (!singleMaxStake) {
+          toast({
+            title: "Error",
+            description: "Please enter a maximum stake amount",
+            variant: "destructive",
+          });
+          setSubmitting(false);
+          return;
+        }
+
+        stakesToUpdate = [{ max_amount: Number(singleMaxStake) }];
+      }
+
+      const res = await fetch(`/api/admin/games/${gameId}/max-stakes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          game_type: gameType,
+          max_stakes: stakesToUpdate,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Failed to update max stakes");
+
+      toast({
+        title: "Success",
+        description: "Maximum stakes updated successfully",
+      });
+
+      setIsEditing(false);
+      onRefresh();
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update max stakes",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="p-6">
+        <div className="flex items-center justify-center h-32">
+          <Loader2 className="w-6 h-6 animate-spin" />
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold">Maximum Stake Management</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {gameType === "pools"
+                ? "Set maximum stake amounts for different match requirements"
+                : "Set the maximum stake amount for this game"}
+            </p>
+          </div>
+          {!isEditing && (
+            <Button
+              onClick={() => setIsEditing(true)}
+              variant="outline"
+              size="sm"
+            >
+              <Edit2 className="w-4 h-4 mr-2" />
+              Edit
+            </Button>
+          )}
+        </div>
+
+        {isEditing ? (
+          <div className="space-y-4">
+            {gameType === "pools" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="match1">Maximum Stake (Match At Least = 1)</Label>
+                  <Input
+                    id="match1"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={poolsMaxStakes.match1}
+                    onChange={(e) =>
+                      setPoolsMaxStakes({
+                        ...poolsMaxStakes,
+                        match1: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 10000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="match2">Maximum Stake (Match At Least = 2)</Label>
+                  <Input
+                    id="match2"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={poolsMaxStakes.match2}
+                    onChange={(e) =>
+                      setPoolsMaxStakes({
+                        ...poolsMaxStakes,
+                        match2: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 50000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="match3plus">
+                    Maximum Stake (Match At Least ≥ 3)
+                  </Label>
+                  <Input
+                    id="match3plus"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={poolsMaxStakes.match3plus}
+                    onChange={(e) =>
+                      setPoolsMaxStakes({
+                        ...poolsMaxStakes,
+                        match3plus: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 100000"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="maxStake">Maximum Stake Amount</Label>
+                <Input
+                  id="maxStake"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={singleMaxStake}
+                  onChange={(e) => setSingleMaxStake(e.target.value)}
+                  placeholder="e.g., 100000"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                onClick={() => {
+                  setIsEditing(false);
+                  // Reset to original values
+                  if (gameType === "pools") {
+                    setPoolsMaxStakes({
+                      match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount.toString() || "",
+                      match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount.toString() || "",
+                      match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
+                        ?.max_amount.toString() || "",
+                    });
+                  } else {
+                    setSingleMaxStake(
+                      maxStakes.length > 0 ? maxStakes[0].max_amount.toString() : ""
+                    );
+                  }
+                }}
+                variant="outline"
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => setShowConfirm(true)}
+                disabled={submitting}
+              >
+                {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {gameType === "pools" ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least = 1
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least = 2
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least ≥ 3
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{(maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3))?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="p-4 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-2">
+                  Maximum Stake Amount
+                </div>
+                <div className="text-3xl font-bold">
+                  ₦{maxStakes.length > 0 ? maxStakes[0].max_amount.toLocaleString() : "—"}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Update</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to update the maximum stake
+              {gameType === "pools" ? "s" : ""} for this game? This will affect
+              all future bets.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={updateMaxStakes}
+              disabled={submitting}
+            >
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Update
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

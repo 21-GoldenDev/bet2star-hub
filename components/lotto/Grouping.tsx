@@ -25,9 +25,10 @@ interface Props {
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
   visibleNumbers?: number[];
+  maxStake?: number;
 }
 
-const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [] }: Props) => {
+const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], maxStake }: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(3);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
@@ -112,6 +113,10 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [] }
     }
     if (betAmount <= 0) {
       toast.error("Enter a valid bet amount");
+      return;
+    }
+    if (maxStake && betAmount > maxStake) {
+      toast.error(`Maximum stake is ₦${maxStake.toLocaleString()}`);
       return;
     }
 
@@ -360,11 +365,19 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [] }
           )}
 
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-muted-foreground">Amount</div>
+              {maxStake && (
+                <div className="text-xs text-muted-foreground">
+                  Max: ₦{maxStake.toLocaleString()}
+                </div>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
               <Input
                 type="number"
                 min={1}
+                max={maxStake}
                 step={1}
                 value={betAmount.toString()}
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}

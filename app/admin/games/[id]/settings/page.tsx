@@ -7,12 +7,14 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GamePrize, PrizeInfo } from "@/lib/types/gameMode";
 import { SportsMatch } from "@/lib/types/sports";
+import { MaxStake } from "@/lib/types/maxStake";
 import GameInfoCard from "@/components/admin/GameInfoCard";
 import GameStatsCards from "@/components/admin/GameStatsCards";
 import WeekResultSection from "@/components/admin/WeekResultSection";
 import PrizesSection from "@/components/admin/PrizesSection";
 import SportsMatchesSection from "@/components/admin/SportsMatchesSection";
 import LottoNumbersSection from "@/components/admin/LottoNumbersSection";
+import MaxStakeSection from "@/components/admin/MaxStakeSection";
 
 interface GameInfo {
   id: string;
@@ -35,6 +37,7 @@ export default function GameSettingsPage() {
   const [game, setGame] = useState<GameInfo | null>(null);
   const [gamePrizes, setGamePrizes] = useState<GamePrizeWithInfo[]>([]);
   const [allPrizes, setAllPrizes] = useState<PrizeInfo[]>([]);
+  const [maxStakes, setMaxStakes] = useState<MaxStake[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
@@ -69,6 +72,13 @@ export default function GameSettingsPage() {
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats(statsData);
+        }
+
+        // Fetch max stakes
+        const maxStakesRes = await fetch(`/api/admin/games/${gameId}/max-stakes`);
+        if (maxStakesRes.ok) {
+          const maxStakesData = await maxStakesRes.json();
+          setMaxStakes(maxStakesData.maxStakes || []);
         }
       }
 
@@ -166,6 +176,15 @@ export default function GameSettingsPage() {
 
       {game && <GameInfoCard game={game} />}
       {game && <GameStatsCards stats={stats} />}
+      {game && (
+        <MaxStakeSection
+          gameId={gameId}
+          gameType={game.type as "lotto" | "pools" | "sports"}
+          maxStakes={maxStakes}
+          loading={loading}
+          onRefresh={fetchData}
+        />
+      )}
       {game && (game.type === "lotto" || game.type === "pools") && (
         <WeekResultSection
           gameType={game.type}

@@ -17,15 +17,18 @@ interface Props {
   gameId: string;
   prizes?: Prize[];
   setGameMode: (mode: GameModeType) => void;
+  maxStakes?: { "1"?: number; "2"?: number; "3"?: number };
 }
 
-const Under1 = ({ gameMode, gameId, prizes, setGameMode, matches }: Props) => {
+const Under1 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const prize = prizes?.find((p) => p.id === odd);
+
+  const currentMaxStake = maxStakes?.["1"];
 
   useEffect(() => {
     if (!odd && prizes && prizes.length > 0) {
@@ -44,6 +47,10 @@ const Under1 = ({ gameMode, gameId, prizes, setGameMode, matches }: Props) => {
     }
     if (betAmount <= 0) {
       toast.error("Enter a valid bet amount");
+      return;
+    }
+    if (currentMaxStake && betAmount > currentMaxStake) {
+      toast.error(`Maximum stake is ₦${currentMaxStake.toLocaleString()}`);
       return;
     }
 
@@ -179,11 +186,19 @@ const Under1 = ({ gameMode, gameId, prizes, setGameMode, matches }: Props) => {
           </div>
 
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="text-sm font-semibold mb-3 text-muted-foreground">Amount</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold text-muted-foreground">Amount</div>
+              {currentMaxStake && (
+                <div className="text-xs text-muted-foreground">
+                  Max: ₦{currentMaxStake.toLocaleString()}
+                </div>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
               <Input
                 type="number"
                 min={1}
+                max={currentMaxStake}
                 step={1}
                 value={betAmount.toString()}
                 onChange={(e) => setBetAmount(Number(e.target.value || 0))}
