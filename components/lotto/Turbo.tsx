@@ -25,7 +25,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, visibleNumbers = [] }: Props) =>
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const numbers = visibleNumbers.length > 0 ? visibleNumbers : Array.from({ length: 99 }, (_, i) => i + 1);
-  const requiredSelectionCount = Math.min(3, matchAtLeast || 1);
+  const requiredSelectionCount = Math.min(4, matchAtLeast || 1);
 
   useEffect(() => {
     const fetchTurboPrize = async () => {
@@ -50,7 +50,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, visibleNumbers = [] }: Props) =>
     }
 
     if (selectedNumbers.length >= requiredSelectionCount) {
-      toast.error(`You can only select ${requiredSelectionCount} number${requiredSelectionCount > 1 ? "s" : ""} for U${requiredSelectionCount}.`);
+      toast.error(`You can only select ${requiredSelectionCount} numbers for U${requiredSelectionCount}.`);
       return;
     }
 
@@ -70,7 +70,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, visibleNumbers = [] }: Props) =>
 
   const placeBet = async () => {
     if (selectedNumbers.length !== requiredSelectionCount) {
-      toast.error(`Select exactly ${requiredSelectionCount} number${requiredSelectionCount > 1 ? "s" : ""} for U${requiredSelectionCount}.`);
+      toast.error(`Select exactly ${requiredSelectionCount} numbers for U${requiredSelectionCount}.`);
       return;
     }
     if (betAmount <= 0) {
@@ -188,20 +188,20 @@ const Turbo = ({ gameMode, gameId, setGameMode, visibleNumbers = [] }: Props) =>
               {numbers.map((num) => {
                 const selectionLimitReached = selectedNumbers.length >= requiredSelectionCount && !selectedNumbers.includes(num);
                 return (
-                <button
-                  key={num}
-                  onClick={() => toggleNumber(num)}
+                  <button
+                    key={num}
+                    onClick={() => toggleNumber(num)}
                     disabled={selectionLimitReached}
-                  className={clsx(
+                    className={clsx(
                       "aspect-square w-12 rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
-                    selectedNumbers.includes(num)
-                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                      selectedNumbers.includes(num)
+                        ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                         : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground",
                       selectionLimitReached && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {num}
-                </button>
+                    )}
+                  >
+                    {num}
+                  </button>
                 );
               })}
             </div>

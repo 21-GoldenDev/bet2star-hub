@@ -24,7 +24,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
   const [matchAtLeast, setMatchAtLeast] = useState<number>(3);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
-  const requiredSelectionCount = Math.min(3, matchAtLeast || 1);
+  const requiredSelectionCount = Math.min(4, matchAtLeast || 1);
 
   useEffect(() => {
     const fetchTurboPrize = async () => {
@@ -49,7 +49,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
     }
 
     if (selectedMatches.length >= requiredSelectionCount) {
-      toast.error(`You can only select ${requiredSelectionCount} match${requiredSelectionCount > 1 ? "es" : ""} for U${requiredSelectionCount}.`);
+      toast.error(`You can only select ${requiredSelectionCount} matches for U${requiredSelectionCount}.`);
       return;
     }
 
@@ -69,7 +69,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
 
   const placeBet = async () => {
     if (selectedMatches.length !== requiredSelectionCount) {
-      toast.error(`Select exactly ${requiredSelectionCount} match${requiredSelectionCount > 1 ? "es" : ""} for U${requiredSelectionCount}.`);
+      toast.error(`Select exactly ${requiredSelectionCount} matches for U${requiredSelectionCount}.`);
       return;
     }
     if (betAmount <= 0) {
@@ -202,20 +202,20 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
               {matches.map((match) => {
                 const selectionLimitReached = selectedMatches.length >= requiredSelectionCount && !selectedMatches.includes(match);
                 return (
-                <button
-                  key={match}
-                  onClick={() => toggleMatch(match)}
+                  <button
+                    key={match}
+                    onClick={() => toggleMatch(match)}
                     disabled={selectionLimitReached}
-                  className={clsx(
+                    className={clsx(
                       "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300",
-                    selectedMatches.includes(match)
-                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                      selectedMatches.includes(match)
+                        ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
                         : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground",
                       selectionLimitReached && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {match}
-                </button>
+                    )}
+                  >
+                    {match}
+                  </button>
                 );
               })}
             </div>
