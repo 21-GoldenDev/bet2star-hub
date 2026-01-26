@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabase/server';
 import { addCORSHeaders, handleCORS } from '@/app/api/middleware/cors';
+import {
+  PrizeWithCommission,
+  TurboPrize,
+  calculateBetReward,
+  computeLottoAward,
+  computePoolsAward,
+} from '@/lib/helpers';
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
@@ -135,6 +142,7 @@ export async function POST(request: NextRequest) {
           betNumber: betResult.betNumber,
           newBalance,
           amountStaked: betAmount,
+          award: betResult.award || 0,
         },
       })
     );
@@ -196,7 +204,13 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
 
   if (error) throw error;
 
-  return { betId: data.id, betNumber: nextNumber };
+  const award = await computeSportsAward(supabase, gameId, data);
+
+  if (award > 0) {
+    await supabase.from('bets_sport').update({ award }).eq('id', data.id);
+  }
+
+  return { betId: data.id, betNumber: nextNumber, award };
 }
 
 async function placeLottoBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
@@ -274,7 +288,13 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
 
   if (error) throw error;
 
-  return { betId: data.id, betNumber: nextNumber };
+  const award = await computeLottoAwardForBet(supabase, gameId, data, prize);
+
+  if (award > 0) {
+    await supabase.from('bets_lotto').update({ award }).eq('id', data.id);
+  }
+
+  return { betId: data.id, betNumber: nextNumber, award };
 }
 
 async function placePoolsBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
@@ -353,5 +373,131 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
 
   if (error) throw error;
 
-  return { betId: data.id, betNumber: nextNumber };
+  const award = await computePoolsAwardForBet(supabase, gameId, data, prize);
+
+  if (award > 0) {
+    await supabase.from('bets_pools').update({ award }).eq('id', data.id);
+  }
+
+  return { betId: data.id, betNumber: nextNumber, award };
+}
+
+async function computeSportsAward(supabase: any, gameId: string, bet: any): Promise<number> {
+  try {
+    const { data: matches, error } = await supabase
+      .from('sports')
+      .select('*')
+      .eq('game_id', gameId);
+
+    if (error) {
+      console.error('Sports award fetch error:', error);
+      return 0;
+    }
+
+    const selections = bet?.selections || {};
+    const matchNumbers = Object.keys(selections);
+    if (matchNumbers.length === 0) return 0;
+
+    const matchesWithScores = (matches || []).filter((m: any) =>
+      Number.isFinite(m.home_goal) && Number.isFinite(m.away_goal)
+    );
+
+    const allSelectedHaveScores = matchNumbers.every((num) =>
+      matchesWithScores.some((m: any) => m.number === Number(num))
+    );
+
+    if (!allSelectedHaveScores) return 0;
+
+    return calculateBetReward(bet, matchesWithScores) || 0;
+  } catch (err) {
+    console.error('Sports award calc error:', err);
+    return 0;
+  }
+}
+
+async function computeLottoAwardForBet(
+  supabase: any,
+  gameId: string,
+  bet: any,
+  prizeId?: string,
+): Promise<number> {
+  try {
+    const [resultResp, prizeResp, turboResp] = await Promise.all([
+      supabase.from('games').select('results').eq('id', gameId).single(),
+      loadPrizeWithCommission(supabase, prizeId),
+      loadTurboPrize(supabase),
+    ]);
+
+    if (resultResp.error) {
+      console.error('Lotto result fetch error:', resultResp.error);
+      return 0;
+    }
+
+    const results = (resultResp.data?.results as number[]) || [];
+    if (!Array.isArray(results) || results.length === 0) return 0;
+
+    const award = computeLottoAward(bet, prizeResp, results, turboResp);
+    return Number.isFinite(award) ? award : 0;
+  } catch (err) {
+    console.error('Lotto award calc error:', err);
+    return 0;
+  }
+}
+
+async function computePoolsAwardForBet(
+  supabase: any,
+  gameId: string,
+  bet: any,
+  prizeId?: string,
+): Promise<number> {
+  try {
+    const [resultResp, prizeResp, turboResp] = await Promise.all([
+      supabase.from('games').select('results').eq('id', gameId).single(),
+      loadPrizeWithCommission(supabase, prizeId),
+      loadTurboPrize(supabase),
+    ]);
+
+    if (resultResp.error) {
+      console.error('Pools result fetch error:', resultResp.error);
+      return 0;
+    }
+
+    const results = (resultResp.data?.results as string[]) || [];
+    if (!Array.isArray(results) || results.length === 0) return 0;
+
+    const award = computePoolsAward(bet, prizeResp, results, turboResp);
+    return Number.isFinite(award) ? award : 0;
+  } catch (err) {
+    console.error('Pools award calc error:', err);
+    return 0;
+  }
+}
+
+async function loadPrizeWithCommission(supabase: any, prizeId?: string): Promise<PrizeWithCommission | null> {
+  if (!prizeId) return null;
+  const [{ data: prize, error: prizeError }, { data: gamePrize, error: gpError }] = await Promise.all([
+    supabase.from('prize').select('id, name, data').eq('id', prizeId).single(),
+    supabase.from('game_prizes').select('prize_id, commission').eq('prize_id', prizeId).single(),
+  ]);
+
+  if (prizeError) {
+    console.error('Prize fetch error:', prizeError);
+    return null;
+  }
+
+  if (!prize) return null;
+
+  return {
+    ...prize,
+    commission: gpError ? 0 : (gamePrize?.commission || 0),
+  } as PrizeWithCommission;
+}
+
+async function loadTurboPrize(supabase: any): Promise<TurboPrize | null> {
+  const { data, error } = await supabase.from('turbo_prize').select('*').single();
+  if (error) {
+    console.error('Turbo prize fetch error:', error);
+    return null;
+  }
+  return data as TurboPrize;
 }

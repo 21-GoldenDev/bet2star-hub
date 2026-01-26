@@ -82,6 +82,16 @@ export const calcAwardLine = (
 
 const sportOptions = ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
 
+export type PrizeWithCommission = {
+  id?: string;
+  data?: { data?: Record<string, number[]>; columns?: string[] };
+  commission?: number;
+};
+
+export type TurboPrize = {
+  data?: Record<string, number>;
+};
+
 export function calculateBetReward(bet: any, matches: any[]): number {
   if (!bet || bet.status === "void" || bet.status !== "active") return 0;
 
@@ -140,6 +150,212 @@ export function calculateBetReward(bet: any, matches: any[]): number {
   const apl = (bet.staked || 0) / totalWays;
 
   return apl * winning;
+}
+
+export function computeLottoAward(
+  bet: any,
+  prize: PrizeWithCommission | null,
+  weekResult: number[],
+  turboPrizeData?: TurboPrize | null,
+): number {
+  if (!bet) return 0;
+  if (bet.status === "void") return bet.staked || 0;
+
+  if (bet.gameType === "turbo") {
+    let turboPrize: number[];
+    if (turboPrizeData && turboPrizeData.data) {
+      turboPrize = Object.values(turboPrizeData.data) as number[];
+    } else {
+      turboPrize = [50, 150, 300];
+    }
+    const betNumbers = bet.numbers || [];
+    if (!Array.isArray(betNumbers) || betNumbers.length === 0) return 0;
+
+    if (weekResult.join(",").includes(betNumbers.join(","))) {
+      const matchCount = betNumbers.length;
+      if (matchCount < 2) return 0;
+      const prizeIndex = Math.min(matchCount - 2, turboPrize.length - 1);
+      return (turboPrize[prizeIndex] || 0) * (bet.staked || 0);
+    }
+    return 0;
+  }
+
+  if (!prize || !prize.data || !prize.data.data || !prize.data.columns) return 0;
+
+  if (bet.gameType === "under1" || bet.gameType === "under2") {
+    const betNumbers = bet.numbers || [];
+    if (!Array.isArray(betNumbers) || betNumbers.length === 0) return 0;
+
+    const win = betNumbers.every((num: number) => weekResult.includes(num));
+    if (!win) return 0;
+
+    let award = 0;
+    Object.keys(prize.data.data).forEach((drawKey: string) => {
+      const parsedDraw = parseDraws(drawKey);
+      if (!parsedDraw) return;
+      const { start, end } = parsedDraw;
+      if (weekResult.length < start || weekResult.length > end) return;
+
+      const columnIndex = bet.gameType === "under1" ? 0 : 1;
+      const multiplier = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
+      award = multiplier * (bet.staked || 0);
+    });
+    return award;
+  }
+
+  const isNapPerm = bet.gameType === "nap_perm";
+  const apl = isNapPerm
+    ? calcAplDirect(bet.staked || 0, bet.under || [], (bet.numbers || []).length)
+    : calcAplGrouping(bet.staked || 0, bet.numbers || {});
+
+  let award = 0;
+
+  Object.keys(prize.data.data).forEach((drawKey: string) => {
+    const parsedDraw = parseDraws(drawKey);
+    if (!parsedDraw) return;
+    const { start, end } = parsedDraw;
+    if (weekResult.length < start || weekResult.length > end) return;
+
+    let multiplier = 0;
+    if (isNapPerm) {
+      (bet.under || []).forEach((u: number) => {
+        const columnIndex = prize.data?.columns?.findIndex((col: string) => col.toUpperCase() === `U${u}`) ?? -1;
+        if (columnIndex !== -1) {
+          const colVal = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
+          multiplier += colVal * calcAwardLine(bet.numbers || [], weekResult, u);
+        }
+      });
+    } else {
+      const awardLine = Object.keys(bet.numbers || {}).reduce((acc: number, gid: string) => {
+        const nums = (bet.numbers as any)?.[gid] || [];
+        const u = Number(gid.split("-")[0]);
+        return acc * calcAwardLine(nums, weekResult, u);
+      }, 1);
+
+      (bet.under || []).forEach((u: number) => {
+        const columnIndex = prize.data?.columns?.findIndex((col: string) => col.toUpperCase() === `U${u}`) ?? -1;
+        if (columnIndex !== -1) {
+          const colVal = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
+          multiplier += colVal;
+        }
+      });
+
+      multiplier *= awardLine;
+    }
+
+    award = multiplier * apl;
+  });
+
+  if (!bet.player) {
+    award *= prize?.commission ? prize.commission / 100 : 1;
+  }
+
+  if (!Number.isFinite(award)) return 0;
+  return award;
+}
+
+export function computePoolsAward(
+  bet: any,
+  prize: PrizeWithCommission | null,
+  weekResult: string[],
+  turboPrizeData?: TurboPrize | null,
+): number {
+  if (!bet) return 0;
+  if (bet.status === "void") return bet.staked || 0;
+
+  if (bet.gameType === "turbo") {
+    let turboPrize: number[];
+    if (turboPrizeData && turboPrizeData.data) {
+      turboPrize = Object.values(turboPrizeData.data) as number[];
+    } else {
+      turboPrize = [50, 150, 300];
+    }
+    const betMatches = bet.matches || [];
+    if (!Array.isArray(betMatches) || betMatches.length === 0) return 0;
+
+    if (weekResult.join(",").includes(betMatches.join(","))) {
+      const matchCount = betMatches.length;
+      if (matchCount < 2) return 0;
+      const prizeIndex = Math.min(matchCount - 2, turboPrize.length - 1);
+      return (turboPrize[prizeIndex] || 0) * (bet.staked || 0);
+    }
+    return 0;
+  }
+
+  if (!prize || !prize.data || !prize.data.data || !prize.data.columns) return 0;
+
+  if (bet.gameType === "under1" || bet.gameType === "under2") {
+    const betMatches = bet.matches || [];
+    if (!Array.isArray(betMatches) || betMatches.length === 0) return 0;
+
+    const win = betMatches.every((match: string) => weekResult.toString().includes(match.toString()));
+    if (!win) return 0;
+
+    let award = 0;
+    Object.keys(prize.data.data).forEach((drawKey: string) => {
+      const parsedDraw = parseDraws(drawKey);
+      if (!parsedDraw) return;
+      const { start, end } = parsedDraw;
+      if (weekResult.length < start || weekResult.length > end) return;
+
+      const columnIndex = bet.gameType === "under1" ? 0 : 1;
+      const multiplier = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
+      award = multiplier * (bet.staked || 0);
+    });
+    return award;
+  }
+
+  const isNapPerm = bet.gameType === "nap_perm";
+  const apl = isNapPerm
+    ? calcAplDirect(bet.staked || 0, (bet.under || []).map((u: any) => Number(u)), (bet.matches || []).length)
+    : calcAplGrouping(bet.staked || 0, bet.matches || {});
+
+  let award = 0;
+
+  Object.keys(prize.data.data).forEach((drawKey: string) => {
+    const parsedDraw = parseDraws(drawKey);
+    if (!parsedDraw) return;
+    const { start, end } = parsedDraw;
+    if (weekResult.length < start || weekResult.length > end) return;
+
+    let multiplier = 0;
+    if (isNapPerm) {
+      (bet.under || []).forEach((u: any) => {
+        const uStr = String(u);
+        const columnIndex = prize.data?.columns?.findIndex((col: string) => col.toUpperCase() === `U${uStr}`) ?? -1;
+        if (columnIndex !== -1) {
+          const colVal = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
+          multiplier += colVal * calcAwardLine(bet.matches || [], weekResult, Number(u));
+        }
+      });
+    } else {
+      const awardLine = Object.keys(bet.matches || {}).reduce((acc: number, gid: string) => {
+        const ms = (bet.matches as any)?.[gid] || [];
+        const u = Number(gid.split("-")[0]);
+        return acc * calcAwardLine(ms, weekResult, u);
+      }, 1);
+
+      (bet.under || []).forEach((u: any) => {
+        const uStr = String(u);
+        const columnIndex = prize.data?.columns?.findIndex((col: string) => col.toUpperCase() === `U${uStr}`) ?? -1;
+        if (columnIndex !== -1) {
+          const colVal = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
+          multiplier += colVal;
+        }
+      });
+
+      multiplier *= awardLine;
+    }
+
+    award = multiplier * apl;
+  });
+
+  if (!bet.player) {
+    award *= prize?.commission ? prize.commission / 100 : 1;
+  }
+
+  if (!Number.isFinite(award)) return 0;
+  return award;
 }
 
 function getCorrectOptions(homeGoal: number, awayGoal: number): string[] {
