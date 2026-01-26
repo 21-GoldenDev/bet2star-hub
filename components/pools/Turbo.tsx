@@ -153,7 +153,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [] }: Props) => {
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
             <div className="flex flex-col gap-2">
-              {[1, 2, 3].map((u) => (
+              {[2, 3, 4].map((u) => (
                 <label
                   key={u}
                   onClick={() => toggleUnder(u)}

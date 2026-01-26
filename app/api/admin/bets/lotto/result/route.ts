@@ -101,7 +101,8 @@ export async function POST(request: NextRequest) {
 
         if (weekResult.join(",").includes(betNumbers.join(","))) {
           const matchCount = betNumbers.length;
-          const prizeIndex = Math.min(matchCount - 1, turboPrize.length - 1);
+          if (matchCount < 2) return 0;
+          const prizeIndex = Math.min(matchCount - 2, turboPrize.length - 1);
           const award = (turboPrize[prizeIndex] || 0) * (bet.staked || 0);
           return award;
         }
