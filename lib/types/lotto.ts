@@ -42,7 +42,17 @@ export type TurboBet = BaseBet & {
   numbers: number[];
 };
 
-export type LottoBet = NapPermBet | GroupingBet | TwoBankerBet | OneBankerBet | TurboBet;
+export type Under1Bet = BaseBet & {
+  gameType: "under1";
+  numbers: number[];
+};
+
+export type Under2Bet = BaseBet & {
+  gameType: "under2";
+  numbers: number[];
+};
+
+export type LottoBet = NapPermBet | GroupingBet | TwoBankerBet | OneBankerBet | TurboBet | Under1Bet | Under2Bet;
 
 export type LottoBetFilters = {
   week?: number;

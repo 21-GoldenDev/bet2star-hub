@@ -42,7 +42,17 @@ export type TurboBet = BaseBet & {
   matches: string[];
 };
 
-export type PoolsBet = DirectBet | GroupingBet | TwoBankerBet | OneBankerBet | TurboBet;
+export type Under1Bet = BaseBet & {
+  gameType: "under1";
+  matches: string[];
+};
+
+export type Under2Bet = BaseBet & {
+  gameType: "under2";
+  matches: string[];
+};
+
+export type PoolsBet = DirectBet | GroupingBet | TwoBankerBet | OneBankerBet | TurboBet | Under1Bet | Under2Bet;
 
 export type PoolsBetFilters = {
   week?: number;

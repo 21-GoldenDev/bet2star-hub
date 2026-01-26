@@ -9,6 +9,8 @@ import OneBanker from "@/components/pools/OneBanker";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
 import Turbo from "@/components/pools/Turbo";
+import Under1 from "@/components/pools/Under1";
+import Under2 from "@/components/pools/Under2";
 
 const PoolsPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
@@ -213,6 +215,26 @@ const PoolsPage = () => {
                   gameMode={gameMode}
                   gameId={activeGame.id}
                   matches={matches}
+                  setGameMode={setGameMode}
+                />
+              )}
+              {gameMode === "under1" && (
+                <Under1
+                  activeTab={activeTab}
+                  gameMode={gameMode}
+                  gameId={activeGame.id}
+                  matches={matches}
+                  prizes={activeGame.prizes}
+                  setGameMode={setGameMode}
+                />
+              )}
+              {gameMode === "under2" && (
+                <Under2
+                  activeTab={activeTab}
+                  gameMode={gameMode}
+                  gameId={activeGame.id}
+                  matches={matches}
+                  prizes={activeGame.prizes}
                   setGameMode={setGameMode}
                 />
               )}

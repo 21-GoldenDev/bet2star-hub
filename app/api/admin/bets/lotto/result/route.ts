@@ -111,6 +111,35 @@ export async function POST(request: NextRequest) {
 
       if (!prize || !prize.data || !prize.data.data || !prize.data.columns) return 0;
 
+      if (bet.gameType === "under1" || bet.gameType === "under2") {
+        const betNumbers = bet.numbers || [];
+        if (!Array.isArray(betNumbers)) return 0;
+        if (betNumbers.length === 0) return 0;
+
+        let win = true;
+        betNumbers.forEach((num: number) => {
+          if (!weekResult.includes(num)) {
+            win = false;
+          }
+        });
+
+        if (win) {
+          let award = 0;
+          Object.keys(prize.data.data).forEach((drawKey: string) => {
+            const parsedDraw = parseDraws(drawKey);
+            if (!parsedDraw) return;
+            const { start, end } = parsedDraw;
+            if (weekResult.length < start || weekResult.length > end) return;
+
+            const columnIndex = bet.gameType === "under1" ? 0 : 1;
+            const multiplier = (prize.data.data?.[drawKey]?.[columnIndex] || 0) as number;
+            award = multiplier * (bet.staked || 0);
+          });
+          return award;
+        }
+        return 0;
+      }
+
       const isNapPerm = bet.gameType === "nap_perm";
       const apl = isNapPerm
         ? calcAplDirect(bet.staked || 0, bet.under || [], (bet.numbers || []).length)

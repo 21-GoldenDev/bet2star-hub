@@ -140,6 +140,8 @@ export default function PoolsPage() {
     { value: "two_banker", label: "2 Banker" },
     { value: "one_banker", label: "1 Against" },
     { value: "turbo", label: "Turbo" },
+    { value: "under1", label: "Under 1" },
+    { value: "under2", label: "Under 2" },
   ];
 
   const filteredAll = useMemo(() => {
@@ -155,11 +157,13 @@ export default function PoolsPage() {
         return true;
       })
       .map((b) => {
+        if (b.gameType === "turbo" || b.gameType === "under1" || b.gameType === "under2") {
+          return { ...b, apl: 0 };
+        }
         const isNapPerm = b.gameType === "nap_perm";
-        const isTurbo = b.gameType === "turbo";
         const apl = isNapPerm
           ? calcAplDirect(b.staked, b.under as any, (Array.isArray(b.matches) ? b.matches : Object.values(b.matches).flat()).length)
-          : isTurbo ? 0 : calcAplGrouping(b.staked, b.matches as any);
+          : calcAplGrouping(b.staked, b.matches as any);
         return { ...b, apl };
       });
   }, [allData, weekFilter, gameFilter, rangeFilter]);
@@ -235,6 +239,8 @@ export default function PoolsPage() {
       case "two_banker": return "2 Banker";
       case "one_banker": return "1 Against";
       case "turbo": return "Turbo";
+      case "under1": return "Under 1";
+      case "under2": return "Under 2";
       default: return gameType;
     }
   }
@@ -401,7 +407,7 @@ export default function PoolsPage() {
                     <div>Agent</div>
                   ),
               },
-              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? value.join(", ") : value) },
+              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? (value.join(", ") || "-") : value) },
               {
                 key: "matches",
                 label: "Matches",

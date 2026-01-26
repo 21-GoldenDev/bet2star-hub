@@ -110,6 +110,35 @@ export async function POST(request: NextRequest) {
 
       if (!prize || !prize.data || !prize.data.data || !prize.data.columns) return 0;
 
+      if (bet.gameType === "under1" || bet.gameType === "under2") {
+        const betMatches = bet.matches || [];
+        if (!Array.isArray(betMatches)) return 0;
+        if (betMatches.length === 0) return 0;
+
+        let win = true;
+        betMatches.forEach((match: string) => {
+          if (!weekResult.toString().includes(match.toString())) {
+            win = false;
+          }
+        });
+
+        if (win) {
+          let award = 0;
+          Object.keys(prize.data.data).forEach((drawKey: string) => {
+            const parsedDraw = parseDraws(drawKey);
+            if (!parsedDraw) return;
+            const { start, end } = parsedDraw;
+            if (weekResult.length < start || weekResult.length > end) return;
+
+            const columnIndex = bet.gameType === "under1" ? 0 : 1;
+            const multiplier = (prize.data.data?.[drawKey]?.[columnIndex] || 0) as number;
+            award = multiplier * (bet.staked || 0);
+          });
+          return award;
+        }
+        return 0;
+      }
+
       const isNapPerm = bet.gameType === "nap_perm";
       const apl = isNapPerm
         ? calcAplDirect(bet.staked || 0, (bet.under || []).map((u: any) => Number(u)), (bet.matches || []).length)
