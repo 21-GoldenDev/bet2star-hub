@@ -24,7 +24,6 @@ import { useRouter } from "next/navigation";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/games", label: "Games", icon: Gamepad2 },
   // { href: "/admin/transactions", label: "Transactions", icon: DollarSign },
   // { href: "/admin/reports", label: "Reports", icon: FileText },
@@ -36,6 +35,7 @@ const adminMenuItems = [
 export default function AdminSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [betsOpen, setBetsOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -143,6 +143,99 @@ export default function AdminSidebar() {
               })()}
             </div>
 
+            {/* Users expandable item */}
+            <div>
+              {(() => {
+                const isParentActive =
+                  pathname === "/admin/users" ||
+                  pathname?.startsWith("/admin/staff") ||
+                  pathname?.startsWith("/admin/agents") ||
+                  pathname?.startsWith("/admin/terminals");
+
+                return (
+                  <div>
+                    <div
+                      role="button"
+                      onClick={() => setUsersOpen(!usersOpen)}
+                      className={clsx(
+                        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer",
+                        isParentActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Users className="w-5 h-5" />
+                        <span className="font-medium">Users</span>
+                      </div>
+                      <ChevronDown
+                        className={clsx(
+                          "w-4 h-4 transition-transform",
+                          usersOpen && "rotate-180"
+                        )}
+                      />
+                    </div>
+
+                    {usersOpen && (
+                      <div className="mt-2 space-y-1">
+                        <Link href="/admin/users" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/users"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Online Players</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname?.startsWith("/admin/staff")
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Staff</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname?.startsWith("/admin/agents")
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Agents</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname?.startsWith("/admin/terminals")
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Terminals</span>
+                          </div>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
             {adminMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -165,16 +258,16 @@ export default function AdminSidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-sidebar-border space-y-2">
+          <div className="p-4 border-t border-sidebar-border">
             <Link href="/">
-              <Button variant="outline" className="w-full justify-start" size="sm">
+              <Button variant="outline" className="w-full justify-start text-white" size="sm">
                 <Home className="w-4 h-4 mr-2" />
                 Back to App
               </Button>
             </Link>
             <Button
               variant="outline"
-              className="w-full justify-start text-destructive hover:text-destructive"
+              className="w-full justify-start text-destructive hover:text-destructive mt-2"
               size="sm"
               onClick={handleLogout}
             >
