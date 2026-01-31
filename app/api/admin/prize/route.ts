@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, data } = body;
+    const { name, data, commission = 100, status = "active" } = body;
 
     // Validate required fields
     if (!name || !data) {
@@ -55,9 +55,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate commission
+    if (typeof commission !== "number" || commission < 0 || commission > 100) {
+      return NextResponse.json({ error: "Invalid commission. Must be a number between 0 and 100" }, { status: 400 });
+    }
+
+    // Validate status
+    if (status !== "active" && status !== "inactive") {
+      return NextResponse.json({ error: "Invalid status. Must be 'active' or 'inactive'" }, { status: 400 });
+    }
+
     const { data: prizeData, error } = await supabase
       .from("prize")
-      .insert([{ name, data }])
+      .insert([{ name, data, commission, status }])
       .select()
       .single();
 

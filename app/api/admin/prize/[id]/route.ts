@@ -51,7 +51,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, data } = body;
+    const { name, data, commission, status } = body;
 
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
@@ -64,6 +64,20 @@ export async function PUT(
         );
       }
       updateData.data = data;
+    }
+
+    if (commission !== undefined) {
+      if (typeof commission !== "number" || commission < 0 || commission > 100) {
+        return NextResponse.json({ error: "Invalid commission. Must be a number between 0 and 100" }, { status: 400 });
+      }
+      updateData.commission = commission;
+    }
+
+    if (status !== undefined) {
+      if (status !== "active" && status !== "inactive") {
+        return NextResponse.json({ error: "Invalid status. Must be 'active' or 'inactive'" }, { status: 400 });
+      }
+      updateData.status = status;
     }
 
     updateData.updated_at = new Date().toISOString();

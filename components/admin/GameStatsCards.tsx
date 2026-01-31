@@ -15,9 +15,9 @@ export default function GameStatsCards({ stats }: Props) {
           <div>
             <p className="text-sm text-muted-foreground">Total Betting Amount</p>
             <p className="text-3xl font-bold mt-2">
-              {new Intl.NumberFormat("en-US", {
+              {new Intl.NumberFormat("en-NG", {
                 style: "currency",
-                currency: "USD",
+                currency: "NGN",
               }).format(stats.totalBetAmount)}
             </p>
           </div>
@@ -28,9 +28,9 @@ export default function GameStatsCards({ stats }: Props) {
           <div>
             <p className="text-sm text-muted-foreground">Total Reward Payable</p>
             <p className="text-3xl font-bold mt-2">
-              {new Intl.NumberFormat("en-US", {
+              {new Intl.NumberFormat("en-NG", {
                 style: "currency",
-                currency: "USD",
+                currency: "NGN",
               }).format(stats.totalReward)}
             </p>
           </div>

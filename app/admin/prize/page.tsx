@@ -45,6 +45,8 @@ interface Prize {
   id: string;
   name: string;
   data: PrizeData;
+  commission?: number;
+  status?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -64,6 +66,8 @@ const defaultData = {
     { label: "15~16", values: ["0", "0", "0", "0", "0", "0", "0"] },
     { label: "17~49", values: ["0", "0", "0", "0", "0", "0", "0"] },
   ],
+  commission: 100,
+  status: "active",
 }
 
 export default function PrizePage() {
@@ -162,6 +166,8 @@ export default function PrizePage() {
         body: JSON.stringify({
           name: formData.name,
           data: prizeData,
+          commission: formData.commission,
+          status: formData.status,
         }),
       });
 
@@ -220,6 +226,8 @@ export default function PrizePage() {
         body: JSON.stringify({
           name: formData.name,
           data: prizeData,
+          commission: formData.commission,
+          status: formData.status,
         }),
       });
 
@@ -303,6 +311,8 @@ export default function PrizePage() {
     setFormData({
       name: prize.name,
       columns: [...prize.data.columns],
+      commission: prize.commission ?? 100,
+      status: prize.status ?? "active",
       rows: rows.length > 0 ? rows : [{ label: "", values: [""] }],
     });
 
@@ -434,6 +444,32 @@ export default function PrizePage() {
           ))}
         </div>
       ),
+    },
+    {
+      key: "commission" as keyof Prize,
+      label: "Commission",
+      render: (value: number) => (value !== undefined ? `${value}%` : "-"),
+      sortable: true,
+    },
+    {
+      key: "status" as keyof Prize,
+      label: "Status",
+      render: (value: string) =>
+        value ? (
+          <Badge
+            className={
+              value === "active"
+                ? "capitalize bg-green-100 text-green-800 border-transparent"
+                : "capitalize bg-slate-100 text-slate-600 border-transparent"
+            }
+            title={value}
+          >
+            {value}
+          </Badge>
+        ) : (
+          "-"
+        ),
+      sortable: true,
     },
     {
       key: "created_at" as keyof Prize,
@@ -650,6 +686,8 @@ interface PrizeFormProps {
     name: string;
     columns: string[];
     rows: { label: string; values: string[] }[];
+    commission: number;
+    status: string;
   };
   setFormData: (data: any) => void;
   addColumn: () => void;
@@ -674,16 +712,41 @@ function PrizeForm({
 }: PrizeFormProps) {
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name *</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) =>
-            setFormData({ ...formData, name: e.target.value })
-          }
-          placeholder="e.g., Standard Prize Table"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData({ ...formData, name: e.target.value })
+            }
+            placeholder="e.g., Standard Prize Table"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="commission">Commission (%)</Label>
+          <Input
+            id="commission"
+            type="number"
+            min={0}
+            max={100}
+            value={formData.commission}
+            onChange={(e) => setFormData({ ...formData, commission: parseFloat(e.target.value) || 0 })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <select
+            id="status"
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            className="w-full rounded-lg border px-3 py-2"
+          >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
       <div className="space-y-2">
