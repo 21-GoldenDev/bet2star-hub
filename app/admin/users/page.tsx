@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import DataTable from "@/components/admin/DataTable";
 import {
   Dialog,
   DialogContent,
@@ -24,158 +23,127 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Plus, Edit2, Trash2, Eye } from "lucide-react";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Plus, Edit2, Trash2, Search } from "lucide-react";
 
-interface User {
-  id: number;
-  name: string;
+interface OnlineUser {
+  id: string;
+  username: string;
   email: string;
-  type: "online_player" | "offline_player" | "staff";
-  status: "active" | "inactive" | "suspended";
+  full_name: string;
+  phone?: string;
+  address?: string;
   balance: number;
-  joinDate: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// Mock data - replace with real API calls
-const mockUsers: User[] = [
-  {
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    type: "online_player",
-    status: "active",
-    balance: 45000,
-    joinDate: "2024-12-01",
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    email: "jane@example.com",
-    type: "online_player",
-    status: "active",
-    balance: 120000,
-    joinDate: "2024-11-15",
-  },
-  {
-    id: 3,
-    name: "Bob Johnson",
-    email: "bob@example.com",
-    type: "offline_player",
-    status: "suspended",
-    balance: 5000,
-    joinDate: "2024-10-20",
-  },
-  {
-    id: 4,
-    name: "Alice Williams",
-    email: "alice@example.com",
-    type: "staff",
-    status: "active",
-    balance: 250000,
-    joinDate: "2024-09-10",
-  },
-  {
-    id: 5,
-    name: "Charlie Brown",
-    email: "charlie@example.com",
-    type: "offline_player",
-    status: "inactive",
-    balance: 0,
-    joinDate: "2024-08-05",
-  },
-];
-
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<OnlineUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedUser, setSelectedUser] = useState<OnlineUser | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: "",
+    username: "",
+    full_name: "",
     email: "",
-    type: "online_player" as "online_player" | "offline_player" | "staff",
-    status: "active" as "active" | "inactive" | "suspended",
+    phone: "",
+    address: "",
   });
 
-  const onlineUsers = users.filter((u) => u.type === "online_player");
-  const offlineUsers = users.filter((u) => u.type === "offline_player");
-  const staffUsers = users.filter((u) => u.type === "staff");
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-  const columns = [
-    { key: "name" as const, label: "Name", sortable: true },
-    { key: "email" as const, label: "Email", sortable: true },
-    {
-      key: "status" as const,
-      label: "Status",
-      render: (status: User["status"]) => (
-        <Badge
-          variant={
-            status === "active"
-              ? "default"
-              : status === "suspended"
-              ? "destructive"
-              : "secondary"
-          }
-          className="capitalize"
-        >
-          {status}
-        </Badge>
-      ),
-      sortable: true,
-    },
-    {
-      key: "balance" as const,
-      label: "Balance",
-      render: (balance: number) => `₦${Number(balance).toLocaleString()}`,
-      sortable: true,
-    },
-    { key: "joinDate" as const, label: "Join Date", sortable: true },
-  ];
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const data = await res.json();
+      setUsers(data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const handleEdit = (user: User) => {
+  const filteredUsers = users.filter(
+    (user) =>
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleEdit = (user: OnlineUser) => {
     setSelectedUser(user);
     setFormData({
-      name: user.name,
+      username: user.username,
+      full_name: user.full_name || "",
       email: user.email,
-      type: user.type,
-      status: user.status,
+      phone: user.phone || "",
+      address: user.address || "",
     });
     setIsEditDialogOpen(true);
   };
 
-  const handleSave = () => {
-    if (selectedUser) {
-      setUsers(
-        users.map((u) =>
-          u.id === selectedUser.id
-            ? { ...u, ...formData }
-            : u
-        )
-      );
+  const handleSave = async () => {
+    if (!selectedUser) return;
+
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/users/${selectedUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) throw new Error("Failed to update user");
+
+      await fetchUsers();
       setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error("Error saving user:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const openDeleteDialog = (userId: number) => {
+  const openDeleteDialog = (userId: string) => {
     setUserToDelete(userId);
     setIsDeleteAlertOpen(true);
   };
 
-  const handleDelete = () => {
-    if (userToDelete === null) return;
+  const handleDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/users/${userToDelete}`, {
+        method: "DELETE",
+      });
 
-    setUsers(users.filter((u) => u.id !== userToDelete));
-    setIsDeleteAlertOpen(false);
-    setUserToDelete(null);
+      if (!res.ok) throw new Error("Failed to delete user");
+
+      await fetchUsers();
+      setIsDeleteAlertOpen(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -183,86 +151,18 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Users Management</h1>
+          <h1 className="text-3xl font-bold">Online Users Management</h1>
           <p className="text-muted-foreground mt-2">
-            Manage user accounts and permissions
+            Manage online player accounts and information
           </p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button size="lg">
-              <Plus className="w-4 h-4 mr-2" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Email</Label>
-                <Input placeholder="user@example.com" type="email" />
-              </div>
-              <div>
-                <Label>Full Name</Label>
-                <Input placeholder="John Doe" />
-              </div>
-              <div>
-                <Label>User Type</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select user type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="online_player">Online Players</SelectItem>
-                    <SelectItem value="offline_player">Offline Players</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button className="w-full">Create User</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Users</p>
+          <p className="text-sm text-muted-foreground">Total Online Users</p>
           <p className="text-2xl font-bold">{users.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Online Players</p>
-          <p className="text-2xl font-bold">
-            {users.filter((u) => u.type === "online_player").length}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Offline Players</p>
-          <p className="text-2xl font-bold">
-            {users.filter((u) => u.type === "offline_player").length}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Staff</p>
-          <p className="text-2xl font-bold">
-            {users.filter((u) => u.type === "staff").length}
-          </p>
         </Card>
         <Card className="p-4">
           <p className="text-sm text-muted-foreground">Total Balance</p>
@@ -272,71 +172,85 @@ export default function UsersPage() {
         </Card>
       </div>
 
-      {/* Users Tabs */}
-      <Tabs defaultValue="online" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto">
-          <TabsTrigger className="cursor-pointer" value="online">Online Players</TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="offline">Offline Players</TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="staff">Staff</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="online">
-          <DataTable<User>
-            columns={columns}
-            data={onlineUsers}
-            searchKey="email"
-            searchPlaceholder="Search by email or name..."
-            actions={(user) => (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(user.id)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
+      {/* Search Bar */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by email or username..."
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
-        </TabsContent>
+        </div>
+      </div>
 
-        <TabsContent value="offline">
-          <DataTable<User>
-            columns={columns}
-            data={offlineUsers}
-            searchKey="email"
-            searchPlaceholder="Search by email or name..."
-            actions={(user) => (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(user.id)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          />
-        </TabsContent>
-
-        <TabsContent value="staff">
-          <DataTable<User>
-            columns={columns}
-            data={staffUsers}
-            searchKey="email"
-            searchPlaceholder="Search by email or name..."
-            actions={(user) => (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(user)}>
-                  <Edit2 className="w-4 h-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(user.id)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Users Table */}
+      <Card>
+        {loading ? (
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">Loading users...</p>
+          </div>
+        ) : filteredUsers.length === 0 ? (
+          <div className="p-8 text-center">
+            <p className="text-muted-foreground">No online users found</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Full Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead>Balance</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.id}</TableCell>
+                    <TableCell className="font-medium">{user.username}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.full_name}</TableCell>
+                    <TableCell>{user.phone || "-"}</TableCell>
+                    <TableCell>{user.address || "-"}</TableCell>
+                    <TableCell>₦{Number(user.balance).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(user)}
+                          disabled={isSaving || isDeleting}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openDeleteDialog(user.id)}
+                          disabled={isSaving || isDeleting}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </Card>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -346,11 +260,20 @@ export default function UsersPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Name</Label>
+              <Label>Full Name</Label>
               <Input
-                value={formData.name}
+                value={formData.full_name}
                 onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
+                  setFormData({ ...formData, full_name: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Username</Label>
+              <Input
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
                 }
               />
             </div>
@@ -365,41 +288,24 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <Label>User Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: any) =>
-                  setFormData({ ...formData, type: value })
+              <Label>Phone</Label>
+              <Input
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="online_player">Online Players</SelectItem>
-                  <SelectItem value="offline_player">Offline Players</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
             <div>
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value: any) =>
-                  setFormData({ ...formData, status: value })
+              <Label>Address</Label>
+              <Input
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
                 }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
+            {/* Status removed — managed via profiles/roles in backend */}
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -408,8 +314,8 @@ export default function UsersPage() {
               >
                 Cancel
               </Button>
-              <Button className="flex-1" onClick={handleSave}>
-                Save Changes
+              <Button className="flex-1" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>
@@ -426,12 +332,13 @@ export default function UsersPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {isDeleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
