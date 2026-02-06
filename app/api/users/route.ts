@@ -16,8 +16,6 @@ export async function GET(req: NextRequest) {
 
     if (profilesError) throw profilesError;
 
-    const userIds = (profiles || []).map((p: any) => p.user_id).filter(Boolean);
-
     const { data: authList, error: authError } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
     if (authError) console.warn("auth list users error:", authError.message || authError);

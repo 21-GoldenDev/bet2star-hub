@@ -1,10 +1,10 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import {
-  PrizeWithCommission,
   TurboPrize,
   computePoolsAward,
 } from "@/lib/helpers";
 import { NextRequest, NextResponse } from "next/server";
+import { Prize } from "@/lib/types/prize";
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,35 +45,19 @@ export async function POST(request: NextRequest) {
 
     const uniquePrizeIds = Array.from(new Set((bets || []).map((b: any) => b.prize_id).filter((id): id is string => !!id)));
 
-    let prizeMap: Record<string, PrizeWithCommission> = {};
+    let prizeMap: Record<string, Prize> = {};
     if (uniquePrizeIds.length > 0) {
       const { data: prizesData, error: prizesError } = await supabase
         .from("prize")
         .select("id, name, data")
         .in("id", uniquePrizeIds);
 
-      const { data: gamePrizesData, error: gamePrizesError } = await supabase
-        .from("game_prizes")
-        .select("prize_id, commission")
-        .in("prize_id", uniquePrizeIds);
-
       if (prizesError) {
         console.error("Error fetching prize data:", prizesError);
       }
-      if (gamePrizesError) {
-        console.error("Error fetching game_prizes data:", gamePrizesError);
-      }
 
-      const commissionMap = (gamePrizesData || []).reduce((acc: Record<string, number>, gp: any) => {
-        acc[gp.prize_id] = gp.commission || 0;
-        return acc;
-      }, {});
-
-      prizeMap = (prizesData || []).reduce((acc: Record<string, any>, prize: any) => {
-        acc[prize.id] = {
-          ...prize,
-          commission: commissionMap[prize.id] || 0,
-        };
+      prizeMap = (prizesData || []).reduce((acc: Record<string, Prize>, prize: Prize) => {
+        acc[prize.id] = prize;
         return acc;
       }, {});
     }

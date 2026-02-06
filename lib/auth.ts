@@ -70,6 +70,7 @@ export async function updateAuthUser(updates: { phone?: string | null; full_name
   const phone = updates.phone ?? undefined;
   const data: Record<string, any> = {};
   if (updates.full_name !== undefined) data.full_name = updates.full_name;
+  if (updates.phone !== undefined) data.phone = updates.phone;
   if (updates.avatar !== undefined) data.avatar = updates.avatar;
   const { data: user } = await getUser();
   if (!user?.user) {

@@ -21,16 +21,38 @@ export async function GET(
     const { id } = await params;
 
     const { data, error } = await supabase
-      .from("game_prizes")
-      .select("*")
-      .eq("game_id", id)
-      .order("created_at", { ascending: false });
+      .from("games")
+      .select("prize_ids")
+      .eq("id", id)
+      .single();
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ game_prizes: data }, { status: 200 });
+    const { data: prizesData, error: prizesError } = await supabase
+      .from("prize")
+      .select("id, name, commission");
+
+    if (prizesError) {
+      return NextResponse.json({ error: prizesError.message }, { status: 500 });
+    }
+
+    const prizesMap = new Map(
+      prizesData?.map((prize) => [prize.id, prize]) || []
+    );
+
+    const prizeIds = data?.prize_ids || [];
+    const enrichedPrizes = prizeIds.map((prizeEntry: any) => {
+      const prizeId = typeof prizeEntry === "string" ? prizeEntry : prizeEntry.id;
+      const prizeDetails = prizesMap.get(prizeId);
+      return {
+        id: prizeId,
+        name: prizeDetails?.name || "Unknown Prize",
+      };
+    });
+
+    return NextResponse.json({ game_prizes: enrichedPrizes }, { status: 200 });
   } catch (error) {
     console.error("Error fetching game prizes:", error);
     return NextResponse.json(
@@ -47,7 +69,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { prize_id, commission, status } = body;
+    const { prize_id, status } = body;
 
     // Validate required fields
     if (!prize_id) {
@@ -57,27 +79,40 @@ export async function POST(
       );
     }
 
-    // Validate commission
-    const finalCommission = commission ?? 100;
-    if (finalCommission < 0 || finalCommission > 100) {
+    const { data: game, error: fetchError } = await supabase
+      .from("games")
+      .select("prize_ids")
+      .eq("id", id)
+      .single();
+
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    const currentPrizes = game?.prize_ids || [];
+
+    const prizeExists = currentPrizes.some((p: any) => 
+      (typeof p === "string" ? p : p.id) === prize_id
+    );
+
+    if (prizeExists) {
       return NextResponse.json(
-        { error: "Commission must be between 0 and 100" },
+        { error: "Prize already associated with this game" },
         { status: 400 }
       );
     }
 
-    const finalStatus = status ?? "active";
+    const newPrize = {
+      id: prize_id,
+      status: status ?? "active",
+    };
 
-    const { data, error } = await supabase
-      .from("game_prizes")
-      .insert([
-        {
-          game_id: id,
-          prize_id,
-          commission: finalCommission,
-          status: finalStatus,
-        },
-      ])
+    const updatedPrizes = [...currentPrizes, newPrize];
+
+    const { error } = await supabase
+      .from("games")
+      .update({ prize_ids: updatedPrizes })
+      .eq("id", id)
       .select()
       .single();
 
@@ -85,7 +120,7 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ game_prize: data }, { status: 201 });
+    return NextResponse.json({ game_prize: newPrize }, { status: 201 });
   } catch (error) {
     console.error("Error creating game prize:", error);
     return NextResponse.json(

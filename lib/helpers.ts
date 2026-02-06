@@ -1,3 +1,5 @@
+import { Prize } from "./types/prize";
+
 const calcCombination = (total: number, select: number) => {
   if (select > total || select <= 0) return 0;
   if (select === total) return 1;
@@ -82,12 +84,6 @@ export const calcAwardLine = (
 
 const sportOptions = ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
 
-export type PrizeWithCommission = {
-  id?: string;
-  data?: { data?: Record<string, number[]>; columns?: string[] };
-  commission?: number;
-};
-
 export type TurboPrize = {
   data?: Record<string, number>;
 };
@@ -154,7 +150,7 @@ export function calculateBetReward(bet: any, matches: any[]): number {
 
 export function computeLottoAward(
   bet: any,
-  prize: PrizeWithCommission | null,
+  prize: Prize | null,
   weekResult: number[],
   turboPrizeData?: TurboPrize | null,
 ): number {
@@ -246,17 +242,13 @@ export function computeLottoAward(
     award = multiplier * apl;
   });
 
-  if (!bet.player) {
-    award *= prize?.commission ? prize.commission / 100 : 1;
-  }
-
   if (!Number.isFinite(award)) return 0;
   return award;
 }
 
 export function computePoolsAward(
   bet: any,
-  prize: PrizeWithCommission | null,
+  prize: Prize | null,
   weekResult: string[],
   turboPrizeData?: TurboPrize | null,
 ): number {
@@ -349,10 +341,6 @@ export function computePoolsAward(
 
     award = multiplier * apl;
   });
-
-  if (!bet.player) {
-    award *= prize?.commission ? prize.commission / 100 : 1;
-  }
 
   if (!Number.isFinite(award)) return 0;
   return award;

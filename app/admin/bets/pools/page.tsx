@@ -436,7 +436,7 @@ export default function PoolsPage() {
               {
                 key: "prize",
                 label: "Prize",
-                render: (value: { name: string; commission: number } | undefined) => (
+                render: (value: { name: string } | undefined) => (
                   value ? <div className="text-nowrap">{value.name}</div> : "—"
                 )
               },

@@ -33,10 +33,12 @@ import {
 } from "@/components/ui/select";
 import { Plus, Edit2, Trash2, Loader2, Power, PowerOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { GamePrize, PrizeInfo } from "@/lib/types/gameMode";
+import { PrizeInfo } from "@/lib/types/gameMode";
 
-interface GamePrizeWithInfo extends GamePrize {
-  prize_name?: string;
+interface GamePrizeWithInfo {
+  id: string;
+  name: string;
+  status: "active" | "inactive";
 }
 
 interface Props {
@@ -59,11 +61,9 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
 
   const [formData, setFormData] = useState<{
     prize_id: string;
-    commission: number;
     status: "active" | "inactive";
   }>({
     prize_id: "",
-    commission: 100,
     status: "active",
   });
 
@@ -71,7 +71,6 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
     setSelectedGamePrize(null);
     setFormData({
       prize_id: "",
-      commission: 100,
       status: "active",
     });
     setIsAddDialogOpen(true);
@@ -80,8 +79,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
   const handleEdit = (gamePrize: GamePrizeWithInfo) => {
     setSelectedGamePrize(gamePrize);
     setFormData({
-      prize_id: gamePrize.prize_id,
-      commission: gamePrize.commission,
+      prize_id: gamePrize.id,
       status: gamePrize.status,
     });
     setIsEditDialogOpen(true);
@@ -103,7 +101,6 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          commission: formData.commission,
           status: formData.status,
         }),
       });
@@ -143,7 +140,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
       return;
     }
 
-    if (gamePrizes.some(gp => gp.prize_id === formData.prize_id)) {
+    if (gamePrizes.some(gp => gp.id === formData.prize_id)) {
       toast({
         title: "Error",
         description: "This prize is already added to the game",
@@ -159,7 +156,6 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prize_id: formData.prize_id,
-          commission: formData.commission,
           status: formData.status,
         }),
       });
@@ -171,7 +167,6 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         setIsAddDialogOpen(false);
         setFormData({
           prize_id: "",
-          commission: 100,
           status: "active",
         });
         onRefresh();
@@ -311,23 +306,6 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
                 </Select>
               </div>
               <div>
-                <Label>Commission (%)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.commission}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      commission: Math.min(100, Math.max(0, Number(e.target.value))),
-                    })
-                  }
-                  disabled={submitting}
-                />
-                <p className="text-xs text-muted-foreground mt-1">0-100</p>
-              </div>
-              <div>
                 <Label>Status</Label>
                 <Select
                   value={formData.status}
@@ -385,13 +363,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
       ) : (
         <DataTable<GamePrizeWithInfo>
           columns={[
-            { key: "prize_name", label: "Prize Name", sortable: true },
-            {
-              key: "commission",
-              label: "Commission (%)",
-              render: (commission) => <span>{commission}%</span>,
-              sortable: true,
-            },
+            { key: "name", label: "Prize Name", sortable: true },
             {
               key: "status",
               label: "Status",
@@ -404,7 +376,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
             },
           ]}
           data={gamePrizes}
-          searchKey="prize_name"
+          searchKey="name"
           searchPlaceholder="Search by prize name..."
           actions={(gamePrize) => (
             <div className="flex gap-2">
@@ -443,24 +415,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
           <div className="space-y-4">
             <div>
               <Label>Prize</Label>
-              <Input value={selectedGamePrize?.prize_name || ""} disabled />
-            </div>
-            <div>
-              <Label>Commission (%)</Label>
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                value={formData.commission}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    commission: Math.min(100, Math.max(0, Number(e.target.value))),
-                  })
-                }
-                disabled={submitting}
-              />
-              <p className="text-xs text-muted-foreground mt-1">0-100</p>
+              <Input value={selectedGamePrize?.name || ""} disabled />
             </div>
             <div>
               <Label>Status</Label>

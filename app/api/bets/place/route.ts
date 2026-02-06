@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabase/server';
 import { addCORSHeaders, handleCORS } from '@/app/api/middleware/cors';
 import {
-  PrizeWithCommission,
   TurboPrize,
   calculateBetReward,
   computeLottoAward,
   computePoolsAward,
 } from '@/lib/helpers';
+import { Prize } from '@/lib/types/prize';
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
@@ -424,7 +424,7 @@ async function computeLottoAwardForBet(
   try {
     const [resultResp, prizeResp, turboResp] = await Promise.all([
       supabase.from('games').select('results').eq('id', gameId).single(),
-      loadPrizeWithCommission(supabase, prizeId),
+      loadPrize(supabase, prizeId),
       loadTurboPrize(supabase),
     ]);
 
@@ -453,7 +453,7 @@ async function computePoolsAwardForBet(
   try {
     const [resultResp, prizeResp, turboResp] = await Promise.all([
       supabase.from('games').select('results').eq('id', gameId).single(),
-      loadPrizeWithCommission(supabase, prizeId),
+      loadPrize(supabase, prizeId),
       loadTurboPrize(supabase),
     ]);
 
@@ -473,12 +473,9 @@ async function computePoolsAwardForBet(
   }
 }
 
-async function loadPrizeWithCommission(supabase: any, prizeId?: string): Promise<PrizeWithCommission | null> {
+async function loadPrize(supabase: any, prizeId?: string): Promise<Prize | null> {
   if (!prizeId) return null;
-  const [{ data: prize, error: prizeError }, { data: gamePrize, error: gpError }] = await Promise.all([
-    supabase.from('prize').select('id, name, data').eq('id', prizeId).single(),
-    supabase.from('game_prizes').select('prize_id, commission').eq('prize_id', prizeId).single(),
-  ]);
+  const { data: prize, error: prizeError } = await supabase.from('prize').select('id, name, data').eq('id', prizeId).single();
 
   if (prizeError) {
     console.error('Prize fetch error:', prizeError);
@@ -487,10 +484,7 @@ async function loadPrizeWithCommission(supabase: any, prizeId?: string): Promise
 
   if (!prize) return null;
 
-  return {
-    ...prize,
-    commission: gpError ? 0 : (gamePrize?.commission || 0),
-  } as PrizeWithCommission;
+  return prize as Prize;
 }
 
 async function loadTurboPrize(supabase: any): Promise<TurboPrize | null> {

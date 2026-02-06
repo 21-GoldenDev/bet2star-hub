@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { GamePrize, PrizeInfo } from "@/lib/types/gameMode";
+import { PrizeInfo } from "@/lib/types/gameMode";
 import { SportsMatch } from "@/lib/types/sports";
 import { MaxStake } from "@/lib/types/maxStake";
 import GameInfoCard from "@/components/admin/GameInfoCard";
@@ -16,17 +16,20 @@ import SportsMatchesSection from "@/components/admin/SportsMatchesSection";
 import LottoNumbersSection from "@/components/admin/LottoNumbersSection";
 import MaxStakeSection from "@/components/admin/MaxStakeSection";
 
+interface GamePrizeWithInfo {
+  id: string;
+  name: string;
+  status: "active" | "inactive";
+}
+
 interface GameInfo {
   id: string;
   week: number;
   type: string;
   start_time: string;
   end_time: string;
+  prize_ids?: GamePrizeWithInfo[];
   results?: string[] | number[] | null;
-}
-
-interface GamePrizeWithInfo extends GamePrize {
-  prize_name?: string;
 }
 
 export default function GameSettingsPage() {
@@ -35,8 +38,8 @@ export default function GameSettingsPage() {
   const gameId = params.id as string;
 
   const [game, setGame] = useState<GameInfo | null>(null);
-  const [gamePrizes, setGamePrizes] = useState<GamePrizeWithInfo[]>([]);
   const [allPrizes, setAllPrizes] = useState<PrizeInfo[]>([]);
+  const [gamePrizes, setGamePrizes] = useState<GamePrizeWithInfo[]>([]);
   const [maxStakes, setMaxStakes] = useState<MaxStake[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -52,6 +55,20 @@ export default function GameSettingsPage() {
   useEffect(() => {
     fetchData();
   }, [gameId]);
+
+  useEffect(() => {
+    if (game) {
+      const prizes = game.prize_ids?.map((gp) => {
+        const prizeInfo = allPrizes.find((p) => p.id === gp.id);
+        return {
+          id: gp.id,
+          name: prizeInfo ? prizeInfo.name : "Unknown Prize",
+          status: gp.status,
+        };
+      }) || [];
+      setGamePrizes(prizes);
+    }
+  }, [game, allPrizes]);
 
   const fetchData = async () => {
     try {
@@ -88,26 +105,11 @@ export default function GameSettingsPage() {
         const sportsData = await sportsRes.json();
         setSports(sportsData.matches || []);
       } else {
-        const [prizesRes, gamePrizesRes] = await Promise.all([
-          fetch("/api/admin/prize"),
-          fetch(`/api/admin/games/${gameId}/prizes`),
-        ]);
+        const prizesRes = await fetch(`/api/admin/prize`);
 
         if (!prizesRes.ok) throw new Error("Failed to fetch prizes");
         const prizesData = await prizesRes.json();
         setAllPrizes(prizesData.prizes || []);
-
-        if (!gamePrizesRes.ok) throw new Error("Failed to fetch game prizes");
-        const gamePrizesData = await gamePrizesRes.json();
-
-        const gamePrizesWithNames = gamePrizesData.game_prizes.map((gp: GamePrize) => {
-          const prize = (prizesData.prizes || []).find((p: PrizeInfo) => p.id === gp.prize_id);
-          return {
-            ...gp,
-            prize_name: prize?.name || "Unknown Prize",
-          };
-        });
-        setGamePrizes(gamePrizesWithNames);
       }
     } catch (error) {
       console.error("Error fetching data:", error);

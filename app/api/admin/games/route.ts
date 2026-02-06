@@ -24,28 +24,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    const { data: gamesWithPrizes, error: prizesError } = await supabase
-      .from("game_prizes")
-      .select("game_id, prize_id, prize(name)");
+    const { data: prizesData, error: prizesError } = await supabase
+      .from("prize")
+      .select("id, name, status");
+
     if (prizesError) {
       return NextResponse.json({ error: prizesError.message }, { status: 500 });
     }
-    
-    const prizesMap: Record<string, Array<{ id: string; name: string }>> = {};
-    gamesWithPrizes?.forEach((gp: any) => {
-      if (!prizesMap[gp.game_id]) {
-        prizesMap[gp.game_id] = [];
-      }
-      prizesMap[gp.game_id].push({
-        id: gp.prize_id,
-        name: gp.prize?.name || "Unknown Prize",
-      });
-    });
 
-    const games = data.map((game) => ({
-      ...game,
-      prizes: prizesMap[game.id] || [],
-    }));
+    const prizesMap = new Map(
+      prizesData?.map((prize) => [prize.id, prize]) || []
+    );
+
+    const games = data.map((game) => {
+      const prizeIds = game.prize_ids || [];
+      const prizes = prizeIds.map((prizeEntry: any) => {
+        const prizeId = typeof prizeEntry === "string" ? prizeEntry : prizeEntry.id;
+        const prizeDetails = prizesMap.get(prizeId);
+        return {
+          id: prizeId,
+          name: prizeDetails?.name || "Unknown Prize",
+          status: prizeEntry.status ?? prizeDetails?.status ?? "active",
+        };
+      });
+
+      return {
+        ...game,
+        prizes,
+      };
+    });
 
     return NextResponse.json({ games }, { status: 200 });
   } catch (error) {

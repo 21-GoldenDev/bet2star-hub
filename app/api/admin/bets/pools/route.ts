@@ -1,5 +1,6 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { GameModeType } from "@/lib/types/gameMode";
+import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    let prizeMap: Record<string, { name: string; commission: number }> = {};
+    let prizeMap: Record<string, Prize> = {};
 
     const uniquePrizeIds = Array.from(new Set(data.map((bet) => bet.prize_id).filter((id): id is string => id !== null)));
 
@@ -79,23 +80,9 @@ export async function GET(request: NextRequest) {
         .select("id, name, data")
         .in("id", uniquePrizeIds);
 
-      const { data: gamePrizesData } = await supabase
-        .from("game_prizes")
-        .select("prize_id, commission")
-        .in("prize_id", uniquePrizeIds);
-
       if (!prizesError && prizesData) {
-        const commissionMap = (gamePrizesData || []).reduce((acc, gp) => {
-          acc[gp.prize_id] = gp.commission;
-          return acc;
-        }, {} as Record<string, number>);
-
         prizeMap = prizesData.reduce((acc, prize) => {
-          acc[prize.id] = {
-            name: prize.name,
-            commission: commissionMap[prize.id] || 0,
-            data: prize.data,
-          };
+          acc[prize.id] = prize;
           return acc;
         }, {} as Record<string, any>);
       }
@@ -115,7 +102,6 @@ export async function GET(request: NextRequest) {
       terminal: bet.terminal,
       betTime: bet.bet_time,
       prize: bet.prize_id ? prizeMap[bet.prize_id] : undefined,
-      prizeCommission: bet.prize_id ? prizeMap[bet.prize_id]?.commission : undefined,
       award: bet.award,
       status: bet.status,
     }));

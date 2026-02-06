@@ -20,42 +20,59 @@ export async function PUT(
   try {
     const { id, prizeId } = await params;
     const body = await request.json();
-    const { commission, status } = body;
+    const { status } = body;
 
-    // Validate commission if provided
-    if (commission !== undefined) {
-      if (commission < 0 || commission > 100) {
-        return NextResponse.json(
-          { error: "Commission must be between 0 and 100" },
-          { status: 400 }
-        );
-      }
+    if (!status) {
+      return NextResponse.json(
+        { error: "Missing required fields (status)" },
+        { status: 400 }
+      );
+    }
+    if (status !== "active" && status !== "inactive") {
+      return NextResponse.json(
+        { error: "Invalid status value (must be 'active' or 'inactive')" },
+        { status: 400 }
+      );
     }
 
-    const updateData: any = {};
-    if (commission !== undefined) updateData.commission = commission;
-    if (status !== undefined) updateData.status = status;
-
-    const { data, error } = await supabase
-      .from("game_prizes")
-      .update(updateData)
-      .eq("id", prizeId)
-      .eq("game_id", id)
-      .select()
+    const { data: game, error: fetchError } = await supabase
+      .from("games")
+      .select("prize_ids")
+      .eq("id", id)
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    if (!data) {
+    const currentPrizes = game?.prize_ids || [];
+    const prizeIndex = currentPrizes.findIndex((p: any) => 
+      (typeof p === "string" ? p : p.id) === prizeId
+    );
+
+    if (prizeIndex === -1) {
       return NextResponse.json(
-        { error: "Game prize not found" },
+        { error: "Prize not found in game" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ game_prize: data }, { status: 200 });
+    const updatedPrizes = [...currentPrizes];
+    updatedPrizes[prizeIndex] = {
+      ...updatedPrizes[prizeIndex],
+      status,
+    };
+
+    const { error: updateError } = await supabase
+      .from("games")
+      .update({ prize_ids: updatedPrizes })
+      .eq("id", id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ game_prize: updatedPrizes[prizeIndex] }, { status: 200 });
   } catch (error) {
     console.error("Error updating game prize:", error);
     return NextResponse.json(
@@ -72,14 +89,35 @@ export async function DELETE(
   try {
     const { id, prizeId } = await params;
 
-    const { error } = await supabase
-      .from("game_prizes")
-      .delete()
-      .eq("id", prizeId)
-      .eq("game_id", id);
+    const { data: game, error: fetchError } = await supabase
+      .from("games")
+      .select("prize_ids")
+      .eq("id", id)
+      .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    const currentPrizes = game?.prize_ids || [];
+    const filteredPrizes = currentPrizes.filter((p: any) => 
+      (typeof p === "string" ? p : p.id) !== prizeId
+    );
+
+    if (filteredPrizes.length === currentPrizes.length) {
+      return NextResponse.json(
+        { error: "Prize not found in game" },
+        { status: 404 }
+      );
+    }
+
+    const { error: updateError } = await supabase
+      .from("games")
+      .update({ prize_ids: filteredPrizes })
+      .eq("id", id);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     return NextResponse.json(
@@ -94,3 +132,4 @@ export async function DELETE(
     );
   }
 }
+
