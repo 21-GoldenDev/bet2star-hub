@@ -17,8 +17,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DateRange } from "react-day-picker";
-import { Trash2, XCircle } from "lucide-react";
+import { Trash2, XCircle, Eye } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 import type { PoolsBet, Player } from "@/lib/types/pools";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +45,8 @@ export default function PoolsPage() {
   const [weeksAll, setWeeksAll] = useState<Game[]>([]);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<PoolsBet | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedBet, setSelectedBet] = useState<PoolsBet | null>(null);
 
   // Unified filters
   const [weekFilter, setWeekFilter] = useState<string | undefined>(undefined);
@@ -407,26 +416,23 @@ export default function PoolsPage() {
                     <div>Agent</div>
                   ),
               },
-              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? (value.join(", ") || "-") : value) },
+              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? (value.length > 0 ? value.join(", ") : "-") : value || "-") },
               {
                 key: "matches",
                 label: "Matches",
                 render: (value: string[] | Record<string, string[]>) => {
                   if (Array.isArray(value)) {
+                    const display = value.slice(0, 3).sort((a, b) => compareMatches(a, b)).join(", ");
                     return (
-                      <div className="min-w-50">
-                        {value.sort((a, b) => compareMatches(a, b)).join(", ")}
+                      <div className="text-sm text-muted-foreground">
+                        {display}{value.length > 3 ? "..." : ""}
                       </div>
                     );
                   }
+                  const groups = Object.keys(value).length;
                   return (
-                    <div className="space-y-1">
-                      {Object.entries(value).map(([gid, ms]) => (
-                        <div key={gid} className="text-sm flex gap-1">
-                          <div className="font-bold">{gid.split("-")[0]}:</div>
-                          <div className="text-muted-foreground min-w-50">{ms.sort((a, b) => compareMatches(a, b)).join(", ")}</div>
-                        </div>
-                      ))}
+                    <div className="text-sm text-muted-foreground">
+                      {groups} group{groups !== 1 ? "s" : ""}
                     </div>
                   );
                 },
@@ -447,6 +453,17 @@ export default function PoolsPage() {
             ]}
             actions={(row) => (
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  title="View details"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedBet(row);
+                    setIsDetailsOpen(true);
+                  }}
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
                 {row.status !== "void" && (
                   <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
                     <XCircle className="w-4 h-4" />
@@ -481,6 +498,153 @@ export default function PoolsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bet Details Dialog */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Bet Details</DialogTitle>
+            <DialogDescription>
+              Bet #{selectedBet?.betId?.toString()}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedBet && (
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Bet ID</Label>
+                  <p className="mt-1 font-medium">{selectedBet.betId?.toString()}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Game Type</Label>
+                  <p className="mt-1 font-medium">{getGameLabel(selectedBet.gameType)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
+                  <p className="mt-1">{renderStatus(selectedBet.status)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Bet Time</Label>
+                  <p className="mt-1 font-medium text-sm">{formatDateIso(selectedBet.betTime)}</p>
+                </div>
+              </div>
+
+              {/* Player Info */}
+              <div className="border-t pt-4">
+                <Label className="text-xs font-semibold text-muted-foreground block mb-2">Player</Label>
+                {selectedBet.player ? (
+                  <div>
+                    <p className="font-medium">{selectedBet.player.fullName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedBet.player.userName}</p>
+                  </div>
+                ) : (
+                  <p className="font-medium">Agent</p>
+                )}
+              </div>
+
+              {/* Matches Details */}
+              <div className="border-t pt-4">
+                <Label className="text-xs font-semibold text-muted-foreground block mb-3">Matches</Label>
+                {(() => {
+                  const value = selectedBet.matches;
+                  if (Array.isArray(value)) {
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {value.sort((a, b) => compareMatches(a, b)).map((match) => (
+                          <span
+                            key={match}
+                            className="px-3 py-1 rounded bg-primary/10 border border-primary/20 text-sm font-medium"
+                          >
+                            {match}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {Object.entries(value).map(([gid, ms]) => (
+                        <div key={gid} className="space-y-2">
+                          <p className="text-sm font-semibold">{gid.split("-")[0]}</p>
+                          <div className="flex flex-wrap gap-2 ml-2">
+                            {ms.sort((a, b) => compareMatches(a, b)).map((match) => (
+                              <span
+                                key={match}
+                                className="px-2 py-1 rounded bg-primary/10 border border-primary/20 text-sm"
+                              >
+                                {match}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Under & Terminal */}
+              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Under</Label>
+                  <p className="mt-1 font-medium">
+                    {Array.isArray(selectedBet.under)
+                      ? selectedBet.under.length > 0
+                        ? selectedBet.under.join(", ")
+                        : "-"
+                      : selectedBet.under || "-"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Terminal</Label>
+                  <p className="mt-1 font-medium">
+                    {(selectedBet.terminal as any)?.serial_number || "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Financial Info */}
+              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Staked</Label>
+                  <p className="mt-1 font-medium text-lg">{selectedBet.staked.toFixed(0)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">APL</Label>
+                  <p className="mt-1 font-medium text-lg">
+                    {(() => {
+                      if (selectedBet.gameType === "turbo" || selectedBet.gameType === "under1" || selectedBet.gameType === "under2") {
+                        return "0.00";
+                      }
+                      const isNapPerm = selectedBet.gameType === "nap_perm";
+                      const apl = isNapPerm
+                        ? calcAplDirect(selectedBet.staked, selectedBet.under as any, (Array.isArray(selectedBet.matches) ? selectedBet.matches : Object.values(selectedBet.matches).flat()).length)
+                        : calcAplGrouping(selectedBet.staked, selectedBet.matches as any);
+                      return apl.toFixed(2);
+                    })()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Prize & Award */}
+              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Prize</Label>
+                  <p className="mt-1 font-medium text-nowrap">
+                    {(selectedBet.prize as any)?.name || "—"}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
+                  <p className="mt-1 font-medium text-lg">{selectedBet.award?.toFixed(2) || "0.00"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

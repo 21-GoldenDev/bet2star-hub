@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ bets: transformedData || [] });
+    return NextResponse.json({ bets: transformedData || [], matches: matchesMap });
   } catch (error) {
     console.error("Error fetching bets:", error);
     return NextResponse.json(

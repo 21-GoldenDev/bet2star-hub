@@ -15,9 +15,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, XCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Trash2, XCircle, Eye } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
 import { useToast } from "@/hooks/use-toast";
+
+interface MatchInfo {
+  league: string;
+  number: number;
+  home: string;
+  away: string;
+  home_goal: number;
+  away_goal: number;
+  prizes: number[];
+  status: "active" | "void";
+  start_time: string;
+  end_time: string;
+}
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -38,12 +58,15 @@ const optionLabels: Record<string, string> = {
 
 export default function SportsPage() {
   const [dataSports, setDataSports] = useState<SportsBet[]>([]);
+  const [dataMatches, setDataMatches] = useState<Record<string, MatchInfo[]>>({});
   const [loading, setLoading] = useState(true);
   const [weekFilter, setWeekFilter] = useState<number | "">("");
   const [weeksAll, setWeeksAll] = useState<number[]>([]);
   const { toast } = useToast();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<SportsBet | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedBet, setSelectedBet] = useState<SportsBet | null>(null);
 
   useEffect(() => {
     async function fetchWeeks() {
@@ -77,6 +100,7 @@ export default function SportsPage() {
       const response = await fetch(`/api/admin/bets/sports?week=${weekFilter}`);
       const data = await response.json();
       setDataSports(data.bets || []);
+      setDataMatches(data.matches || {});
     } catch (error) {
       console.error("Error fetching bets:", error);
     }
@@ -217,20 +241,6 @@ export default function SportsPage() {
             },
             { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
             { key: "under", label: "Under" },
-            {
-              key: "selections",
-              label: "Selections",
-              render: (value: Record<number, string[]>) => (
-                <div className="space-y-1">
-                  {Object.entries(value || {}).map(([match, odds], idx) => (
-                    <div key={idx} className="text-sm">
-                      <span className="font-medium mr-1">Match {match}:</span>
-                      <span className="text-muted-foreground">{(odds || []).map((opt) => optionLabels[opt]).filter(Boolean).join(", ")}</span>
-                    </div>
-                  ))}
-                </div>
-              ),
-            },
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(2) },
             {
               key: "award",
@@ -243,6 +253,17 @@ export default function SportsPage() {
           ]}
           actions={(row) => (
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                title="View details"
+                size="sm"
+                onClick={() => {
+                  setSelectedBet(row as SportsBet);
+                  setIsDetailsOpen(true);
+                }}
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
               {row.status !== "void" && (
                 <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
                   <XCircle className="w-4 h-4" />
@@ -276,6 +297,163 @@ export default function SportsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bet Details Dialog */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Bet Details</DialogTitle>
+            <DialogDescription>
+              Bet #{selectedBet?.number}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedBet && (
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Bet ID</Label>
+                  <p className="mt-1 font-medium">{selectedBet.number}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Mode</Label>
+                  <p className="mt-1 font-medium capitalize">{selectedBet.mode}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
+                  <p className="mt-1">{renderStatus(selectedBet.status)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Bet Time</Label>
+                  <p className="mt-1 font-medium text-sm">{formatDateIso(selectedBet.bet_time)}</p>
+                </div>
+              </div>
+
+              {/* Player Info */}
+              <div className="border-t pt-4">
+                <Label className="text-xs font-semibold text-muted-foreground block mb-2">Player</Label>
+                {selectedBet.player ? (
+                  <div>
+                    <p className="font-medium">{selectedBet.player.fullName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedBet.player.userName}</p>
+                  </div>
+                ) : (
+                  <p className="font-medium">Agent</p>
+                )}
+              </div>
+
+              {/* Selections Details */}
+              <div className="border-t pt-4">
+                <Label className="text-xs font-semibold text-muted-foreground block mb-3">Selections</Label>
+                <div className="space-y-2">
+                  {Object.entries(selectedBet.selections || {})
+                    .map(([matchNum, odds]) => {
+                      const matches = dataMatches[selectedBet.game_id] || [];
+                      const match = matches.find((m) => m.number.toString() === matchNum.toString());
+                      return { matchNum, odds, match };
+                    })
+                    .sort((a, b) => {
+                      if (!a.match || !b.match) return 0;
+                      return new Date(a.match.start_time).getTime() - new Date(b.match.start_time).getTime();
+                    })
+                    .map(({ matchNum, odds, match }) => (
+                      <div key={matchNum} className="border rounded-md p-3 bg-card hover:bg-muted/50 transition-colors">
+                        <div className="flex items-start justify-between gap-3">
+                          {/* Left: Match Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">#{matchNum}</span>
+                              {match && (
+                                <>
+                                  <span className="text-xs text-muted-foreground truncate">{match.league}</span>
+                                  <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
+                                    {new Date(match.start_time).toLocaleString(undefined, {
+                                      year: 'numeric',
+                                      month: '2-digit',
+                                      day: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false,
+                                    })}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Teams & Score */}
+                            {match ? (
+                              <div className="space-y-0.5 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <span className="flex-1 truncate">{match.home}</span>
+                                  <span className="font-bold text-base min-w-6 text-center">
+                                    {match.home_goal !== null && match.home_goal !== undefined ? match.home_goal : "-"}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="flex-1 truncate">{match.away}</span>
+                                  <span className="font-bold text-base min-w-6 text-center">
+                                    {match.away_goal !== null && match.away_goal !== undefined ? match.away_goal : "-"}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground">Match details unavailable</div>
+                            )}
+                          </div>
+
+                          {/* Right: Bet Selections */}
+                          <div className="flex flex-col gap-1 items-end">
+                            {(odds || []).map((opt: string, idx: number) => {
+                              const label = optionLabels[opt] || opt;
+                              return (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-0.5 rounded bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
+                                >
+                                  {label}:{" "}
+                                  {match?.prizes?.[Object.keys(optionLabels).indexOf(opt)]
+                                    ? match.prizes[Object.keys(optionLabels).indexOf(opt)]
+                                    : "—"}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Under & Terminal */}
+              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Under</Label>
+                  <p className="mt-1 font-medium">{selectedBet.under || "-"}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Terminal</Label>
+                  <p className="mt-1 font-medium">
+                    {(selectedBet.terminal as any)?.serial_number || "—"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Financial Info */}
+              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Staked</Label>
+                  <p className="mt-1 font-medium text-lg">{selectedBet.staked.toFixed(2)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
+                  <p className="mt-1 font-medium text-lg">{selectedBet.award ? selectedBet.award.toFixed(2) : "0.00"}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
