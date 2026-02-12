@@ -36,6 +36,7 @@ export default function AdminSidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [betsOpen, setBetsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [salesOpen, setSalesOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -129,6 +130,81 @@ export default function AdminSidebar() {
                             className={clsx(
                               "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
                               pathname === "/admin/bets/sports"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Sports</span>
+                          </div>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Sales expandable item */}
+            <div>
+              {(() => {
+                const isParentActive = pathname?.startsWith("/admin/sales");
+                return (
+                  <div>
+                    <div
+                      role="button"
+                      onClick={() => setSalesOpen(!salesOpen)}
+                      className={clsx(
+                        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer",
+                        isParentActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <BarChart3 className="w-5 h-5" />
+                        <span className="font-medium">Sales</span>
+                      </div>
+                      <ChevronDown
+                        className={clsx(
+                          "w-4 h-4 transition-transform",
+                          salesOpen && "rotate-180"
+                        )}
+                      />
+                    </div>
+
+                    {salesOpen && (
+                      <div className="mt-2 space-y-1">
+                        <Link href="/admin/sales/lotto" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/sales/lotto"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Lotto</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/sales/pools" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/sales/pools"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Pools</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/sales/sports" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/sales/sports"
                                 ? "bg-sidebar-primary text-sidebar-primary-foreground"
                                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                             )}

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("bets_lotto")
-      .select("*, games:game_id (week)")
+      .select("*, games:game_id (week), terminal:terminal(serial_number)")
       .order("bet_time", { ascending: false })
       .eq("game_id", game_id);
 

@@ -51,8 +51,8 @@ export default function SportsPage() {
         const response = await fetch("/api/admin/bets/sports/weeks");
         const data = await response.json();
 
-        if (data.weeks && data.weeks.length > 0) {
-          setWeeksAll(data.weeks);
+        if (data.data && data.data.length > 0) {
+          setWeeksAll(data.data.map((g: any) => g.week));
           if (data.latest) {
             setWeekFilter(data.latest);
           }
@@ -237,7 +237,7 @@ export default function SportsPage() {
               label: "Award",
               render: (value: number) => value ? value.toFixed(2) : "0.00"
             },
-            { key: "terminal", label: "Terminal" },
+            { key: "terminal", label: "Terminal", render: (value: { serial_number: string } | undefined) => value ? value.serial_number : "—" },
             { key: "status", label: "Status", render: renderStatus },
             { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
           ]}

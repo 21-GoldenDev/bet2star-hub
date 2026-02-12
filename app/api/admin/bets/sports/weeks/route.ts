@@ -7,7 +7,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from("games")
-      .select("week")
+      .select("id, week")
       .eq("type", "sports")
       .order("week", { ascending: false });
 
@@ -17,7 +17,7 @@ export async function GET() {
       (a, b) => b - a
     );
 
-    return NextResponse.json({ weeks, latest: weeks[0] || null });
+    return NextResponse.json({ data, latest: weeks[0] || null });
   } catch (error) {
     console.error("Error fetching weeks:", error);
     return NextResponse.json(

@@ -144,24 +144,22 @@ const Under2 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: P
 
         {/* Column 2: Match Grid */}
         <div className="lg:col-span-6">
-          <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="flex flex-wrap gap-2">
-              {matches.map((match) => (
-                <button
-                  key={match}
-                  onClick={() => toggleMatch(match)}
-                  className={clsx(
-                    "aspect-square w-12 rounded-xl font-bold text-lg cursor-pointer transition-all duration-300 disabled:text-gray-500 disabled:cursor-not-allowed",
-                    selectedMatches.includes(match)
-                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                  )}
-                  disabled={selectedMatches.length >= 2 && !selectedMatches.includes(match)}
-                >
-                  {match}
-                </button>
-              ))}
-            </div>
+          <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
+            {matches.map((match) => (
+              <button
+                key={match}
+                onClick={() => toggleMatch(match)}
+                className={clsx(
+                  "p-3 rounded-xl font-medium text-sm transition-all duration-300",
+                  selectedMatches.includes(match)
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                )}
+                disabled={selectedMatches.length >= 2 && !selectedMatches.includes(match)}
+              >
+                {match}
+              </button>
+            ))}
           </div>
         </div>
 

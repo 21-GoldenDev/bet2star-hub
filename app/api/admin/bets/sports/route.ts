@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("bets_sport")
-      .select("*, games:game_id (week, id)")
+      .select("*, games:game_id (week, id), terminal:terminal(serial_number)")
       .eq("games.week", parseInt(week))
       .order("bet_time", { ascending: false });
 

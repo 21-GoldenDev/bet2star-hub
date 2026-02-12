@@ -15,6 +15,7 @@ import PrizesSection from "@/components/admin/PrizesSection";
 import SportsMatchesSection from "@/components/admin/SportsMatchesSection";
 import LottoNumbersSection from "@/components/admin/LottoNumbersSection";
 import MaxStakeSection from "@/components/admin/MaxStakeSection";
+import TerminalCommissionsSection from "@/components/admin/TerminalCommissionsSection";
 
 interface GamePrizeWithInfo {
   id: string;
@@ -51,13 +52,14 @@ export default function GameSettingsPage() {
     totalReward: 0,
   });
   const [weekResult, setWeekResult] = useState<Array<number | string>>([]);
+  const [terminalCommissions, setTerminalCommissions] = useState<Array<{ terminal: string; commission: number }>>([]);
 
   useEffect(() => {
     fetchData();
   }, [gameId]);
 
   useEffect(() => {
-    if (game) {
+    if (game && game.type !== "sports") {
       const prizes = game.prize_ids?.map((gp) => {
         const prizeInfo = allPrizes.find((p) => p.id === gp.id);
         return {
@@ -104,6 +106,12 @@ export default function GameSettingsPage() {
         if (!sportsRes.ok) throw new Error("Failed to fetch sports matches");
         const sportsData = await sportsRes.json();
         setSports(sportsData.matches || []);
+
+        const commissionsRes = await fetch(`/api/admin/games/${gameId}/commissions`);
+        if (commissionsRes.ok) {
+          const commissionsData = await commissionsRes.json();
+          setTerminalCommissions(commissionsData.commissions || []);
+        }
       } else {
         const prizesRes = await fetch(`/api/admin/prize`);
 
@@ -199,12 +207,20 @@ export default function GameSettingsPage() {
         <LottoNumbersSection gameId={gameId} loading={loading} />
       )}
       {game?.type === "sports" ? (
-        <SportsMatchesSection
-          gameId={gameId}
-          sports={sports}
-          loading={loading}
-          onRefresh={fetchData}
-        />
+        <>
+          <TerminalCommissionsSection
+            gameId={gameId}
+            initialCommissions={terminalCommissions}
+            loading={loading}
+            onRefresh={fetchData}
+          />
+          <SportsMatchesSection
+            gameId={gameId}
+            sports={sports}
+            loading={loading}
+            onRefresh={fetchData}
+          />
+        </>
       ) : (
         <PrizesSection
           gameId={gameId}

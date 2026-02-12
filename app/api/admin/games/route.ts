@@ -37,6 +37,12 @@ export async function GET(request: NextRequest) {
     );
 
     const games = data.map((game) => {
+      if (game.type === "sports") {
+        return {
+          ...game,
+          prizes: [], // Sports games don't have traditional prizes
+        };
+      }
       const prizeIds = game.prize_ids || [];
       const prizes = prizeIds.map((prizeEntry: any) => {
         const prizeId = typeof prizeEntry === "string" ? prizeEntry : prizeEntry.id;

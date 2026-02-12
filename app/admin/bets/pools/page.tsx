@@ -431,7 +431,7 @@ export default function PoolsPage() {
                   );
                 },
               },
-              { key: "apl", label: "APL", render: (value: number) => value.toFixed(2) },
+              { key: "apl", label: "APL", render: (value: number) => value ? value.toFixed(2) : "-" },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
               {
                 key: "prize",
@@ -441,7 +441,7 @@ export default function PoolsPage() {
                 )
               },
               { key: "award", label: "Award", render: (value: number) => value.toFixed(2) },
-              { key: "terminal", label: "Terminal" },
+              { key: "terminal", label: "Terminal", render: (value: { serial_number: string } | undefined) => value ? value.serial_number : "—" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "status", label: "Status", render: (value: string | undefined) => renderStatus(value) },
             ]}
