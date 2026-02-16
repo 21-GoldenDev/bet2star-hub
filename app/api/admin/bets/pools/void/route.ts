@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("bets_pools")
       .select("*, games:game_id (week), terminal:terminal(serial_number)")
-      .eq("status", "deleted")
+      .eq("status", "void")
       .order("updated_at", { ascending: false });
 
     if (error) {

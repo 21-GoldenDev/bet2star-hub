@@ -39,17 +39,30 @@ export default function MaxStakeSection({
   const [showConfirm, setShowConfirm] = useState(false);
   const { toast } = useToast();
 
-  // For lotto and sports: single max stake
+  // For lotto: single max stake
   const [singleMaxStake, setSingleMaxStake] = useState<string>(
-    maxStakes.length > 0 ? maxStakes[0].max_amount.toString() : ""
+    maxStakes.length > 0 && gameType === "lotto" ? maxStakes[0].max_amount.toString() : ""
   );
 
-  // For pools: three max stakes based on matchAtLeast
-  const [poolsMaxStakes, setPoolsMaxStakes] = useState({
-    match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
-    match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
-    match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
-      ?.max_amount || "",
+  // For pools and sports: multiple max stakes based on matchAtLeast
+  const [multipleMaxStakes, setMultipleMaxStakes] = useState(() => {
+    if (gameType === "pools") {
+      return {
+        match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
+        match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
+        match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
+          ?.max_amount || "",
+      };
+    } else if (gameType === "sports") {
+      return {
+        match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
+        match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
+        match3: maxStakes.find((s) => s.match_at_least === 3)?.max_amount || "",
+        match4plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4)
+          ?.max_amount || "",
+      };
+    }
+    return {};
   });
 
   const updateMaxStakes = async () => {
@@ -58,12 +71,13 @@ export default function MaxStakeSection({
 
       let stakesToUpdate: any[] = [];
 
-      if (gameType === "pools") {
-        if (
-          !poolsMaxStakes.match1 ||
-          !poolsMaxStakes.match2 ||
-          !poolsMaxStakes.match3plus
-        ) {
+      if (gameType === "pools" || gameType === "sports") {
+        const stakes = multipleMaxStakes as any;
+        const requiredFields = gameType === "pools"
+          ? ["match1", "match2", "match3plus"]
+          : ["match1", "match2", "match3", "match4plus"];
+
+        if (requiredFields.some((field) => !stakes[field])) {
           toast({
             title: "Error",
             description: "Please fill in all maximum stake amounts",
@@ -73,11 +87,20 @@ export default function MaxStakeSection({
           return;
         }
 
-        stakesToUpdate = [
-          { match_at_least: 1, max_amount: Number(poolsMaxStakes.match1) },
-          { match_at_least: 2, max_amount: Number(poolsMaxStakes.match2) },
-          { match_at_least: 3, max_amount: Number(poolsMaxStakes.match3plus) },
-        ];
+        if (gameType === "pools") {
+          stakesToUpdate = [
+            { match_at_least: 1, max_amount: Number(stakes.match1) },
+            { match_at_least: 2, max_amount: Number(stakes.match2) },
+            { match_at_least: 3, max_amount: Number(stakes.match3plus) },
+          ];
+        } else {
+          stakesToUpdate = [
+            { match_at_least: 1, max_amount: Number(stakes.match1) },
+            { match_at_least: 2, max_amount: Number(stakes.match2) },
+            { match_at_least: 3, max_amount: Number(stakes.match3) },
+            { match_at_least: 4, max_amount: Number(stakes.match4plus) },
+          ];
+        }
       } else {
         if (!singleMaxStake) {
           toast({
@@ -169,10 +192,10 @@ export default function MaxStakeSection({
                     type="number"
                     min="0"
                     step="1"
-                    value={poolsMaxStakes.match1}
+                    value={(multipleMaxStakes as any).match1}
                     onChange={(e) =>
-                      setPoolsMaxStakes({
-                        ...poolsMaxStakes,
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
                         match1: e.target.value,
                       })
                     }
@@ -187,10 +210,10 @@ export default function MaxStakeSection({
                     type="number"
                     min="0"
                     step="1"
-                    value={poolsMaxStakes.match2}
+                    value={(multipleMaxStakes as any).match2}
                     onChange={(e) =>
-                      setPoolsMaxStakes({
-                        ...poolsMaxStakes,
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
                         match2: e.target.value,
                       })
                     }
@@ -207,11 +230,87 @@ export default function MaxStakeSection({
                     type="number"
                     min="0"
                     step="1"
-                    value={poolsMaxStakes.match3plus}
+                    value={(multipleMaxStakes as any).match3plus}
                     onChange={(e) =>
-                      setPoolsMaxStakes({
-                        ...poolsMaxStakes,
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
                         match3plus: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 100000"
+                  />
+                </div>
+              </>
+            ) : gameType === "sports" ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="match1">Maximum Stake (Match At Least = 1)</Label>
+                  <Input
+                    id="match1"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={(multipleMaxStakes as any).match1}
+                    onChange={(e) =>
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
+                        match1: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 10000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="match2">Maximum Stake (Match At Least = 2)</Label>
+                  <Input
+                    id="match2"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={(multipleMaxStakes as any).match2}
+                    onChange={(e) =>
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
+                        match2: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 50000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="match3">Maximum Stake (Match At Least = 3)</Label>
+                  <Input
+                    id="match3"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={(multipleMaxStakes as any).match3}
+                    onChange={(e) =>
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
+                        match3: e.target.value,
+                      })
+                    }
+                    placeholder="e.g., 75000"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="match4plus">
+                    Maximum Stake (Match At Least ≥ 4)
+                  </Label>
+                  <Input
+                    id="match4plus"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={(multipleMaxStakes as any).match4plus}
+                    onChange={(e) =>
+                      setMultipleMaxStakes({
+                        ...(multipleMaxStakes as any),
+                        match4plus: e.target.value,
                       })
                     }
                     placeholder="e.g., 100000"
@@ -239,15 +338,23 @@ export default function MaxStakeSection({
                   setIsEditing(false);
                   // Reset to original values
                   if (gameType === "pools") {
-                    setPoolsMaxStakes({
+                    setMultipleMaxStakes({
                       match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount.toString() || "",
                       match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount.toString() || "",
                       match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
                         ?.max_amount.toString() || "",
                     });
+                  } else if (gameType === "sports") {
+                    setMultipleMaxStakes({
+                      match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount.toString() || "",
+                      match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount.toString() || "",
+                      match3: maxStakes.find((s) => s.match_at_least === 3)?.max_amount.toString() || "",
+                      match4plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4)
+                        ?.max_amount.toString() || "",
+                    });
                   } else {
                     setSingleMaxStake(
-                      maxStakes.length > 0 ? maxStakes[0].max_amount.toString() : ""
+                      maxStakes.length > 0 && gameType === "lotto" ? maxStakes[0].max_amount.toString() : ""
                     );
                   }
                 }}
@@ -292,6 +399,43 @@ export default function MaxStakeSection({
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{(maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3))?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : gameType === "sports" ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least = 1
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least = 2
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least = 3
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{maxStakes.find((s) => s.match_at_least === 3)?.max_amount?.toLocaleString() || "—"}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm text-muted-foreground mb-1">
+                      Match At Least ≥ 4
+                    </div>
+                    <div className="text-2xl font-bold">
+                      ₦{(maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4))?.max_amount?.toLocaleString() || "—"}
                     </div>
                   </div>
                 </div>

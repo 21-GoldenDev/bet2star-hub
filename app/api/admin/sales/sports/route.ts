@@ -45,8 +45,7 @@ export async function GET(request: NextRequest) {
     const { data: bets, error: betsError } = await supabase
       .from("bets_sport")
       .select("*")
-      .eq("game_id", game_id)
-      .neq("status", "deleted");
+      .eq("game_id", game_id);
 
     if (betsError) {
       console.error("Error fetching bets:", betsError);
@@ -133,8 +132,9 @@ export async function GET(request: NextRequest) {
           const agentName = terminalData.agent?.username || "Unknown Agent";
           const terminalName = terminalData.serial_number || "Unknown Terminal";
           const maxUnder = Math.max(...(bet.under || []), 0);
+          const realMaxUnder = Math.min(maxUnder, 18);
           const key = `${staffName}|${agentName}|${terminalName}`;
-          const prizeName = `Under ${maxUnder}`;
+          const prizeName = `Under ${realMaxUnder === 18 ? "18+" : realMaxUnder}`;
 
           if (!terminalMap[key]) {
             terminalMap[key] = {
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
             (s: any) => s.prize.name === prizeName
           );
 
-          const commissionEntry = gameCommissions.find((c: any) => c.terminal === prizeName);
+          const commissionEntry = gameCommissions.find((c: any) => c.terminal === `Under ${realMaxUnder}`);
           if (commissionEntry) {
             commission = commissionEntry.commission;
           }

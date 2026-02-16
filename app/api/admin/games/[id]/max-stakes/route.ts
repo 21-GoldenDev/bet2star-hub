@@ -37,8 +37,8 @@ export async function GET(
     const maxStakes = [];
 
     if (game.max_stake) {
-      if (game.type === "pools") {
-        // For pools: { "1": 10000, "2": 50000, "3": 100000 }
+      if (game.type === "pools" || game.type === "sports") {
+        // For pools/sports: { "1": 10000, "2": 50000, "3": 100000, "4": 150000 }
         if (game.max_stake["1"]) {
           maxStakes.push({ match_at_least: 1, max_amount: game.max_stake["1"] });
         }
@@ -48,8 +48,11 @@ export async function GET(
         if (game.max_stake["3"]) {
           maxStakes.push({ match_at_least: 3, max_amount: game.max_stake["3"] });
         }
+        if (game.max_stake["4"]) {
+          maxStakes.push({ match_at_least: 4, max_amount: game.max_stake["4"] });
+        }
       } else {
-        // For lotto/sports: { "amount": 100000 } or just a number
+        // For lotto: { "amount": 100000 } or just a number
         const amount = typeof game.max_stake === "number"
           ? game.max_stake
           : game.max_stake.amount;
@@ -88,8 +91,8 @@ export async function POST(
 
     let maxStakeData: any;
 
-    if (game_type === "pools") {
-      // For pools: store as { "1": 10000, "2": 50000, "3": 100000 }
+    if (game_type === "pools" || game_type === "sports") {
+      // For pools/sports: store as { "1": 10000, "2": 50000, "3": 100000, "4": 150000 }
       maxStakeData = {};
       max_stakes.forEach((stake: any) => {
         if (stake.match_at_least) {
@@ -97,7 +100,7 @@ export async function POST(
         }
       });
     } else {
-      // For lotto/sports: store as { "amount": 100000 }
+      // For lotto: store as { "amount": 100000 }
       maxStakeData = { amount: max_stakes[0]?.max_amount || 0 };
     }
 

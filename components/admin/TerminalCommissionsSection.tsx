@@ -104,7 +104,7 @@ export default function TerminalCommissionsSection({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {commissions.map((item, index) => (
             <div key={item.terminal} className="space-y-2">
-              <Label htmlFor={`commission-${index}`}>{item.terminal}</Label>
+              <Label htmlFor={`commission-${index}`}>{item.terminal}{index === 17 && "+"}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id={`commission-${index}`}

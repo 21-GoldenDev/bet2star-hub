@@ -79,9 +79,7 @@ export default function TerminalsPage() {
     { prize_id: "", commission: 0 },
   ]);
 
-  const gameTypeOptions = Object.entries(gameModes) as Array<
-    [GameModeType, string]
-  >;
+  const gameTypeOptions = [["under1", "Under 1"], ["under2", "Under 2"]] as const;
   const gameModeOptions: Array<{ value: GameType; label: string }> = [
     { value: "lotto", label: "Lotto" },
     { value: "pools", label: "Pools" },
