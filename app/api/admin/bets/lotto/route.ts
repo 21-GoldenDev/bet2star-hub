@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
       .from("bets_lotto")
       .select("*, games:game_id (week), terminal:terminal(serial_number)")
       .order("bet_time", { ascending: false })
-      .eq("game_id", game_id);
+      .eq("game_id", game_id)
+      .eq("status", "active");
 
     if (gameType && gameType !== "all") {
       query = query.eq("gameType", gameType);
@@ -42,7 +43,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Fetch user data separately for bets with players
     const playerIds = data
       .map((bet) => bet.player)
       .filter((id): id is string => id !== null);

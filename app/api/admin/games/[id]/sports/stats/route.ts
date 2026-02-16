@@ -29,7 +29,8 @@ export async function GET(
     const { data: bets, error: betsError } = await supabase
       .from("bets_sport")
       .select("*")
-      .eq("game_id", gameId);
+      .eq("game_id", gameId)
+      .neq("status", "deleted");
 
     if (betsError) throw betsError;
 

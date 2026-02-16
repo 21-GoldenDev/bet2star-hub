@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, XCircle, Eye } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
 import { useToast } from "@/hooks/use-toast";
 
@@ -149,15 +149,17 @@ export default function SportsPage() {
     if (!betToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/bets/sports?id=${betToDelete.id}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/admin/bets/sports/soft-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: betToDelete.id }),
       });
 
       if (!response.ok) throw new Error("Failed to delete");
       setDataSports((d) => d.filter((b) => b.id !== betToDelete.id));
       toast({
         title: "Success",
-        description: "Bet deleted successfully.",
+        description: "Bet marked as deleted.",
       });
     } catch (error) {
       console.error("Error deleting bet:", error);
@@ -264,12 +266,7 @@ export default function SportsPage() {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              {row.status !== "void" && (
-                <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
-                  <XCircle className="w-4 h-4" />
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
+              <Button variant="outline" title="Void bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -281,9 +278,9 @@ export default function SportsPage() {
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Void this bet?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the bet.
+              Are you sure you want to void bet #{betToDelete?.number.toString()}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -292,7 +289,7 @@ export default function SportsPage() {
               onClick={deleteBet}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Void
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

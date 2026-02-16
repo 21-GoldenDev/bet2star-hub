@@ -4,7 +4,6 @@ import { useMemo, useState, useEffect } from "react";
 import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DateRange } from "react-day-picker";
-import { Trash2, XCircle, Eye } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 import type { LottoBet, Player } from "@/lib/types/lotto";
 import { useToast } from "@/hooks/use-toast";
@@ -180,8 +179,10 @@ export default function LottoPage() {
     if (!betToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/bets/lotto/${betToDelete.id}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/admin/bets/lotto/soft-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: betToDelete.id }),
       });
 
       if (!response.ok) {
@@ -192,7 +193,7 @@ export default function LottoPage() {
 
       toast({
         title: "Success",
-        description: "Bet deleted successfully.",
+        description: "Bet marked as deleted.",
       });
     } catch (error) {
       console.error("Error deleting bet:", error);
@@ -204,34 +205,6 @@ export default function LottoPage() {
     } finally {
       setIsDeleteAlertOpen(false);
       setBetToDelete(null);
-    }
-  }
-
-  async function voidBet(betId: string) {
-    try {
-      const response = await fetch(`/api/admin/bets/lotto/void`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: betId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to void bet");
-      }
-
-      fetchBets();
-
-      toast({
-        title: "Success",
-        description: "Bet voided successfully.",
-      });
-    } catch (error) {
-      console.error("Error voiding bet:", error);
-      toast({
-        title: "Error",
-        description: "Failed to void bet. Please try again.",
-        variant: "destructive",
-      });
     }
   }
 
@@ -443,12 +416,7 @@ export default function LottoPage() {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              {row.status !== "void" && (
-                <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
-                  <XCircle className="w-4 h-4" />
-                </Button>
-              )}
-              <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row)}>
+              <Button variant="outline" title="Void bet" size="sm" onClick={() => openDeleteDialog(row)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -456,13 +424,13 @@ export default function LottoPage() {
         />
       </section>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Void Confirmation Dialog */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Void this bet?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the bet.
+              Are you sure you want to void bet #{betToDelete?.betId.toString()}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -471,7 +439,7 @@ export default function LottoPage() {
               onClick={deleteBet}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Void
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -543,9 +511,9 @@ export default function LottoPage() {
                   }
                   return (
                     <div className="space-y-3">
-                      {Object.entries(value).map(([gid, nums]) => (
+                      {Object.entries(value).map(([gid, nums], index) => (
                         <div key={gid} className="space-y-2">
-                          <p className="text-sm font-semibold">{gid.split("-")[0]}</p>
+                          <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0]}</p>
                           <div className="flex flex-wrap gap-2 ml-2">
                             {nums.sort((a, b) => a - b).map((num) => (
                               <span

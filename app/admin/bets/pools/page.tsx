@@ -25,13 +25,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DateRange } from "react-day-picker";
-import { Trash2, XCircle, Eye } from "lucide-react";
+import { Trash2, Eye } from "lucide-react";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 import type { PoolsBet, Player } from "@/lib/types/pools";
 import { useToast } from "@/hooks/use-toast";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
-import { Input } from "@/components/ui/input";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -186,8 +185,10 @@ export default function PoolsPage() {
     if (!betToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/bets/pools/${betToDelete.id}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/admin/bets/pools/soft-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: betToDelete.id }),
       });
 
       if (!response.ok) {
@@ -198,7 +199,7 @@ export default function PoolsPage() {
 
       toast({
         title: "Success",
-        description: "Bet deleted successfully.",
+        description: "Bet marked as deleted.",
       });
     } catch (error) {
       console.error("Error deleting bet:", error);
@@ -210,34 +211,6 @@ export default function PoolsPage() {
     } finally {
       setIsDeleteAlertOpen(false);
       setBetToDelete(null);
-    }
-  }
-
-  async function voidBet(betId: string) {
-    try {
-      const response = await fetch(`/api/admin/bets/pools/void`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: betId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to void bet");
-      }
-
-      fetchBets();
-
-      toast({
-        title: "Success",
-        description: "Bet voided successfully.",
-      });
-    } catch (error) {
-      console.error("Error voiding bet:", error);
-      toast({
-        title: "Error",
-        description: "Failed to void bet. Please try again.",
-        variant: "destructive",
-      });
     }
   }
 
@@ -464,12 +437,7 @@ export default function PoolsPage() {
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
-                {row.status !== "void" && (
-                  <Button variant="outline" title="Void bet" size="sm" onClick={() => voidBet(row.id)}>
-                    <XCircle className="w-4 h-4" />
-                  </Button>
-                )}
-                <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row)}>
+                <Button variant="outline" title="Void bet" size="sm" onClick={() => openDeleteDialog(row)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -482,9 +450,9 @@ export default function PoolsPage() {
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Void this bet?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the bet.
+              Are you sure you want to void bet #{betToDelete?.betId.toString()}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -493,7 +461,7 @@ export default function PoolsPage() {
               onClick={deleteBet}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              Void
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -565,9 +533,9 @@ export default function PoolsPage() {
                   }
                   return (
                     <div className="space-y-3">
-                      {Object.entries(value).map(([gid, ms]) => (
+                      {Object.entries(value).map(([gid, ms], index) => (
                         <div key={gid} className="space-y-2">
-                          <p className="text-sm font-semibold">{gid.split("-")[0]}</p>
+                          <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0]}</p>
                           <div className="flex flex-wrap gap-2 ml-2">
                             {ms.sort((a, b) => compareMatches(a, b)).map((match) => (
                               <span

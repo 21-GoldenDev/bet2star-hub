@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from("bets_lotto")
       .select("*, games:game_id (week), terminal:terminal(serial_number)")
-      .eq("status", "void")
+      .eq("status", "deleted")
       .order("updated_at", { ascending: false });
 
     if (error) {
@@ -81,49 +81,5 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("API error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const supabase = await createSupabaseServer();
-    const body = await request.json();
-    const { id } = body;
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "Bet ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("bets_lotto")
-      .update({ status: "void", updated_at: new Date().toISOString() })
-      .eq("id", id)
-      .select();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data || data.length === 0) {
-      return NextResponse.json(
-        { error: "Bet not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Bet voided successfully",
-      data: data[0],
-    });
-  } catch (error) {
-    console.error("Error voiding bet:", error);
-    return NextResponse.json(
-      { error: "Failed to void bet" },
-      { status: 500 }
-    );
   }
 }

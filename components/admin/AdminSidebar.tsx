@@ -137,6 +137,32 @@ export default function AdminSidebar() {
                             <span>Sports</span>
                           </div>
                         </Link>
+
+                        <Link href="/admin/bets/deleted" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/deleted"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Delete Requests</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/void"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Void Bets</span>
+                          </div>
+                        </Link>
                       </div>
                     )}
                   </div>

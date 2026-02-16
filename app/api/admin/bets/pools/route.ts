@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
       .from("bets_pools")
       .select("*, games:game_id (week), terminal:terminal(serial_number)")
       .order("bet_time", { ascending: false })
-      .eq("game_id", game_id);
+      .eq("game_id", game_id)
+      .eq("status", "active");
 
     if (gameType && gameType !== "all") {
       query = query.eq("gameType", gameType);

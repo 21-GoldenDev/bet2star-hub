@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       .from("bets_sport")
       .select("*, games:game_id (week, id), terminal:terminal(serial_number)")
       .eq("games.week", parseInt(week))
+      .eq("status", "active")
       .order("bet_time", { ascending: false });
 
     if (error) throw error;
@@ -77,36 +78,6 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching bets:", error);
     return NextResponse.json(
       { error: "Failed to fetch bets" },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const supabase = await createSupabaseServer();
-    const searchParams = request.nextUrl.searchParams;
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "Bet ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const { error } = await supabase
-      .from("bets_sport")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error deleting bet:", error);
-    return NextResponse.json(
-      { error: "Failed to delete bet" },
       { status: 500 }
     );
   }

@@ -68,7 +68,8 @@ export async function PUT(
         const { data: betsData, error: betsError } = await supabase
           .from("bets_sport")
           .select("*")
-          .eq("game_id", id);
+          .eq("game_id", id)
+          .neq("status", "deleted");
 
         if (betsError) {
           console.error("Error fetching bets_sport for award recompute:", betsError.message);
