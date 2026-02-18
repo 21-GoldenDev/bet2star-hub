@@ -185,7 +185,7 @@ export default function PoolsPage() {
     if (!betToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/bets/pools/soft-delete`, {
+      const response = await fetch(`/api/admin/bets/pools/void`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: betToDelete.id }),
@@ -199,7 +199,7 @@ export default function PoolsPage() {
 
       toast({
         title: "Success",
-        description: "Bet marked as deleted.",
+        description: "Bet deleted successfully.",
       });
     } catch (error) {
       console.error("Error deleting bet:", error);
@@ -437,7 +437,7 @@ export default function PoolsPage() {
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" title="Void bet" size="sm" onClick={() => openDeleteDialog(row)}>
+                <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
@@ -450,9 +450,9 @@ export default function PoolsPage() {
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void this bet?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this bet?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to void bet #{betToDelete?.betId.toString()}?
+              Are you sure you want to delete bet #{betToDelete?.betId.toString()}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -461,7 +461,7 @@ export default function PoolsPage() {
               onClick={deleteBet}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Void
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

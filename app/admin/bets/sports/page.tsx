@@ -112,34 +112,6 @@ export default function SportsPage() {
     }
   }, [weekFilter, loading]);
 
-  async function voidBet(betId: string) {
-    try {
-      const response = await fetch(`/api/admin/bets/sports/void`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: betId }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to void bet");
-      }
-
-      fetchBets();
-
-      toast({
-        title: "Success",
-        description: "Bet voided successfully.",
-      });
-    } catch (error) {
-      console.error("Error voiding bet:", error);
-      toast({
-        title: "Error",
-        description: "Failed to void bet. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }
-
   const openDeleteDialog = (row: SportsBet) => {
     setBetToDelete(row);
     setIsDeleteAlertOpen(true);
@@ -149,7 +121,7 @@ export default function SportsPage() {
     if (!betToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/bets/sports/soft-delete`, {
+      const response = await fetch(`/api/admin/bets/sports/void`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: betToDelete.id }),
@@ -159,7 +131,7 @@ export default function SportsPage() {
       setDataSports((d) => d.filter((b) => b.id !== betToDelete.id));
       toast({
         title: "Success",
-        description: "Bet marked as deleted.",
+        description: "Bet deleted successfully.",
       });
     } catch (error) {
       console.error("Error deleting bet:", error);
@@ -266,7 +238,7 @@ export default function SportsPage() {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              <Button variant="outline" title="Void bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
+              <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
@@ -278,9 +250,9 @@ export default function SportsPage() {
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void this bet?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this bet?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to void bet #{betToDelete?.number.toString()}?
+              Are you sure you want to delete bet #{betToDelete?.number.toString()}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -289,7 +261,7 @@ export default function SportsPage() {
               onClick={deleteBet}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Void
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
