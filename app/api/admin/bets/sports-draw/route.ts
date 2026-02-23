@@ -1,46 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-async function resolveSportsSourceGameId(supabase: any, gameId: string): Promise<string | null> {
-  const { data: game, error } = await supabase
-    .from("games")
-    .select("id, type, week, start_time, end_time")
-    .eq("id", gameId)
-    .single();
-
-  if (error || !game) return null;
-  if (game.type === "sports") return game.id;
-  if (game.type !== "sports_draw") return game.id;
-
-  if (Number.isFinite(game.week)) {
-    const { data: weekSports, error: weekError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .eq("week", game.week)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!weekError && weekSports?.id) return weekSports.id;
-  }
-
-  if (game.start_time && game.end_time) {
-    const { data: overlapSports, error: overlapError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .lte("start_time", game.end_time)
-      .gte("end_time", game.start_time)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!overlapError && overlapSports?.id) return overlapSports.id;
-  }
-
-  return null;
-}
+// Removed resolveSportsSourceGameId function - sports_draw now manages its own matches
 
 export async function GET(request: NextRequest) {
   try {
@@ -127,16 +88,13 @@ export async function GET(request: NextRequest) {
       terminal: bet.terminal ? terminalMap[bet.terminal] || null : null,
     }));
 
-    const sourceGameIds = (await Promise.all(
-      drawGameIds.map((drawGameId) => resolveSportsSourceGameId(supabase, drawGameId))
-    )).filter((id): id is string => Boolean(id));
-
+    // Fetch matches directly from the sports_draw games
     let sportsMatchesMap: Record<string, any[]> = {};
-    if (sourceGameIds.length > 0) {
+    if (drawGameIds.length > 0) {
       const { data: matchesData, error: matchesError } = await supabase
         .from("sports")
         .select("*")
-        .in("game_id", sourceGameIds);
+        .in("game_id", drawGameIds);
 
       if (!matchesError && matchesData) {
         sportsMatchesMap = matchesData.reduce((acc, match) => {
@@ -147,15 +105,8 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const drawToSourceMap = new Map<string, string>();
-    for (const drawGameId of drawGameIds) {
-      const sourceId = await resolveSportsSourceGameId(supabase, drawGameId);
-      if (sourceId) drawToSourceMap.set(drawGameId, sourceId);
-    }
-
     const matchesMap = transformedBets.reduce((acc, bet) => {
-      const sourceId = drawToSourceMap.get(bet.game_id);
-      acc[bet.game_id] = sourceId ? (sportsMatchesMap[sourceId] || []) : [];
+      acc[bet.game_id] = sportsMatchesMap[bet.game_id] || [];
       return acc;
     }, {} as Record<string, any[]>);
 

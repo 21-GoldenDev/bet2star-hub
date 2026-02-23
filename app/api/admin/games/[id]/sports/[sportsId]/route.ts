@@ -45,7 +45,7 @@ export async function PUT(
     const { id, sportsId } = await params;
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .select("id, type, week, start_time, end_time")
+      .select("id, type, week, start_time, end_time, prize_ids")
       .eq("id", id)
       .single();
 
@@ -53,9 +53,10 @@ export async function PUT(
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
-    if (game.type === "sports_draw") {
+    // Now sports_draw games can manage their own matches
+    if (game.type !== "sports" && game.type !== "sports_draw") {
       return NextResponse.json(
-        { error: "Sports Draw matches are imported from Sports and cannot be edited here" },
+        { error: "This game type does not support match management" },
         { status: 400 }
       );
     }
@@ -71,7 +72,7 @@ export async function PUT(
     if (home_goal !== undefined) updateData.home_goal = home_goal;
     if (away_goal !== undefined) updateData.away_goal = away_goal;
     if (prizes !== undefined) {
-      updateData.prizes = Array.isArray(prizes) && prizes.length === 9
+      updateData.prizes = Array.isArray(prizes) && prizes.length > 0
         ? prizes
         : [0, 0, 0, 0, 0, 0, 0, 0, 0];
     }
@@ -108,25 +109,33 @@ export async function PUT(
       } else {
         const matches = matchesData || [];
 
+        // Determine the correct bet table based on game type
+        const betTable = game.type === "sports_draw" ? "bets_sports_draw" : "bets_sport";
+
         const { data: betsData, error: betsError } = await supabase
-          .from("bets_sport")
+          .from(betTable)
           .select("*")
           .eq("game_id", id)
           .neq("status", "deleted");
 
         if (betsError) {
-          console.error("Error fetching bets_sport for award recompute:", betsError.message);
+          console.error(`Error fetching ${betTable} for award recompute:`, betsError.message);
         } else if (betsData && betsData.length > 0) {
+          // For sports_draw, apply odds from prize_ids
+          const finalMatches = game.type === "sports_draw"
+            ? applySportsDrawOdds(matches, extractSportsDrawOddsMap(game.prize_ids))
+            : matches;
+
           for (const bet of betsData) {
             let award = 0;
             if (bet.status === "void") {
               award = bet.staked || 0;
             } else {
-              award = calculateBetReward(bet, matches) || 0;
+              award = calculateBetReward(bet, finalMatches) || 0;
             }
 
             const { error: updateBetError } = await supabase
-              .from("bets_sport")
+              .from(betTable)
               .update({ award })
               .eq("id", bet.id);
 
@@ -136,51 +145,8 @@ export async function PUT(
           }
         }
 
-        if (Number.isFinite(game.week)) {
-          const { data: linkedDrawGames, error: linkedGamesError } = await supabase
-            .from("games")
-            .select("id, prize_ids")
-            .eq("type", "sports_draw")
-            .eq("week", game.week);
-
-          if (linkedGamesError) {
-            console.error("Error fetching linked sports_draw games:", linkedGamesError.message);
-          } else if (linkedDrawGames && linkedDrawGames.length > 0) {
-            for (const drawGame of linkedDrawGames) {
-              const drawOddsMap = extractSportsDrawOddsMap((drawGame as any).prize_ids);
-              const drawMatches = applySportsDrawOdds(matches, drawOddsMap);
-
-              const { data: drawBets, error: drawBetsError } = await supabase
-                .from("bets_sports_draw")
-                .select("*")
-                .eq("game_id", drawGame.id)
-                .neq("status", "deleted");
-
-              if (drawBetsError) {
-                console.error(`Error fetching sports_draw bets for game ${drawGame.id}:`, drawBetsError.message);
-                continue;
-              }
-
-              for (const bet of drawBets || []) {
-                let award = 0;
-                if (bet.status === "void") {
-                  award = bet.staked || 0;
-                } else {
-                  award = calculateBetReward(bet, drawMatches) || 0;
-                }
-
-                const { error: updateDrawBetError } = await supabase
-                  .from("bets_sports_draw")
-                  .update({ award })
-                  .eq("id", bet.id);
-
-                if (updateDrawBetError) {
-                  console.error(`Error updating award for sports_draw bet ${bet.id}:`, updateDrawBetError.message);
-                }
-              }
-            }
-          }
-        }
+        // Note: Removed the logic for updating linked sports_draw games by week
+        // as sports_draw games now manage their own matches independently
       }
     } catch (awardError) {
       console.error("Unexpected error during sports awards recompute:", awardError);
@@ -209,9 +175,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
-    if (game.type === "sports_draw") {
+    // Now sports_draw games can manage their own matches
+    if (game.type !== "sports" && game.type !== "sports_draw") {
       return NextResponse.json(
-        { error: "Sports Draw matches are imported from Sports and cannot be deleted here" },
+        { error: "This game type does not support match management" },
         { status: 400 }
       );
     }

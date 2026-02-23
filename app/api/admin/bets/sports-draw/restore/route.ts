@@ -28,46 +28,7 @@ function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): a
   });
 }
 
-async function resolveSportsSourceGameId(supabase: any, gameId: string): Promise<string | null> {
-  const { data: game, error } = await supabase
-    .from("games")
-    .select("id, type, week, start_time, end_time")
-    .eq("id", gameId)
-    .single();
-
-  if (error || !game) return null;
-  if (game.type === "sports") return game.id;
-  if (game.type !== "sports_draw") return game.id;
-
-  if (Number.isFinite(game.week)) {
-    const { data: sameWeekSports, error: weekError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .eq("week", game.week)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!weekError && sameWeekSports?.id) return sameWeekSports.id;
-  }
-
-  if (game.start_time && game.end_time) {
-    const { data: overlapSports, error: overlapError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .lte("start_time", game.end_time)
-      .gte("end_time", game.start_time)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!overlapError && overlapSports?.id) return overlapSports.id;
-  }
-
-  return null;
-}
+// Removed resolveSportsSourceGameId function - sports_draw now manages its own matches
 
 export async function POST(request: NextRequest) {
   try {
@@ -98,15 +59,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
-    const sourceGameId = await resolveSportsSourceGameId(supabase, bet.game_id);
-    if (!sourceGameId) {
-      return NextResponse.json({ error: "Source sports game not found" }, { status: 404 });
-    }
-
+    // Fetch matches directly from the sports_draw game
     const { data: matches, error: matchesError } = await supabase
       .from("sports")
       .select("*")
-      .eq("game_id", sourceGameId);
+      .eq("game_id", bet.game_id);
 
     if (matchesError) {
       return NextResponse.json({ error: "Matches not found" }, { status: 404 });

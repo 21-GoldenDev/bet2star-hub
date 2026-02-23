@@ -37,46 +37,7 @@ function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): a
   });
 }
 
-async function resolveSportsMatchGameId(targetGameId: string): Promise<string | null> {
-  const { data: game, error: gameError } = await supabase
-    .from("games")
-    .select("id, type, week, start_time, end_time")
-    .eq("id", targetGameId)
-    .single();
-
-  if (gameError || !game) return null;
-  if (game.type === "sports") return game.id;
-  if (game.type !== "sports_draw") return game.id;
-
-  if (Number.isFinite(game.week)) {
-    const { data: weekSports, error: weekError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .eq("week", game.week)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!weekError && weekSports?.id) return weekSports.id;
-  }
-
-  if (game.start_time && game.end_time) {
-    const { data: overlapSports, error: overlapError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .lte("start_time", game.end_time)
-      .gte("end_time", game.start_time)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!overlapError && overlapSports?.id) return overlapSports.id;
-  }
-
-  return null;
-}
+// Removed resolveSportsMatchGameId function - sports_draw now manages its own matches
 
 /**
  * Calculate total betting amount and total reward for a sports game
@@ -111,13 +72,11 @@ export async function GET(
 
     if (betsError) throw betsError;
 
-    const matchGameId = await resolveSportsMatchGameId(gameId);
-
-    // Fetch all matches for the source sports game
+    // Fetch all matches directly for this game (works for both sports and sports_draw)
     const { data: matches, error: matchesError } = await supabase
       .from("sports")
       .select("*")
-      .eq("game_id", matchGameId || gameId);
+      .eq("game_id", gameId);
 
     if (matchesError) throw matchesError;
 

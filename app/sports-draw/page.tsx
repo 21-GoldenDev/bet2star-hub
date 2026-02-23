@@ -26,7 +26,7 @@ interface Match {
 }
 
 type BetSelection = { matchId: string; matchNumber: number; option: BetOptionKey; odds: number };
-type SportsDrawGame = Game & { source_sports_game_id?: string | null; prize_ids?: any };
+type SportsDrawGame = Game & { prize_ids?: any };
 
 const extractSportsDrawOddsMap = (prizeIds: any): Record<number, number> => {
   if (!prizeIds || typeof prizeIds !== "object" || Array.isArray(prizeIds)) return {};
@@ -48,7 +48,6 @@ const SportsDrawPage = () => {
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
   const [mode, setMode] = useState<"direct" | "permutation">("direct");
   const [activeGame, setActiveGame] = useState<SportsDrawGame | null>(null);
-  const [sourceGameId, setSourceGameId] = useState<string | null>(null);
   const [drawOddsMap, setDrawOddsMap] = useState<Record<number, number>>({});
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,14 +98,8 @@ const SportsDrawPage = () => {
         setActiveGame(game);
         setDrawOddsMap(extractSportsDrawOddsMap(game?.prize_ids));
 
-        const linkedSourceGameId =
-          game?.source_sports_game_id ||
-          data?.sourceSportsGame?.id ||
-          null;
-
-        setSourceGameId(linkedSourceGameId);
-
-        if (!game || !linkedSourceGameId) {
+        // Now fetch matches directly from the sports_draw game
+        if (!game?.id) {
           setMatches([]);
           if (!interval) {
             interval = setInterval(fetchActiveGame, 30000);
@@ -116,7 +109,7 @@ const SportsDrawPage = () => {
             clearInterval(interval);
             interval = null;
           }
-          await fetchMatches(linkedSourceGameId);
+          await fetchMatches(game.id);
         }
       } catch (error) {
         console.error("Error fetching active sports draw game:", error);
@@ -227,11 +220,6 @@ const SportsDrawPage = () => {
       return;
     }
 
-    if (!sourceGameId) {
-      toast.error("Sports source game not found for this draw");
-      return;
-    }
-
     if (betAmount <= 0) {
       toast.error("Please enter a valid bet amount");
       return;
@@ -273,7 +261,6 @@ const SportsDrawPage = () => {
             selections,
             under: mode === "direct" ? [selectedBets.length] : matchAtLeast,
             mode,
-            sourceGameId,
           },
         }),
       });

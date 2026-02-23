@@ -16,7 +16,6 @@ import SportsMatchesSection from "@/components/admin/SportsMatchesSection";
 import LottoNumbersSection from "@/components/admin/LottoNumbersSection";
 import MaxStakeSection from "@/components/admin/MaxStakeSection";
 import TerminalCommissionsSection from "@/components/admin/TerminalCommissionsSection";
-import SportsDrawOddsSection from "@/components/admin/SportsDrawOddsSection";
 
 interface GamePrizeWithInfo {
   id: string;
@@ -33,35 +32,6 @@ interface GameInfo {
   prize_ids?: GamePrizeWithInfo[];
   results?: string[] | number[] | null;
 }
-
-const extractSportsDrawOddsMap = (prizeIds: any): Record<number, number> => {
-  if (!prizeIds || typeof prizeIds !== "object" || Array.isArray(prizeIds)) return {};
-  const entries = Array.isArray(prizeIds.draw_odds) ? prizeIds.draw_odds : [];
-  return entries.reduce((acc: Record<number, number>, item: any) => {
-    const matchNumber = Number(item?.match_number);
-    const odd = Number(item?.odd);
-    if (Number.isFinite(matchNumber) && Number.isFinite(odd) && matchNumber > 0 && odd >= 0) {
-      acc[matchNumber] = odd;
-    }
-    return acc;
-  }, {});
-};
-
-const buildSportsDrawPrizeConfig = (currentPrizeIds: any, drawOddsMap: Record<number, number>) => {
-  const base = currentPrizeIds && typeof currentPrizeIds === "object" && !Array.isArray(currentPrizeIds)
-    ? { ...currentPrizeIds }
-    : {};
-
-  base.draw_odds = Object.entries(drawOddsMap)
-    .map(([matchNumber, odd]) => ({
-      match_number: Number(matchNumber),
-      odd: Number(odd),
-    }))
-    .filter((entry) => Number.isFinite(entry.match_number) && entry.match_number > 0 && Number.isFinite(entry.odd) && entry.odd >= 0)
-    .sort((a, b) => a.match_number - b.match_number);
-
-  return base;
-};
 
 export default function GameSettingsPage() {
   const router = useRouter();
@@ -83,8 +53,6 @@ export default function GameSettingsPage() {
   });
   const [weekResult, setWeekResult] = useState<Array<number | string>>([]);
   const [terminalCommissions, setTerminalCommissions] = useState<Array<{ terminal: string; commission: number }>>([]);
-  const [sportsDrawOdds, setSportsDrawOdds] = useState<Record<number, number>>({});
-  const [savingSportsDrawOdds, setSavingSportsDrawOdds] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -143,19 +111,6 @@ export default function GameSettingsPage() {
         const matches = sportsData.matches || [];
         setSports(matches);
 
-        if (gameType === "sports_draw") {
-          const configuredOdds = extractSportsDrawOddsMap(gameData.game?.prize_ids);
-          const mergedOdds: Record<number, number> = {};
-          for (const match of matches) {
-            const matchNumber = Number(match.number);
-            if (!Number.isFinite(matchNumber)) continue;
-            mergedOdds[matchNumber] = Number.isFinite(configuredOdds[matchNumber])
-              ? configuredOdds[matchNumber]
-              : Number(match.prizes?.[1] ?? 0);
-          }
-          setSportsDrawOdds(mergedOdds);
-        }
-
         const commissionsRes = await fetch(`/api/admin/games/${gameId}/commissions`);
         if (commissionsRes.ok) {
           const commissionsData = await commissionsRes.json();
@@ -177,36 +132,6 @@ export default function GameSettingsPage() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const saveSportsDrawOdds = async (oddsMap: Record<number, number>) => {
-    if (!game || game.type !== "sports_draw") return;
-
-    try {
-      setSavingSportsDrawOdds(true);
-      const nextPrizeIds = buildSportsDrawPrizeConfig(game.prize_ids, oddsMap);
-      const res = await fetch(`/api/admin/games/${gameId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prize_ids: nextPrizeIds }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save Sports Draw odds");
-
-      setGame((prev) => (prev ? { ...prev, prize_ids: nextPrizeIds } : prev));
-      setSportsDrawOdds(oddsMap);
-      toast({ title: "Success", description: "Sports Draw odds saved" });
-    } catch (error) {
-      console.error("Error saving sports draw odds:", error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save Sports Draw odds",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingSportsDrawOdds(false);
     }
   };
 
@@ -285,32 +210,23 @@ export default function GameSettingsPage() {
       {game?.type === "lotto" && (
         <LottoNumbersSection gameId={gameId} loading={loading} />
       )}
-      {(game?.type === "sports" || game?.type === "sports_draw") && (
-        <TerminalCommissionsSection
-          gameId={gameId}
-          initialCommissions={terminalCommissions}
-          loading={loading}
-          onRefresh={fetchData}
-        />
-      )}
-      {game?.type === "sports_draw" && (
-        <SportsDrawOddsSection
-          sports={sports}
-          oddsMap={sportsDrawOdds}
-          loading={loading}
-          submitting={savingSportsDrawOdds}
-          onSave={saveSportsDrawOdds}
-        />
-      )}
-      {game?.type === "sports" && (
-        <SportsMatchesSection
-          gameId={gameId}
-          sports={sports}
-          loading={loading}
-          onRefresh={fetchData}
-        />
-      )}
-      {!(game?.type === "sports" || game?.type === "sports_draw") && (
+      {(game?.type === "sports" || game?.type === "sports_draw") ? (
+        <>
+          <TerminalCommissionsSection
+            gameId={gameId}
+            initialCommissions={terminalCommissions}
+            loading={loading}
+            onRefresh={fetchData}
+          />
+          <SportsMatchesSection
+            gameId={gameId}
+            sports={sports}
+            loading={loading}
+            drawMode={game.type === "sports_draw"}
+            onRefresh={fetchData}
+          />
+        </>
+      ) : (
         <PrizesSection
           gameId={gameId}
           gamePrizes={gamePrizes}

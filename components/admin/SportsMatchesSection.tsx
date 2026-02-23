@@ -45,14 +45,12 @@ interface MatchInfo {
   end_time?: string;
 }
 
-const PRIZE_LABELS = ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
-const EMPTY_PRIZES = [0, 0, 0, 0, 0, 0, 0, 0, 0];
 const DEFAULT_MATCH = {
   league: "",
   number: 1,
   home: "",
   away: "",
-  prizes: [...EMPTY_PRIZES],
+  prizes: [],
   status: "active" as "active" | "void",
   start_time: "",
   end_time: "",
@@ -62,19 +60,22 @@ interface Props {
   gameId: string;
   sports: SportsMatch[];
   loading: boolean;
+  drawMode: boolean;
   onRefresh: () => void;
 }
 
-export default function SportsMatchesSection({ gameId, sports, loading, onRefresh }: Props) {
+export default function SportsMatchesSection({ gameId, sports, loading, drawMode, onRefresh }: Props) {
   const [isAddSportsOpen, setIsAddSportsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [sportsForm, setSportsForm] = useState<MatchInfo>(DEFAULT_MATCH);
+  const [sportsForm, setSportsForm] = useState<MatchInfo>({ ...DEFAULT_MATCH, prizes: drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0] });
   const [isMatchDeleteAlertOpen, setIsMatchDeleteAlertOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<SportsMatch | null>(null);
   const { toast } = useToast();
 
+  const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
+
   const handleOpenAddSports = () => {
-    setSportsForm({ ...DEFAULT_MATCH, number: Math.max(...sports.map(s => s.number), 0) + 1 });
+    setSportsForm({ ...DEFAULT_MATCH, number: Math.max(...sports.map(s => s.number), 0) + 1, prizes: drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0] });
     setIsAddSportsOpen(true);
   };
 
@@ -241,27 +242,46 @@ export default function SportsMatchesSection({ gameId, sports, loading, onRefres
                   />
                 </div>
               </div>
-              <div>
-                <Label>Prizes</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {PRIZE_LABELS.map((label, idx) => (
-                    <div key={label} className="flex items-center gap-2">
-                      <span className="w-24 text-sm text-muted-foreground">{label}</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        value={sportsForm.prizes[idx] ?? 0}
-                        onChange={(e) => {
-                          const value = Math.max(0, Number(e.target.value));
-                          const updated = [...sportsForm.prizes];
-                          updated[idx] = value;
-                          setSportsForm({ ...sportsForm, prizes: updated });
-                        }}
-                      />
-                    </div>
-                  ))}
+              {drawMode ? (
+                <div>
+                  <Label>Prize</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={sportsForm.prizes[0] ?? 0}
+                      onChange={(e) => {
+                        const value = Math.max(0, Number(e.target.value));
+                        const updated = [...sportsForm.prizes];
+                        updated[0] = value;
+                        setSportsForm({ ...sportsForm, prizes: updated });
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <Label>Prizes</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PRIZE_LABELS.map((label, idx) => (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="w-24 text-sm text-muted-foreground">{label}</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={sportsForm.prizes[idx] ?? 0}
+                          onChange={(e) => {
+                            const value = Math.max(0, Number(e.target.value));
+                            const updated = [...sportsForm.prizes];
+                            updated[idx] = value;
+                            setSportsForm({ ...sportsForm, prizes: updated });
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -306,6 +326,7 @@ export default function SportsMatchesSection({ gameId, sports, loading, onRefres
               key={match.id}
               match={match}
               gameId={gameId}
+              drawMode={drawMode}
               onDelete={openMatchDeleteDialog}
               onRefresh={onRefresh}
             />

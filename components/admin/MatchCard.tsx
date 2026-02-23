@@ -17,9 +17,6 @@ import { Edit2, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SportsMatch } from "@/lib/types/sports";
 
-const PRIZE_LABELS = ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
-const EMPTY_PRIZES = [0, 0, 0, 0, 0, 0, 0, 0, 0];
-
 interface MatchEditInfo {
   league: string;
   number: number;
@@ -36,11 +33,15 @@ interface MatchEditInfo {
 interface Props {
   match: SportsMatch;
   gameId: string;
+  drawMode?: boolean;
   onDelete: (match: SportsMatch) => void;
   onRefresh: () => void;
 }
 
-export default function MatchCard({ match, gameId, onDelete, onRefresh }: Props) {
+export default function MatchCard({ match, gameId, drawMode = false, onDelete, onRefresh }: Props) {
+  const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
+  const EMPTY_PRIZES = drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editRowForm, setEditRowForm] = useState<MatchEditInfo>({
@@ -233,28 +234,48 @@ export default function MatchCard({ match, gameId, onDelete, onRefresh }: Props)
               />
             </div>
           </div>
-          <div>
-            <Label className="text-xs mb-2 block">Prizes</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
-              {PRIZE_LABELS.map((label, idx) => (
-                <div key={label} className="flex items-center gap-2">
-                  <span className="w-16 text-xs text-muted-foreground">{label}</span>
-                  <Input
-                    type="number"
-                    min="0"
-                    className="h-9 text-xs"
-                    value={editRowForm.prizes[idx] ?? 0}
-                    onChange={(e) => {
-                      const value = Math.max(0, Number(e.target.value));
-                      const updated = [...editRowForm.prizes];
-                      updated[idx] = value;
-                      setEditRowForm({ ...editRowForm, prizes: updated });
-                    }}
-                  />
-                </div>
-              ))}
+          {drawMode ? (
+            <div>
+              <Label className="text-xs mb-2 block">Prize</Label>
+              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  className="h-9 text-xs"
+                  value={editRowForm.prizes[0] ?? 0}
+                  onChange={(e) => {
+                    const value = Math.max(0, Number(e.target.value));
+                    const updated = [...editRowForm.prizes];
+                    updated[0] = value;
+                    setEditRowForm({ ...editRowForm, prizes: updated });
+                  }}
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div>
+              <Label className="text-xs mb-2 block">Prizes</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
+                {PRIZE_LABELS.map((label, idx) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <span className="w-16 text-xs text-muted-foreground">{label}</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      className="h-9 text-xs"
+                      value={editRowForm.prizes[idx] ?? 0}
+                      onChange={(e) => {
+                        const value = Math.max(0, Number(e.target.value));
+                        const updated = [...editRowForm.prizes];
+                        updated[idx] = value;
+                        setEditRowForm({ ...editRowForm, prizes: updated });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button size="sm" className="flex-1" onClick={saveInlineEdit} disabled={submitting}>
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
@@ -342,22 +363,29 @@ export default function MatchCard({ match, gameId, onDelete, onRefresh }: Props)
               </Button>
             </div>
           </div>
-          <div className="pt-1.5 border-t border-black/10">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs font-bold text-foreground">Betting Odds</span>
+          {drawMode ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-foreground">Betting Odd:</span>
+              <span className="text-sm font-bold text-primary">{match.prizes?.[0] ?? 0}</span>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-9 gap-1.5">
-              {PRIZE_LABELS.map((label, idx) => (
-                <div
-                  key={label}
-                  className="bg-linear-to-br from-primary/10 to-primary/5 rounded px-2 py-1 border border-primary/20 flex items-center justify-between"
-                >
-                  <span className="text-xs font-semibold text-muted-foreground">{label}</span>
-                  <span className="text-sm font-bold text-primary">{match.prizes?.[idx] ?? 0}</span>
-                </div>
-              ))}
+          ) : (
+            <div className="pt-1.5 border-t border-black/10">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-foreground">Betting Odds</span>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 xl:grid-cols-9 gap-1.5">
+                {PRIZE_LABELS.map((label, idx) => (
+                  <div
+                    key={label}
+                    className="bg-linear-to-br from-primary/10 to-primary/5 rounded px-2 py-1 border border-primary/20 flex items-center justify-between"
+                  >
+                    <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                    <span className="text-sm font-bold text-primary">{match.prizes?.[idx] ?? 0}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </Card>
