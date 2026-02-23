@@ -372,7 +372,7 @@ const SportsDrawPage = () => {
                   <div className="space-y-2 pr-2 max-h-150 lg:max-h-[calc(100vh-18rem)] overflow-auto scrollbar">
                     {sortedMatches.map((match) => {
                       const matchNumber = matchNumberMap.get(match.id) ?? 0;
-                      const drawOdds = drawOddsMap[matchNumber] ?? match.prizes[1] ?? 0;
+                      const drawOdds = drawOddsMap[matchNumber] ?? match.prizes[0] ?? 0;
                       const selected = isSelected(match.id);
                       return (
                         <div

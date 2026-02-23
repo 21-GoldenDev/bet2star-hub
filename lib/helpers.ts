@@ -82,14 +82,14 @@ export const calcAwardLine = (
   return totalAward;
 }
 
-const sportOptions = ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
-
 export type TurboPrize = {
   data?: Record<string, number>;
 };
 
-export function calculateBetReward(bet: any, matches: any[]): number {
+export function calculateBetReward(bet: any, matches: any[], drawMode?: boolean): number {
   if (!bet || bet.status === "void" || bet.status !== "active") return 0;
+
+  const sportOptions = drawMode ? ["D"] : ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
 
   const selections = bet.selections || {};
   const matchNumbers = Object.keys(selections);

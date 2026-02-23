@@ -364,7 +364,7 @@ export default function SportsDrawPage() {
                                   key={idx}
                                   className="px-2 py-0.5 rounded bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
                                 >
-                                  {label}: {match?.prizes?.[1] ? match.prizes[1] : "—"}
+                                  {label}: {match?.prizes?.[0] ? match.prizes[0] : "—"}
                                 </span>
                               );
                             })}

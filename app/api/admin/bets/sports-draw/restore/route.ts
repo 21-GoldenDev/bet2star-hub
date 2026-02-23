@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const drawOddsMap = extractSportsDrawOddsMap(drawGame.prize_ids);
     const normalizedMatches = applySportsDrawOdds(matches || [], drawOddsMap);
-    const award = calculateBetReward({ ...bet, status: "active" }, normalizedMatches);
+    const award = calculateBetReward({ ...bet, status: "active" }, normalizedMatches, true);
 
     const { error } = await supabase
       .from("bets_sports_draw")

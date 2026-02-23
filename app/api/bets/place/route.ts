@@ -289,14 +289,10 @@ async function placeSportsDrawBet(
 
   if (error) throw error;
 
-  const preferredSourceGameId = typeof sourceGameId === 'string' ? sourceGameId : undefined;
-  const drawOddsOverride = await loadSportsDrawOddsMap(supabase, gameId);
   const award = await computeSportsAward(
     supabase,
     gameId,
     data,
-    preferredSourceGameId,
-    drawOddsOverride,
   );
 
   if (award > 0) {
@@ -473,72 +469,27 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
   return { betId: data.id, betNumber: nextNumber, award };
 }
 
-// Removed resolveSportsSourceGameId function - sports_draw now manages its own matches
-
-function extractSportsDrawOddsMap(prizeIds: any): Record<number, number> {
-  if (!prizeIds || typeof prizeIds !== 'object' || Array.isArray(prizeIds)) return {};
-  const entries = Array.isArray(prizeIds.draw_odds) ? prizeIds.draw_odds : [];
-  return entries.reduce((acc: Record<number, number>, item: any) => {
-    const matchNumber = Number(item?.match_number);
-    const odd = Number(item?.odd);
-    if (Number.isFinite(matchNumber) && matchNumber > 0 && Number.isFinite(odd) && odd >= 0) {
-      acc[matchNumber] = odd;
-    }
-    return acc;
-  }, {});
-}
-
-function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): any[] {
-  if (!oddsMap || Object.keys(oddsMap).length === 0) return matches;
-  return (matches || []).map((match: any) => {
-    const matchNumber = Number(match?.number);
-    const drawOdd = oddsMap[matchNumber];
-    if (!Number.isFinite(drawOdd) || drawOdd < 0) return match;
-
-    const prizes = Array.isArray(match?.prizes) ? [...match.prizes] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
-    prizes[1] = drawOdd;
-    return { ...match, prizes };
-  });
-}
-
-async function loadSportsDrawOddsMap(supabase: any, gameId: string): Promise<Record<number, number>> {
-  const { data: game, error } = await supabase
-    .from('games')
-    .select('type, prize_ids')
-    .eq('id', gameId)
-    .single();
-
-  if (error || !game || game.type !== 'sports_draw') return {};
-  return extractSportsDrawOddsMap(game.prize_ids);
-}
-
 async function computeSportsAward(
   supabase: any,
   gameId: string,
   bet: any,
-  preferredSourceGameId?: string,
-  drawOddsOverride?: Record<number, number>,
 ): Promise<number> {
   try {
-    // Use preferredSourceGameId if provided, otherwise use the gameId directly
-    const resolvedGameId = preferredSourceGameId || gameId;
     const { data: matches, error } = await supabase
       .from('sports')
       .select('*')
-      .eq('game_id', resolvedGameId);
+      .eq('game_id', gameId);
 
     if (error) {
       console.error('Sports award fetch error:', error);
       return 0;
     }
 
-    const normalizedMatches = applySportsDrawOdds(matches || [], drawOddsOverride || {});
-
     const selections = bet?.selections || {};
     const matchNumbers = Object.keys(selections);
     if (matchNumbers.length === 0) return 0;
 
-    const matchesWithScores = normalizedMatches.filter((m: any) =>
+    const matchesWithScores = matches.filter((m: any) =>
       Number.isFinite(m.home_goal) && Number.isFinite(m.away_goal)
     );
 
@@ -548,7 +499,7 @@ async function computeSportsAward(
 
     if (!allSelectedHaveScores) return 0;
 
-    return calculateBetReward(bet, matchesWithScores) || 0;
+    return calculateBetReward(bet, matchesWithScores, true) || 0;
   } catch (err) {
     console.error('Sports award calc error:', err);
     return 0;
