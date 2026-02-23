@@ -328,6 +328,7 @@ export default function GamesPage() {
                     <SelectItem value="lotto">Lotto</SelectItem>
                     <SelectItem value="pools">Pools</SelectItem>
                     <SelectItem value="sports">Sports</SelectItem>
+                    <SelectItem value="sports_draw">Sports Draw</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -512,6 +513,7 @@ export default function GamesPage() {
                   <SelectItem value="lotto">Lotto</SelectItem>
                   <SelectItem value="pools">Pools</SelectItem>
                   <SelectItem value="sports">Sports</SelectItem>
+                  <SelectItem value="sports_draw">Sports Draw</SelectItem>
                 </SelectContent>
               </Select>
             </div>

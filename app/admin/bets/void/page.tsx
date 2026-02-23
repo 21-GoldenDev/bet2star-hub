@@ -90,6 +90,7 @@ export default function VoidBetsPage() {
   const [lottoBets, setLottoBets] = useState<DeletedBet[]>([]);
   const [poolsBets, setPoolsBets] = useState<DeletedBet[]>([]);
   const [sportsBets, setSportsBets] = useState<DeletedBet[]>([]);
+  const [sportsDrawBets, setSportsDrawBets] = useState<DeletedBet[]>([]);
   const [dataMatches, setDataMatches] = useState<Record<string, MatchInfo[]>>({});
   const [loading, setLoading] = useState(true);
   const [isRestoreAlertOpen, setIsRestoreAlertOpen] = useState(false);
@@ -103,15 +104,17 @@ export default function VoidBetsPage() {
   async function fetchVoidBets() {
     setLoading(true);
     try {
-      const [lottoRes, poolsRes, sportsRes] = await Promise.all([
+      const [lottoRes, poolsRes, sportsRes, sportsDrawRes] = await Promise.all([
         fetch("/api/admin/bets/lotto/void"),
         fetch("/api/admin/bets/pools/void"),
         fetch("/api/admin/bets/sports/void"),
+        fetch("/api/admin/bets/sports-draw/void"),
       ]);
 
       const lottoData = await lottoRes.json();
       const poolsData = await poolsRes.json();
       const sportsData = await sportsRes.json();
+      const sportsDrawData = await sportsDrawRes.json();
 
       // Transform betId strings back to BigInt for lotto and pools
       const transformedLotto = (lottoData.data || []).map((bet: any) => ({
@@ -127,9 +130,13 @@ export default function VoidBetsPage() {
       setLottoBets(transformedLotto);
       setPoolsBets(transformedPools);
       setSportsBets(sportsData.data || []);
+      setSportsDrawBets(sportsDrawData.data || []);
 
       // Set match data for sports bets
-      setDataMatches(sportsData.matches || {});
+      setDataMatches({
+        ...(sportsData.matches || {}),
+        ...(sportsDrawData.matches || {}),
+      });
     } catch (error) {
       console.error("Error fetching void bets:", error);
       toast({
@@ -163,6 +170,8 @@ export default function VoidBetsPage() {
         setPoolsBets((prev) => prev.filter((b) => b.id !== selectedBet.bet.id));
       } else if (selectedBet.type === "sports") {
         setSportsBets((prev) => prev.filter((b) => b.id !== selectedBet.bet.id));
+      } else if (selectedBet.type === "sports-draw") {
+        setSportsDrawBets((prev) => prev.filter((b) => b.id !== selectedBet.bet.id));
       }
 
       toast({
@@ -269,7 +278,7 @@ export default function VoidBetsPage() {
       </p>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+        <TabsList className="grid w-full max-w-md grid-cols-4">
           <TabsTrigger value="lotto">
             Lotto ({lottoBets.length})
           </TabsTrigger>
@@ -278,6 +287,9 @@ export default function VoidBetsPage() {
           </TabsTrigger>
           <TabsTrigger value="sports">
             Sports ({sportsBets.length})
+          </TabsTrigger>
+          <TabsTrigger value="sports-draw">
+            Sports Draw ({sportsDrawBets.length})
           </TabsTrigger>
         </TabsList>
 
@@ -323,6 +335,21 @@ export default function VoidBetsPage() {
               { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
             ]}
             actions={(row) => renderActions(row, "sports")}
+          />
+        </TabsContent>
+
+        <TabsContent value="sports-draw" className="mt-4">
+          <DataTable
+            title="Sports Draw Bets"
+            data={sportsDrawBets}
+            itemsPerPage={10}
+            columns={[
+              { key: "number", label: "Bet ID" },
+              { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
+              ...commonColumns,
+              { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+            ]}
+            actions={(row) => renderActions(row, "sports-draw")}
           />
         </TabsContent>
       </Tabs>

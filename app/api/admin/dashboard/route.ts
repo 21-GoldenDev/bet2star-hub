@@ -53,7 +53,8 @@ export async function GET(request: NextRequest) {
     const activeLottoId = activeGamesData?.find((g: any) => g.type === "lotto")?.id;
     const activePoolsId = activeGamesData?.find((g: any) => g.type === "pools")?.id;
     const activeSportsId = activeGamesData?.find((g: any) => g.type === "sports")?.id;
-    const activeGamesCount = [activeLottoId, activePoolsId, activeSportsId].filter(Boolean).length;
+    const activeSportsDrawId = activeGamesData?.find((g: any) => g.type === "sports_draw")?.id;
+    const activeGamesCount = [activeLottoId, activePoolsId, activeSportsId, activeSportsDrawId].filter(Boolean).length;
 
     // Fetch bets only for the current active games, respecting game type filter
     let lottoQuery = supabase
@@ -68,44 +69,60 @@ export async function GET(request: NextRequest) {
       .from("bets_sport")
       .select("staked, bet_time, award, status");
 
+    let sportsDrawQuery = supabase
+      .from("bets_sports_draw")
+      .select("staked, bet_time, award, status");
+
     // Apply filters based on gameTypeFilter
     if (gameTypeFilter === "all") {
       lottoQuery = activeLottoId ? lottoQuery.eq("game_id", activeLottoId) : lottoQuery.limit(0);
       poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
       sportsQuery = activeSportsId ? sportsQuery.eq("game_id", activeSportsId) : sportsQuery.limit(0);
+      sportsDrawQuery = activeSportsDrawId ? sportsDrawQuery.eq("game_id", activeSportsDrawId) : sportsDrawQuery.limit(0);
     } else if (gameTypeFilter === "lotto") {
       lottoQuery = activeLottoId ? lottoQuery.eq("game_id", activeLottoId) : lottoQuery.limit(0);
       poolsQuery = poolsQuery.limit(0);
       sportsQuery = sportsQuery.limit(0);
+      sportsDrawQuery = sportsDrawQuery.limit(0);
     } else if (gameTypeFilter === "pools") {
       lottoQuery = lottoQuery.limit(0);
       poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
       sportsQuery = sportsQuery.limit(0);
+      sportsDrawQuery = sportsDrawQuery.limit(0);
     } else if (gameTypeFilter === "sports") {
       lottoQuery = lottoQuery.limit(0);
       poolsQuery = poolsQuery.limit(0);
       sportsQuery = activeSportsId ? sportsQuery.eq("game_id", activeSportsId) : sportsQuery.limit(0);
+      sportsDrawQuery = sportsDrawQuery.limit(0);
+    } else if (gameTypeFilter === "sports_draw") {
+      lottoQuery = lottoQuery.limit(0);
+      poolsQuery = poolsQuery.limit(0);
+      sportsQuery = sportsQuery.limit(0);
+      sportsDrawQuery = activeSportsDrawId ? sportsDrawQuery.eq("game_id", activeSportsDrawId) : sportsDrawQuery.limit(0);
     }
 
     const [
       { data: lottoBets, error: lottoError },
       { data: poolsBets, error: poolsError },
-      { data: sportsBets, error: sportsError }
+      { data: sportsBets, error: sportsError },
+      { data: sportsDrawBets, error: sportsDrawError }
     ] = await Promise.all([
       lottoQuery,
       poolsQuery,
-      sportsQuery
+      sportsQuery,
+      sportsDrawQuery
     ]);
 
-    if (lottoError || poolsError || sportsError) {
-      console.error("Error fetching bets:", { lottoError, poolsError, sportsError });
+    if (lottoError || poolsError || sportsError || sportsDrawError) {
+      console.error("Error fetching bets:", { lottoError, poolsError, sportsError, sportsDrawError });
     }
 
     // Calculate financial metrics for current active game only
     const allBets = [
       ...(lottoBets || []),
       ...(poolsBets || []),
-      ...(sportsBets || [])
+      ...(sportsBets || []),
+      ...(sportsDrawBets || [])
     ];
 
     const totalBetsCount = allBets.length;
@@ -173,8 +190,9 @@ export async function GET(request: NextRequest) {
     const voidLottoCount = lottoBets?.filter(bet => bet.status === "void").length || 0;
     const voidPoolsCount = poolsBets?.filter(bet => bet.status === "void").length || 0;
     const voidSportsCount = sportsBets?.filter(bet => bet.status === "void").length || 0;
+    const voidSportsDrawCount = sportsDrawBets?.filter(bet => bet.status === "void").length || 0;
 
-    const approvedRequests = voidLottoCount + voidPoolsCount + voidSportsCount;
+    const approvedRequests = voidLottoCount + voidPoolsCount + voidSportsCount + voidSportsDrawCount;
     const totalRequests = approvedRequests;
     const dismissedRequests = 0;
 

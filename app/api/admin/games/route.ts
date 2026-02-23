@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     );
 
     const games = data.map((game) => {
-      if (game.type === "sports") {
+      if (game.type === "sports" || game.type === "sports_draw") {
         return {
           ...game,
           prizes: [], // Sports games don't have traditional prizes

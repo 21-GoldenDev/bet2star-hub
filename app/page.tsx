@@ -55,7 +55,7 @@ const Home = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-6xl mx-auto">
             <GameCard
               title="Lotto"
               description="Pick your numbers and win amazing prizes. Quick, thrilling, and easy to play."
@@ -79,6 +79,14 @@ const Home = () => {
               path="/sports"
               gradient="purple"
               delay={200}
+            />
+            <GameCard
+              title="Sports Draw"
+              description="Bet only on draw outcomes from the same sports fixtures."
+              icon={Trophy}
+              path="/sports-draw"
+              gradient="purple"
+              delay={300}
             />
           </div>
         </div>

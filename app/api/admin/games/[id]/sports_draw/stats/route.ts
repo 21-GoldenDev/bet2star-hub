@@ -37,50 +37,9 @@ function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): a
   });
 }
 
-async function resolveSportsMatchGameId(targetGameId: string): Promise<string | null> {
-  const { data: game, error: gameError } = await supabase
-    .from("games")
-    .select("id, type, week, start_time, end_time")
-    .eq("id", targetGameId)
-    .single();
-
-  if (gameError || !game) return null;
-  if (game.type === "sports") return game.id;
-  if (game.type !== "sports_draw") return game.id;
-
-  if (Number.isFinite(game.week)) {
-    const { data: weekSports, error: weekError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .eq("week", game.week)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!weekError && weekSports?.id) return weekSports.id;
-  }
-
-  if (game.start_time && game.end_time) {
-    const { data: overlapSports, error: overlapError } = await supabase
-      .from("games")
-      .select("id")
-      .eq("type", "sports")
-      .lte("start_time", game.end_time)
-      .gte("end_time", game.start_time)
-      .order("start_time", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!overlapError && overlapSports?.id) return overlapSports.id;
-  }
-
-  return null;
-}
-
 /**
- * Calculate total betting amount and total reward for a sports game
- * GET /api/admin/games/[id]/sports/stats
+ * Calculate total betting amount and total reward for a sports_draw game
+ * GET /api/admin/games/[id]/sports_draw/stats
  * Returns:
  * - totalBetAmount: sum of all staked amounts
  * - totalReward: sum of rewards for winning bets
@@ -100,37 +59,31 @@ export async function GET(
 
     if (gameError || !game) throw gameError || new Error("Game not found");
 
-    const betTable = game.type === "sports_draw" ? "bets_sports_draw" : "bets_sport";
-
-    // Fetch all bets for this game
+    // Fetch all bets for this sports_draw game
     const { data: bets, error: betsError } = await supabase
-      .from(betTable)
+      .from("bets_sports_draw")
       .select("*")
       .eq("game_id", gameId)
       .neq("status", "deleted");
 
     if (betsError) throw betsError;
 
-    const matchGameId = await resolveSportsMatchGameId(gameId);
-
-    // Fetch all matches for the source sports game
+    // Fetch all matches for this sports_draw game
     const { data: matches, error: matchesError } = await supabase
       .from("sports")
       .select("*")
-      .eq("game_id", matchGameId || gameId);
+      .eq("game_id", gameId);
 
     if (matchesError) throw matchesError;
 
-    const drawOddsMap = game.type === "sports_draw"
-      ? extractSportsDrawOddsMap(game.prize_ids)
-      : {};
+    const drawOddsMap = extractSportsDrawOddsMap(game.prize_ids);
     const normalizedMatches = applySportsDrawOdds(matches || [], drawOddsMap);
 
     const totalBetAmount = (bets || []).reduce((sum, bet) => sum + (bet.staked || 0), 0);
 
     // Calculate total reward using helper
     const totalReward = (bets || []).reduce(
-      (sum, bet) => sum + calculateBetReward(bet, normalizedMatches),
+      (sum, bet) => sum + (bet.award || calculateBetReward(bet, normalizedMatches)),
       0
     );
 
@@ -139,7 +92,7 @@ export async function GET(
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error calculating sports stats:", error);
+    console.error("Error calculating sports_draw stats:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

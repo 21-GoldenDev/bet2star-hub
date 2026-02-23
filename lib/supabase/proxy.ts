@@ -6,6 +6,7 @@ const protectedRoutes = [
   '/lotto',
   '/pools',
   '/sports',
+  '/sports-draw',
   '/profile',
   '/deposit',
   '/withdraw',

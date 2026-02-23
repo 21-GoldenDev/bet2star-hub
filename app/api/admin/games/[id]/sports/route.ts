@@ -10,17 +10,63 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? "");
 
+async function resolveSportsMatchGameId(targetGameId: string): Promise<string | null> {
+  const { data: game, error: gameError } = await supabase
+    .from("games")
+    .select("id, type, week, start_time, end_time")
+    .eq("id", targetGameId)
+    .single();
+
+  if (gameError || !game) return null;
+  if (game.type === "sports") return game.id;
+  if (game.type !== "sports_draw") return game.id;
+
+  if (Number.isFinite(game.week)) {
+    const { data: weekSports, error: weekError } = await supabase
+      .from("games")
+      .select("id")
+      .eq("type", "sports")
+      .eq("week", game.week)
+      .order("start_time", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!weekError && weekSports?.id) return weekSports.id;
+  }
+
+  if (game.start_time && game.end_time) {
+    const { data: overlapSports, error: overlapError } = await supabase
+      .from("games")
+      .select("id")
+      .eq("type", "sports")
+      .lte("start_time", game.end_time)
+      .gte("end_time", game.start_time)
+      .order("start_time", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!overlapError && overlapSports?.id) return overlapSports.id;
+  }
+
+  return null;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const matchGameId = await resolveSportsMatchGameId(id);
+
+    if (!matchGameId) {
+      return NextResponse.json({ matches: [] }, { status: 200 });
+    }
 
     const { data, error } = await supabase
       .from("sports")
       .select("*")
-      .eq("game_id", id)
+      .eq("game_id", matchGameId)
       .order("number", { ascending: true });
 
     if (error) {
@@ -41,6 +87,23 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
+    const { data: game, error: gameError } = await supabase
+      .from("games")
+      .select("type")
+      .eq("id", id)
+      .single();
+
+    if (gameError || !game) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+
+    if (game.type === "sports_draw") {
+      return NextResponse.json(
+        { error: "Sports Draw matches are imported from Sports and cannot be managed here" },
+        { status: 400 }
+      );
+    }
+
     const { league, number, home, away, prizes, status, start_time, end_time } = body ?? {};
 
     if (!league || number === undefined || !home || !away) {

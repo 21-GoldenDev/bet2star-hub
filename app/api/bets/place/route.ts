@@ -95,6 +95,9 @@ export async function POST(request: NextRequest) {
         case 'sports':
           betResult = await placeSportsBet(supabase, gameId, user.id, betAmount, betData);
           break;
+        case 'sports_draw':
+          betResult = await placeSportsDrawBet(supabase, gameId, user.id, betAmount, betData);
+          break;
         case 'lotto':
           betResult = await placeLottoBet(supabase, gameId, user.id, betAmount, betData);
           break;
@@ -157,7 +160,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function placeSportsBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
+async function placeSportsBet(
+  supabase: any,
+  gameId: string,
+  userId: string,
+  betAmount: number,
+  betData: any,
+) {
   const { selections, under, mode } = betData;
 
   const normalizedMode = typeof mode === 'string' ? mode.toLowerCase() : '';
@@ -165,11 +174,11 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
     throw new Error('Invalid mode. Must be "direct" or "permutation"');
   }
 
-  if (mode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
+  if (normalizedMode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
     throw new Error('For permutation mode, "under" must be a non-empty array');
   }
 
-  if (mode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
+  if (normalizedMode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
     throw new Error('For direct mode, "under" must be an array with a single value');
   }
 
@@ -203,10 +212,95 @@ async function placeSportsBet(supabase: any, gameId: string, userId: string, bet
 
   if (error) throw error;
 
-  const award = await computeSportsAward(supabase, gameId, data);
+  const award = await computeSportsAward(
+    supabase,
+    gameId,
+    data,
+  );
 
   if (award > 0) {
     await supabase.from('bets_sport').update({ award }).eq('id', data.id);
+  }
+
+  return { betId: data.id, betNumber: nextNumber, award };
+}
+
+async function placeSportsDrawBet(
+  supabase: any,
+  gameId: string,
+  userId: string,
+  betAmount: number,
+  betData: any,
+) {
+  const { selections, under, mode, sourceGameId } = betData;
+
+  const normalizedMode = typeof mode === 'string' ? mode.toLowerCase() : '';
+  if (!['direct', 'permutation'].includes(normalizedMode)) {
+    throw new Error('Invalid mode. Must be "direct" or "permutation"');
+  }
+
+  if (normalizedMode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
+    throw new Error('For permutation mode, "under" must be a non-empty array');
+  }
+
+  if (normalizedMode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
+    throw new Error('For direct mode, "under" must be an array with a single value');
+  }
+
+  if (!selections || typeof selections !== 'object') {
+    throw new Error('Invalid selections for sports draw');
+  }
+
+  const hasOnlyDrawSelections = Object.values(selections).every((options: any) =>
+    Array.isArray(options) && options.length > 0 && options.every((opt) => opt === 'D')
+  );
+
+  if (!hasOnlyDrawSelections) {
+    throw new Error('Sports draw selections must contain only draw (D) options');
+  }
+
+  const { data: existingBets, error: countError } = await supabase
+    .from('bets_sports_draw')
+    .select('number')
+    .eq('game_id', gameId)
+    .order('number', { ascending: false })
+    .limit(1);
+
+  if (countError) throw countError;
+
+  const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].number + 1 : 1;
+
+  const { data, error } = await supabase
+    .from('bets_sports_draw')
+    .insert({
+      game_id: gameId,
+      number: nextNumber,
+      player: userId,
+      mode: normalizedMode,
+      under: under,
+      staked: betAmount,
+      bet_time: new Date().toISOString(),
+      status: 'active',
+      selections,
+      award: 0,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  const preferredSourceGameId = typeof sourceGameId === 'string' ? sourceGameId : undefined;
+  const drawOddsOverride = await loadSportsDrawOddsMap(supabase, gameId);
+  const award = await computeSportsAward(
+    supabase,
+    gameId,
+    data,
+    preferredSourceGameId,
+    drawOddsOverride,
+  );
+
+  if (award > 0) {
+    await supabase.from('bets_sports_draw').update({ award }).eq('id', data.id);
   }
 
   return { betId: data.id, betNumber: nextNumber, award };
@@ -379,23 +473,110 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
   return { betId: data.id, betNumber: nextNumber, award };
 }
 
-async function computeSportsAward(supabase: any, gameId: string, bet: any): Promise<number> {
+async function resolveSportsSourceGameId(supabase: any, gameId: string): Promise<string | null> {
+  const { data: game, error } = await supabase
+    .from('games')
+    .select('id, type, week, start_time, end_time')
+    .eq('id', gameId)
+    .single();
+
+  if (error || !game) return null;
+  if (game.type === 'sports') return game.id;
+  if (game.type !== 'sports_draw') return game.id;
+
+  if (Number.isFinite(game.week)) {
+    const { data: sameWeekSports, error: weekError } = await supabase
+      .from('games')
+      .select('id')
+      .eq('type', 'sports')
+      .eq('week', game.week)
+      .order('start_time', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!weekError && sameWeekSports?.id) return sameWeekSports.id;
+  }
+
+  if (game.start_time && game.end_time) {
+    const { data: overlapSports, error: overlapError } = await supabase
+      .from('games')
+      .select('id')
+      .eq('type', 'sports')
+      .lte('start_time', game.end_time)
+      .gte('end_time', game.start_time)
+      .order('start_time', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!overlapError && overlapSports?.id) return overlapSports.id;
+  }
+
+  return null;
+}
+
+function extractSportsDrawOddsMap(prizeIds: any): Record<number, number> {
+  if (!prizeIds || typeof prizeIds !== 'object' || Array.isArray(prizeIds)) return {};
+  const entries = Array.isArray(prizeIds.draw_odds) ? prizeIds.draw_odds : [];
+  return entries.reduce((acc: Record<number, number>, item: any) => {
+    const matchNumber = Number(item?.match_number);
+    const odd = Number(item?.odd);
+    if (Number.isFinite(matchNumber) && matchNumber > 0 && Number.isFinite(odd) && odd >= 0) {
+      acc[matchNumber] = odd;
+    }
+    return acc;
+  }, {});
+}
+
+function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): any[] {
+  if (!oddsMap || Object.keys(oddsMap).length === 0) return matches;
+  return (matches || []).map((match: any) => {
+    const matchNumber = Number(match?.number);
+    const drawOdd = oddsMap[matchNumber];
+    if (!Number.isFinite(drawOdd) || drawOdd < 0) return match;
+
+    const prizes = Array.isArray(match?.prizes) ? [...match.prizes] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    prizes[1] = drawOdd;
+    return { ...match, prizes };
+  });
+}
+
+async function loadSportsDrawOddsMap(supabase: any, gameId: string): Promise<Record<number, number>> {
+  const { data: game, error } = await supabase
+    .from('games')
+    .select('type, prize_ids')
+    .eq('id', gameId)
+    .single();
+
+  if (error || !game || game.type !== 'sports_draw') return {};
+  return extractSportsDrawOddsMap(game.prize_ids);
+}
+
+async function computeSportsAward(
+  supabase: any,
+  gameId: string,
+  bet: any,
+  preferredSourceGameId?: string,
+  drawOddsOverride?: Record<number, number>,
+): Promise<number> {
   try {
+    const resolvedSourceGameId = preferredSourceGameId || await resolveSportsSourceGameId(supabase, gameId) || gameId;
     const { data: matches, error } = await supabase
       .from('sports')
       .select('*')
-      .eq('game_id', gameId);
+      .eq('game_id', resolvedSourceGameId);
 
     if (error) {
       console.error('Sports award fetch error:', error);
       return 0;
     }
 
+    const normalizedMatches = applySportsDrawOdds(matches || [], drawOddsOverride || {});
+
     const selections = bet?.selections || {};
     const matchNumbers = Object.keys(selections);
     if (matchNumbers.length === 0) return 0;
 
-    const matchesWithScores = (matches || []).filter((m: any) =>
+    const matchesWithScores = normalizedMatches.filter((m: any) =>
       Number.isFinite(m.home_goal) && Number.isFinite(m.away_goal)
     );
 

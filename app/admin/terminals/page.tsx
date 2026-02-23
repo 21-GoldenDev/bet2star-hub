@@ -84,6 +84,7 @@ export default function TerminalsPage() {
     { value: "lotto", label: "Lotto" },
     { value: "pools", label: "Pools" },
     { value: "sports", label: "Sports" },
+    { value: "sports_draw", label: "Sports Draw" },
   ];
 
   useEffect(() => {
@@ -301,7 +302,13 @@ export default function TerminalsPage() {
   const formatGameType = (value: GameModeType) => gameModes[value] || value;
 
   const formatGameMode = (value: GameType) =>
-    value === "lotto" ? "Lotto" : value === "pools" ? "Pools" : "Sports";
+    value === "lotto"
+      ? "Lotto"
+      : value === "pools"
+        ? "Pools"
+        : value === "sports"
+          ? "Sports"
+          : "Sports Draw";
 
   const getAvailablePrizes = (rowIndex: number) => {
     const selectedIds = prizeRows

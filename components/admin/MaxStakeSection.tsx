@@ -21,7 +21,7 @@ import { MaxStake } from "@/lib/types/maxStake";
 
 interface Props {
   gameId: string;
-  gameType: "lotto" | "pools" | "sports";
+  gameType: "lotto" | "pools" | "sports" | "sports_draw";
   maxStakes: MaxStake[];
   loading: boolean;
   onRefresh: () => void;
@@ -53,7 +53,7 @@ export default function MaxStakeSection({
         match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
           ?.max_amount || "",
       };
-    } else if (gameType === "sports") {
+    } else if (gameType === "sports" || gameType === "sports_draw") {
       return {
         match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
         match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
@@ -71,7 +71,7 @@ export default function MaxStakeSection({
 
       let stakesToUpdate: any[] = [];
 
-      if (gameType === "pools" || gameType === "sports") {
+      if (gameType === "pools" || gameType === "sports" || gameType === "sports_draw") {
         const stakes = multipleMaxStakes as any;
         const requiredFields = gameType === "pools"
           ? ["match1", "match2", "match3plus"]
@@ -241,7 +241,7 @@ export default function MaxStakeSection({
                   />
                 </div>
               </>
-            ) : gameType === "sports" ? (
+            ) : gameType === "sports" || gameType === "sports_draw" ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="match1">Maximum Stake (Match At Least = 1)</Label>

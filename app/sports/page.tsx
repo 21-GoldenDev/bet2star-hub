@@ -13,7 +13,6 @@ import { Game } from "@/lib/types/game";
 import { SportsMatch } from "@/lib/types/sports";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
-import { calculateBetReward } from "@/lib/helpers";
 
 type BetOptionKey = "H" | "D" | "A" | "1X" | "12" | "X2" | "O25" | "U25" | "GG";
 

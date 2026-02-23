@@ -138,6 +138,19 @@ export default function AdminSidebar() {
                           </div>
                         </Link>
 
+                        <Link href="/admin/bets/sports-draw" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/sports-draw"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Sports Draw</span>
+                          </div>
+                        </Link>
+
                         <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -223,6 +236,19 @@ export default function AdminSidebar() {
                             )}
                           >
                             <span>Sports</span>
+                          </div>
+                        </Link>
+
+                        <Link href="/admin/sales/sports-draw" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/sales/sports-draw"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Sports Draw</span>
                           </div>
                         </Link>
                       </div>
