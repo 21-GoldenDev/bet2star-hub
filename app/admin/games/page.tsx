@@ -85,6 +85,32 @@ export default function GamesPage() {
     endTime: "",
   });
 
+  const getGameTypeLabel = (type: GameType) => {
+    switch (type) {
+      case "sports_draw":
+        return "Football Pool";
+      case "lotto":
+        return "Lotto";
+      case "pools":
+        return "Pools";
+      case "sports":
+        return "Sports";
+      default:
+        return type;
+    }
+  };
+
+  const getActiveGameForType = (type: GameType) => {
+    const now = new Date();
+    return games.find((g) => {
+      if (g.type !== type) return false;
+      const start = new Date(g.startTime || g.start_time || "");
+      const end = new Date(g.endTime || g.end_time || "");
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+      return now >= start && now <= end;
+    });
+  };
+
   // Fetch games from API
   useEffect(() => {
     fetchGames();
@@ -181,6 +207,16 @@ export default function GamesPage() {
   };
 
   const handleCreate = async () => {
+    const activeGame = getActiveGameForType(formData.type);
+    if (activeGame) {
+      toast({
+        title: "Cannot create game",
+        description: `There is already an active ${getGameTypeLabel(formData.type)} game (Week ${activeGame.week}).`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       const response = await fetch("/api/admin/games", {
@@ -331,6 +367,15 @@ export default function GamesPage() {
                     <SelectItem value="sports_draw">Football Pool</SelectItem>
                   </SelectContent>
                 </Select>
+                {(() => {
+                  const activeGame = getActiveGameForType(formData.type);
+                  if (!activeGame) return null;
+                  return (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      An active {getGameTypeLabel(formData.type)} game already exists (Week {activeGame.week}).
+                    </p>
+                  );
+                })()}
               </div>
               <div>
                 <Label>Start Time</Label>
@@ -362,7 +407,7 @@ export default function GamesPage() {
                 <Button
                   className="flex-1"
                   onClick={handleCreate}
-                  disabled={submitting}
+                  disabled={submitting || Boolean(getActiveGameForType(formData.type))}
                 >
                   {submitting ? (
                     <>

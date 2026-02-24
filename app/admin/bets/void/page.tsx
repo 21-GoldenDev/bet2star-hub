@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -24,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { DateRange } from "react-day-picker";
 
 interface DeletedBet {
   id: string;
@@ -52,6 +56,12 @@ interface DeletedBet {
     name: string;
   };
   game_id?: string;
+}
+
+interface GameWeek {
+  id: string;
+  week: number;
+  results?: unknown;
 }
 
 interface MatchInfo {
@@ -97,9 +107,147 @@ export default function VoidBetsPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<{ bet: DeletedBet; type: string } | null>(null);
 
+  // Filters (modeled after pools/lotto bets pages)
+  const [weeksLotto, setWeeksLotto] = useState<GameWeek[]>([]);
+  const [weeksPools, setWeeksPools] = useState<GameWeek[]>([]);
+  const [weeksSports, setWeeksSports] = useState<GameWeek[]>([]);
+  const [weeksSportsDraw, setWeeksSportsDraw] = useState<GameWeek[]>([]);
+  const [weekFilter, setWeekFilter] = useState<string>("all");
+  const [gameFilter, setGameFilter] = useState<string>("all");
+  const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
+
   useEffect(() => {
+    fetchWeeks();
     fetchVoidBets();
   }, []);
+
+  const weeksForTab = useMemo(() => {
+    switch (activeTab) {
+      case "lotto":
+        return weeksLotto;
+      case "pools":
+        return weeksPools;
+      case "sports":
+        return weeksSports;
+      case "sports-draw":
+        return weeksSportsDraw;
+      default:
+        return [];
+    }
+  }, [activeTab, weeksLotto, weeksPools, weeksSports, weeksSportsDraw]);
+
+  const supportsGameTypeFilter = activeTab === "lotto" || activeTab === "pools";
+
+  useEffect(() => {
+    if (weeksForTab.length === 0) return;
+    setWeekFilter((prev) => {
+      if (prev === "all") return "all";
+      if (weeksForTab.some((w) => w.id === prev)) return prev;
+      return weeksForTab[0]?.id ?? "all";
+    });
+  }, [activeTab, weeksForTab]);
+
+  async function fetchWeeks() {
+    try {
+      const [lottoRes, poolsRes, sportsRes, sportsDrawRes] = await Promise.all([
+        fetch("/api/admin/bets/lotto/weeks"),
+        fetch("/api/admin/bets/pools/weeks"),
+        fetch("/api/admin/bets/sports/weeks"),
+        fetch("/api/admin/bets/sports-draw/weeks"),
+      ]);
+
+      const [lottoData, poolsData, sportsData, sportsDrawData] = await Promise.all([
+        lottoRes.json(),
+        poolsRes.json(),
+        sportsRes.json(),
+        sportsDrawRes.json(),
+      ]);
+
+      setWeeksLotto((lottoData.data || []) as GameWeek[]);
+      setWeeksPools((poolsData.data || []) as GameWeek[]);
+      setWeeksSports((sportsData.data || []) as GameWeek[]);
+      setWeeksSportsDraw((sportsDrawData.data || []) as GameWeek[]);
+    } catch (error) {
+      console.error("Error fetching weeks:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch weeks.",
+        variant: "destructive",
+      });
+    }
+  }
+
+  const gameOptions: Array<{ value: string; label: string }> = [
+    { value: "all", label: "All games" },
+    { value: "nap_perm", label: "NAP/PERM" },
+    { value: "grouping", label: "Grouping" },
+    { value: "two_banker", label: "2 Banker" },
+    { value: "one_banker", label: "1 Against" },
+    { value: "turbo", label: "Turbo" },
+    { value: "under1", label: "Under 1" },
+    { value: "under2", label: "Under 2" },
+  ];
+
+  const fromTime = rangeFilter?.from ? new Date(rangeFilter.from).setHours(0, 0, 0, 0) : undefined;
+  const toTime = rangeFilter?.to ? new Date(rangeFilter.to).setHours(23, 59, 59, 999) : undefined;
+
+  const matchesWeek = (bet: any) => {
+    if (weekFilter === "all") return true;
+    const betGameId = bet?.gameId ?? bet?.game_id ?? bet?.gameID;
+    return String(betGameId || "") === String(weekFilter);
+  };
+
+  const matchesGameType = (bet: any) => {
+    if (!supportsGameTypeFilter) return true;
+    if (gameFilter === "all") return true;
+    return String(bet?.gameType || bet?.game_type || "") === String(gameFilter);
+  };
+
+  const matchesDateRange = (bet: any) => {
+    if (fromTime === undefined && toTime === undefined) return true;
+    const timeIso = bet?.betTime ?? bet?.bet_time ?? bet?.betTimeIso ?? bet?.deletedAt;
+    if (!timeIso) return false;
+    const time = new Date(timeIso).getTime();
+    if (Number.isNaN(time)) return false;
+    if (fromTime !== undefined && time < fromTime) return false;
+    if (toTime !== undefined && time > toTime) return false;
+    return true;
+  };
+
+  const filteredLottoBets = useMemo(
+    () => lottoBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b)),
+    [lottoBets, weekFilter, gameFilter, fromTime, toTime, activeTab]
+  );
+
+  const filteredPoolsBets = useMemo(
+    () => poolsBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b)),
+    [poolsBets, weekFilter, gameFilter, fromTime, toTime, activeTab]
+  );
+
+  const filteredSportsBets = useMemo(
+    () => sportsBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b)),
+    [sportsBets, weekFilter, fromTime, toTime, activeTab]
+  );
+
+  const filteredSportsDrawBets = useMemo(
+    () => sportsDrawBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b)),
+    [sportsDrawBets, weekFilter, fromTime, toTime, activeTab]
+  );
+
+  const activeFilteredCount = useMemo(() => {
+    switch (activeTab) {
+      case "lotto":
+        return filteredLottoBets.length;
+      case "pools":
+        return filteredPoolsBets.length;
+      case "sports":
+        return filteredSportsBets.length;
+      case "sports-draw":
+        return filteredSportsDrawBets.length;
+      default:
+        return 0;
+    }
+  }, [activeTab, filteredLottoBets.length, filteredPoolsBets.length, filteredSportsBets.length, filteredSportsDrawBets.length]);
 
   async function fetchVoidBets() {
     setLoading(true);
@@ -277,6 +425,94 @@ export default function VoidBetsPage() {
         Manage bets that have been voided by players or agents.
       </p>
 
+      <section className="mt-6 space-y-4">
+        <div className="bg-card p-4 rounded-lg border border-border">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div>
+              <Label>Week</Label>
+              <Select value={weekFilter} onValueChange={(val) => setWeekFilter(val)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All weeks" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All weeks</SelectItem>
+                  {weeksForTab.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      Week {w.week}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {supportsGameTypeFilter ? (
+              <div>
+                <Label>Game</Label>
+                <Select value={gameFilter} onValueChange={(val) => setGameFilter(val)}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="All games" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gameOptions.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="hidden md:block" />
+            )}
+
+            <div className="md:col-span-2">
+              <Label>Date Range</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="mt-1 w-full justify-start">
+                    {rangeFilter?.from && rangeFilter?.to
+                      ? `${new Date(rangeFilter.from).toLocaleDateString()} – ${new Date(rangeFilter.to).toLocaleDateString()}`
+                      : "Pick a range"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-3">
+                    <Calendar
+                      mode="range"
+                      selected={rangeFilter}
+                      onSelect={setRangeFilter}
+                      numberOfMonths={2}
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                      <Button variant="outline" size="sm" onClick={() => setRangeFilter(undefined)}>
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="md:col-span-4 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                {loading ? "Loading..." : `${activeFilteredCount} results`}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setGameFilter("all");
+                  setRangeFilter(undefined);
+                  setWeekFilter("all");
+                }}
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="grid w-full max-w-md grid-cols-4">
           <TabsTrigger value="lotto">
@@ -296,7 +532,7 @@ export default function VoidBetsPage() {
         <TabsContent value="lotto" className="mt-4">
           <DataTable
             title="Lotto Bets"
-            data={lottoBets}
+            data={filteredLottoBets}
             itemsPerPage={10}
             columns={[
               { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
@@ -311,7 +547,7 @@ export default function VoidBetsPage() {
         <TabsContent value="pools" className="mt-4">
           <DataTable
             title="Pools Bets"
-            data={poolsBets}
+            data={filteredPoolsBets}
             itemsPerPage={10}
             columns={[
               { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
@@ -326,7 +562,7 @@ export default function VoidBetsPage() {
         <TabsContent value="sports" className="mt-4">
           <DataTable
             title="Sports Bets"
-            data={sportsBets}
+            data={filteredSportsBets}
             itemsPerPage={10}
             columns={[
               { key: "number", label: "Bet ID" },
@@ -341,7 +577,7 @@ export default function VoidBetsPage() {
         <TabsContent value="sports-draw" className="mt-4">
           <DataTable
             title="Football Pool Bets"
-            data={sportsDrawBets}
+            data={filteredSportsDrawBets}
             itemsPerPage={10}
             columns={[
               { key: "number", label: "Bet ID" },
