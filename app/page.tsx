@@ -81,7 +81,7 @@ const Home = () => {
               delay={200}
             />
             <GameCard
-              title="Sports Draw"
+              title="Football Pool"
               description="Bet only on draw outcomes from the same sports fixtures."
               icon={Trophy}
               path="/sports-draw"

@@ -316,7 +316,7 @@ const SportsDrawPage = () => {
     <div className="min-h-screen pt-24 pb-8 px-4">
       <div className="container mx-auto max-w-7xl">
         <div className="text-center mb-10 animate-slide-up">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Today's Sports Draw Matches</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Today's Football Pool Matches</h1>
           <p className="text-muted-foreground">Choose draw (X) outcomes from the same Sports fixtures.</p>
         </div>
 
@@ -331,7 +331,7 @@ const SportsDrawPage = () => {
           <div className="bg-card border border-border rounded-xl p-12 text-center">
             <div className="max-w-md mx-auto">
               <h2 className="text-2xl font-bold text-foreground mb-2">No Active Game</h2>
-              <p className="text-muted-foreground mb-4">There is currently no active sports draw game available. Please check back later.</p>
+              <p className="text-muted-foreground mb-4">There is currently no active Football Pool game available. Please check back later.</p>
             </div>
           </div>
         ) : (

@@ -139,7 +139,7 @@ export default function AdminDashboard() {
               <SelectItem value="lotto">Lotto</SelectItem>
               <SelectItem value="pools">Pools</SelectItem>
               <SelectItem value="sports">Sports</SelectItem>
-              <SelectItem value="sports_draw">Sports Draw</SelectItem>
+              <SelectItem value="sports_draw">Football Pool</SelectItem>
             </SelectContent>
           </Select>
         </div>

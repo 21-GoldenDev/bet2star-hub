@@ -107,7 +107,7 @@ const Navbar = () => {
       { path: "/lotto", label: "Lotto" },
       { path: "/pools", label: "Pools" },
       { path: "/sports", label: "Sports Betting" },
-      { path: "/sports-draw", label: "Sports Draw" }
+      { path: "/sports-draw", label: "Football Pool" }
     );
     if (isAdmin) {
       navLinks.push({ path: "/admin", label: "Admin Dashboard" });

@@ -147,7 +147,7 @@ export default function AdminSidebar() {
                                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                             )}
                           >
-                            <span>Sports Draw</span>
+                            <span>Football Pool</span>
                           </div>
                         </Link>
 
@@ -248,7 +248,7 @@ export default function AdminSidebar() {
                                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                             )}
                           >
-                            <span>Sports Draw</span>
+                            <span>Football Pool</span>
                           </div>
                         </Link>
                       </div>

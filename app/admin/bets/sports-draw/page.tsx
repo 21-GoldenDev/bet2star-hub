@@ -123,7 +123,7 @@ export default function SportsDrawPage() {
       setDataSports((d) => d.filter((b) => b.id !== betToDelete.id));
       toast({
         title: "Success",
-        description: "Sports Draw bet deleted successfully.",
+        description: "Football Pool bet deleted successfully.",
       });
     } catch (error) {
       console.error("Error deleting sports draw bet:", error);
@@ -152,8 +152,8 @@ export default function SportsDrawPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold">Bets — Sports Draw</h1>
-      <p className="text-sm text-muted-foreground mt-2">Manage sports draw bets here.</p>
+      <h1 className="text-2xl font-bold">Bets — Football Pool</h1>
+      <p className="text-sm text-muted-foreground mt-2">Manage Football Pool bets here.</p>
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
@@ -187,7 +187,7 @@ export default function SportsDrawPage() {
         </div>
 
         <DataTable
-          title="Sports Draw Bets"
+          title="Football Pool Bets"
           data={dataSports}
           itemsPerPage={10}
           columns={[

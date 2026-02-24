@@ -187,7 +187,7 @@ export default function SportsDrawSalesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-4 justify-between items-center">
-        <h1 className="text-3xl font-bold">Sports Draw Sales Report</h1>
+        <h1 className="text-3xl font-bold">Football Pool Sales Report</h1>
         <div className="flex flex-wrap gap-3 items-center">
           <div className="w-48">
             <Select value={selectedWeek} onValueChange={setSelectedWeek}>

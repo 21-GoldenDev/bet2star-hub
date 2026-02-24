@@ -289,7 +289,7 @@ export default function VoidBetsPage() {
             Sports ({sportsBets.length})
           </TabsTrigger>
           <TabsTrigger value="sports-draw">
-            Sports Draw ({sportsDrawBets.length})
+            Football Pool ({sportsDrawBets.length})
           </TabsTrigger>
         </TabsList>
 
@@ -340,7 +340,7 @@ export default function VoidBetsPage() {
 
         <TabsContent value="sports-draw" className="mt-4">
           <DataTable
-            title="Sports Draw Bets"
+            title="Football Pool Bets"
             data={sportsDrawBets}
             itemsPerPage={10}
             columns={[
