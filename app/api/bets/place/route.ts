@@ -293,6 +293,7 @@ async function placeSportsDrawBet(
     supabase,
     gameId,
     data,
+    true
   );
 
   if (award > 0) {
@@ -473,6 +474,7 @@ async function computeSportsAward(
   supabase: any,
   gameId: string,
   bet: any,
+  drawMode: boolean = false,
 ): Promise<number> {
   try {
     const { data: matches, error } = await supabase
@@ -499,7 +501,7 @@ async function computeSportsAward(
 
     if (!allSelectedHaveScores) return 0;
 
-    return calculateBetReward(bet, matchesWithScores, true) || 0;
+    return calculateBetReward(bet, matchesWithScores, drawMode) || 0;
   } catch (err) {
     console.error('Sports award calc error:', err);
     return 0;

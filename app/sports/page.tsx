@@ -84,6 +84,7 @@ const Football = () => {
           .from("sports")
           .select("*")
           .eq("game_id", gameId)
+          .neq("status", "void")
           .order("number", { ascending: true });
 
         if (error) throw error;

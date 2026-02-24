@@ -34,11 +34,12 @@ interface Props {
   match: SportsMatch;
   gameId: string;
   drawMode?: boolean;
+  leagueOptions: string[];
   onDelete: (match: SportsMatch) => void;
   onRefresh: () => void;
 }
 
-export default function MatchCard({ match, gameId, drawMode = false, onDelete, onRefresh }: Props) {
+export default function MatchCard({ match, gameId, drawMode = false, leagueOptions, onDelete, onRefresh }: Props) {
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
   const EMPTY_PRIZES = drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -59,6 +60,13 @@ export default function MatchCard({ match, gameId, drawMode = false, onDelete, o
     end_time: match.end_time ?? "",
   });
   const { toast } = useToast();
+  const availableLeagueOptions = Array.from(
+    new Set([
+      ...leagueOptions,
+      match.league,
+      editRowForm.league,
+    ].filter((league): league is string => Boolean(league)))
+  );
 
   const formatDateTimeLocal = (value?: string) => {
     if (!value) return "";
@@ -165,11 +173,21 @@ export default function MatchCard({ match, gameId, drawMode = false, onDelete, o
           </div>
           <div>
             <Label className="text-xs">League</Label>
-            <Input
-              className="h-9"
+            <Select
               value={editRowForm.league}
-              onChange={(e) => setEditRowForm({ ...editRowForm, league: e.target.value })}
-            />
+              onValueChange={(value) => setEditRowForm({ ...editRowForm, league: value })}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Select league" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableLeagueOptions.map((league) => (
+                  <SelectItem key={league} value={league}>
+                    {league}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label className="text-xs">Teams</Label>

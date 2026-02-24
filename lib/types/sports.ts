@@ -15,6 +15,22 @@ export interface SportsMatch {
   updated_at?: string;
 }
 
+export interface SportsCountry {
+  id: string;
+  name: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SportsLeague {
+  id: string;
+  country_id: string;
+  name: string;
+  country?: Pick<SportsCountry, "id" | "name">;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface CreateSportsMatchInput {
   league: string;
   number: number;
