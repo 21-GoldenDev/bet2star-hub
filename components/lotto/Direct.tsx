@@ -25,7 +25,7 @@ const Direct = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], ma
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
-  const [matchAtLeast, setMatchAtLeast] = useState<number[]>([3]);
+  const [matchAtLeast, setMatchAtLeast] = useState<number[]>([2]);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const numbers = visibleNumbers.length > 0 ? visibleNumbers : Array.from({ length: 99 }, (_, i) => i + 1);

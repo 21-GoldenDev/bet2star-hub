@@ -22,7 +22,7 @@ interface Props {
 }
 
 const TwoBanker = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], maxStake }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(3);
+  const [totalUnder, setTotalUnder] = useState<number>(2);
   const [groupAU, setGroupAU] = useState<number>(0);
   const [groupANumbers, setGroupANumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);

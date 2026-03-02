@@ -29,7 +29,7 @@ interface Props {
 }
 
 const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], maxStake }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(3);
+  const [totalUnder, setTotalUnder] = useState<number>(2);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
   const [groupSelections, setGroupSelections] = useState<Record<string, number[]>>({});

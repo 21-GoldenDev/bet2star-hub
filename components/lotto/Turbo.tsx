@@ -22,7 +22,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, visibleNumbers = [], maxStake }:
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [prize, setPrize] = useState<number[]>([50, 150, 300]);
-  const [matchAtLeast, setMatchAtLeast] = useState<number>(3);
+  const [matchAtLeast, setMatchAtLeast] = useState<number>(2);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
 
   const numbers = visibleNumbers.length > 0 ? visibleNumbers : Array.from({ length: 99 }, (_, i) => i + 1);
