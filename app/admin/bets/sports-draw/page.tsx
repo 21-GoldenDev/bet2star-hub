@@ -63,7 +63,6 @@ export default function SportsDrawPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [terminalFilter, setTerminalFilter] = useState<string>("all");
-  const [optionFilter, setOptionFilter] = useState<string>("all");
   const { toast } = useToast();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<SportsBet | null>(null);
@@ -171,18 +170,6 @@ export default function SportsDrawPage() {
     [dataSports],
   );
 
-  const optionOptions = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          dataSports.flatMap((b) =>
-            Object.values(b.selections || {}).flat().map((value) => String(value)),
-          ),
-        ),
-      ).sort(),
-    [dataSports],
-  );
-
   const filteredSportsDraw = useMemo(() => {
     const sameBetValue = sameBetFilter.trim() === "" ? undefined : Number(sameBetFilter);
     const betAboveValue = betAboveFilter.trim() === "" ? undefined : Number(betAboveFilter);
@@ -198,10 +185,6 @@ export default function SportsDrawPage() {
       if (statusFilter !== "all" && (b.status || "") !== statusFilter) return false;
       if (agentFilter !== "all" && (b.agent || "") !== agentFilter) return false;
       if (terminalFilter !== "all" && (b.terminal || "") !== terminalFilter) return false;
-      if (optionFilter !== "all") {
-        const values = Object.values(b.selections || {}).flat().map((value) => String(value));
-        if (!values.includes(optionFilter)) return false;
-      }
       return true;
     });
   }, [
@@ -214,7 +197,6 @@ export default function SportsDrawPage() {
     statusFilter,
     agentFilter,
     terminalFilter,
-    optionFilter,
   ]);
 
   if (loading) {
@@ -228,7 +210,7 @@ export default function SportsDrawPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <Label>Week</Label>
               <Select
@@ -248,7 +230,7 @@ export default function SportsDrawPage() {
               </Select>
             </div>
 
-            <div>
+            {/* <div>
               <Label>Game</Label>
               <Select value={gameFilter} onValueChange={(val) => setGameFilter(val as typeof gameFilter)}>
                 <SelectTrigger className="mt-1">
@@ -260,7 +242,7 @@ export default function SportsDrawPage() {
                   <SelectItem value="permutation">Permutation</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             <div>
               <Label>Same Bet Repeated</Label>
@@ -304,7 +286,7 @@ export default function SportsDrawPage() {
               />
             </div>
 
-            <div>
+            {/* <div>
               <Label>Bet Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="mt-1">
@@ -319,7 +301,7 @@ export default function SportsDrawPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             <div>
               <Label>Agent</Label>
@@ -355,24 +337,7 @@ export default function SportsDrawPage() {
               </Select>
             </div>
 
-            <div>
-              <Label>Options</Label>
-              <Select value={optionFilter} onValueChange={setOptionFilter}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All options" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All options</SelectItem>
-                  {optionOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {optionLabels[option] || option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="md:col-span-6 flex items-center justify-between">
+            <div className="md:col-span-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">{filteredSportsDraw.length} results</div>
               <Button variant="outline" size="sm" onClick={() => {
                 setWeekFilter("");
@@ -384,7 +349,6 @@ export default function SportsDrawPage() {
                 setStatusFilter("all");
                 setAgentFilter("all");
                 setTerminalFilter("all");
-                setOptionFilter("all");
               }}>
                 Reset Filters
               </Button>

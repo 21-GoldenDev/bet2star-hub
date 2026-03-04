@@ -470,7 +470,7 @@ export default function VoidBetsPage() {
 
   function calculateAplForVoidBet(row: DeletedBet) {
     if (row.gameType === "turbo" || row.gameType === "under1" || row.gameType === "under2") {
-      return 0;
+      return row.staked;
     }
 
     if (row.gameType === "nap_perm") {
@@ -496,33 +496,6 @@ export default function VoidBetsPage() {
 
     return 0;
   }
-
-  const commonColumns: {
-    key: keyof DeletedBet;
-    label: string;
-    render?: (value: any) => React.ReactNode
-  }[] = [
-      {
-        key: "player",
-        label: "Player",
-        render: (player: any) =>
-          player ? (
-            <div>
-              <div className="font-medium">{player.fullName}</div>
-              <div className="text-xs text-muted-foreground">{player.userName}</div>
-            </div>
-          ) : (
-            <div>Agent</div>
-          ),
-      },
-      { key: "staked", label: "Staked", render: (value: number) => value.toFixed(2) },
-      { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
-      { key: "tsn", label: "TSN", render: (value: string | undefined) => value || "—" },
-      { key: "terminal", label: "Terminal", render: (value: DeletedBet["terminal"] | string | undefined) => getTerminalLabel(value) },
-      { key: "agent", label: "Agent", render: (value: string | undefined) => value || "—" },
-      { key: "same", label: "SameBet", render: (value: number | undefined) => value ?? 0 },
-      { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
-    ];
 
   const renderActions = (row: DeletedBet, type: string) => (
     <div className="flex items-center gap-2">
@@ -571,7 +544,7 @@ export default function VoidBetsPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <Label>Week</Label>
               <Select value={weekFilter} onValueChange={(val) => setWeekFilter(val)}>
@@ -679,7 +652,7 @@ export default function VoidBetsPage() {
               />
             </div>
 
-            <div>
+            {/* <div>
               <Label>Bet Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="mt-1">
@@ -694,7 +667,7 @@ export default function VoidBetsPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             <div>
               <Label>Agent</Label>
@@ -747,7 +720,7 @@ export default function VoidBetsPage() {
               </Select>
             </div>
 
-            <div className="md:col-span-6 flex items-center justify-between">
+            <div className="md:col-span-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${activeFilteredCount} results`}
               </div>

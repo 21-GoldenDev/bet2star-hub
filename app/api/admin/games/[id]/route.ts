@@ -92,6 +92,98 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { password } = await request.json();
+    const deletePassword = process.env.ADMIN_GAME_DELETE_PASSWORD;
+
+    if (!deletePassword) {
+      return NextResponse.json(
+        { error: "Password is not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (typeof password !== "string" || password !== deletePassword) {
+      return NextResponse.json(
+        { error: "Invalid password" },
+        { status: 401 }
+      );
+    }
+
+    const { data: game, error: gameError } = await supabase
+      .from("games")
+      .select("id, type")
+      .eq("id", id)
+      .single();
+
+    if (gameError) {
+      return NextResponse.json({ error: gameError.message }, { status: 500 });
+    }
+
+    if (!game) {
+      return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+
+    if (game.type === "lotto") {
+      const { error: betsLottoDeleteError } = await supabase
+        .from("bets_lotto")
+        .delete()
+        .eq("game_id", id);
+
+      if (betsLottoDeleteError) {
+        return NextResponse.json({ error: betsLottoDeleteError.message }, { status: 500 });
+      }
+    }
+
+    if (game.type === "pools") {
+      const { error: betsPoolsDeleteError } = await supabase
+        .from("bets_pools")
+        .delete()
+        .eq("game_id", id);
+
+      if (betsPoolsDeleteError) {
+        return NextResponse.json({ error: betsPoolsDeleteError.message }, { status: 500 });
+      }
+    }
+
+    if (game.type === "sports") {
+      const { error: betsSportDeleteError } = await supabase
+        .from("bets_sport")
+        .delete()
+        .eq("game_id", id);
+
+      if (betsSportDeleteError) {
+        return NextResponse.json({ error: betsSportDeleteError.message }, { status: 500 });
+      }
+
+      const { error: sportsDeleteError } = await supabase
+        .from("sports")
+        .delete()
+        .eq("game_id", id);
+
+      if (sportsDeleteError) {
+        return NextResponse.json({ error: sportsDeleteError.message }, { status: 500 });
+      }
+    }
+
+    if (game.type === "sports_draw") {
+      const { error: betsSportsDrawDeleteError } = await supabase
+        .from("bets_sports_draw")
+        .delete()
+        .eq("game_id", id);
+
+      if (betsSportsDrawDeleteError) {
+        return NextResponse.json({ error: betsSportsDrawDeleteError.message }, { status: 500 });
+      }
+
+      const { error: sportsDeleteError } = await supabase
+        .from("sports")
+        .delete()
+        .eq("game_id", id);
+
+      if (sportsDeleteError) {
+        return NextResponse.json({ error: sportsDeleteError.message }, { status: 500 });
+      }
+    }
 
     const { error } = await supabase.from("games").delete().eq("id", id);
 

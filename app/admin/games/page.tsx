@@ -72,6 +72,7 @@ export default function GamesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [gameToDelete, setGameToDelete] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const { toast } = useToast();
   const [formData, setFormData] = useState<{
     week: number;
@@ -263,15 +264,29 @@ export default function GamesPage() {
 
   const openDeleteDialog = (gameId: string) => {
     setGameToDelete(gameId);
+    setDeletePassword("");
     setIsDeleteAlertOpen(true);
   };
 
   const handleDelete = async () => {
     if (!gameToDelete) return;
+    if (!deletePassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Enter the delete password to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setSubmitting(true);
       const response = await fetch(`/api/admin/games/${gameToDelete}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: deletePassword }),
       });
 
       const data = await response.json();
@@ -297,8 +312,10 @@ export default function GamesPage() {
         variant: "destructive",
       });
     } finally {
+      setSubmitting(false);
       setIsDeleteAlertOpen(false);
       setGameToDelete(null);
+      setDeletePassword("");
     }
   };
 
@@ -609,7 +626,15 @@ export default function GamesPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialog
+        open={isDeleteAlertOpen}
+        onOpenChange={(open) => {
+          setIsDeleteAlertOpen(open);
+          if (!open) {
+            setDeletePassword("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -617,11 +642,22 @@ export default function GamesPage() {
               This action cannot be undone. This will permanently delete the game.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-password">Password</Label>
+            <Input
+              id="delete-password"
+              type="password"
+              placeholder="Enter password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={submitting}
+              disabled={submitting || !deletePassword.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

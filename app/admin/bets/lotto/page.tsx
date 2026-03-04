@@ -272,7 +272,7 @@ export default function LottoPage() {
       })
       .map((b) => {
         if (b.gameType === "turbo" || b.gameType === "under1" || b.gameType === "under2") {
-          return { ...b, apl: 0 };
+          return { ...b, apl: b.staked };
         }
         const isNapPerm = b.gameType === "nap_perm";
         const apl = isNapPerm ? calcAplDirect(b.staked, b.under, b.numbers.length) : calcAplGrouping(b.staked, b.numbers);
@@ -365,7 +365,7 @@ export default function LottoPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             <div>
               <Label>Week</Label>
               <Select
@@ -479,7 +479,7 @@ export default function LottoPage() {
               </Popover>
             </div> */}
 
-            <div>
+            {/* <div>
               <Label>Bet Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="mt-1">
@@ -494,7 +494,7 @@ export default function LottoPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div> */}
 
             <div>
               <Label>Agent</Label>
@@ -548,7 +548,7 @@ export default function LottoPage() {
             </div>
 
             {!!weekFilter && (
-              <div className="md:col-span-6">
+              <div className="md:col-span-4">
                 <Label>Week Result</Label>
                 <div className="mt-1 flex items-center gap-2 flex-wrap">
                   {weekResult.length > 0 ? (
@@ -567,7 +567,7 @@ export default function LottoPage() {
               </div>
             )}
 
-            <div className="md:col-span-6 flex items-center justify-between">
+            <div className="md:col-span-4 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${filteredAll.length} results`}
               </div>

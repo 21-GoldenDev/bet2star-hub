@@ -238,7 +238,7 @@ export default function PoolsPage() {
       })
       .map((b) => {
         if (b.gameType === "turbo" || b.gameType === "under1" || b.gameType === "under2") {
-          return { ...b, apl: 0 };
+          return { ...b, apl: b.staked };
         }
         const isNapPerm = b.gameType === "nap_perm";
         const apl = isNapPerm
@@ -348,7 +348,7 @@ export default function PoolsPage() {
       ) : (
         <section className="mt-6 space-y-4">
           <div className="bg-card p-4 rounded-lg border border-border">
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <Label>Week</Label>
                 <Select
@@ -371,7 +371,7 @@ export default function PoolsPage() {
                 </Select>
               </div>
 
-              <div>
+              {/* <div>
                 <Label>Game</Label>
                 <Select value={gameFilter} onValueChange={(val) => setGameFilter(val as typeof gameFilter)}>
                   <SelectTrigger className="mt-1">
@@ -385,7 +385,7 @@ export default function PoolsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
 
               <div>
                 <Label>Same Bet Repeated</Label>
@@ -429,7 +429,7 @@ export default function PoolsPage() {
                 />
               </div>
 
-              <div>
+              {/* <div>
                 <Label>Bet Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="mt-1">
@@ -444,7 +444,7 @@ export default function PoolsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
 
               <div>
                 <Label>Agent</Label>
@@ -498,7 +498,7 @@ export default function PoolsPage() {
               </div>
 
               {!!weekFilter && (
-                <div className="md:col-span-6">
+                <div className="md:col-span-4">
                   <Label>Week Result</Label>
                   <div className="mt-1 flex items-center gap-2 flex-wrap">
                     {weekResult.length > 0 ? (
@@ -517,7 +517,7 @@ export default function PoolsPage() {
                 </div>
               )}
 
-              <div className="md:col-span-6 flex items-center justify-between">
+              <div className="md:col-span-4 flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">
                   {loading ? "Loading..." : `${filteredAll.length} results`}
                 </div>
