@@ -3,6 +3,13 @@ import { GameModeType } from "@/lib/types/gameMode";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
+const getUnderValue = (bet: any) => {
+  if (bet.gameType === "under1" || bet.gameType === "under2") {
+    return Number(bet.gameType.replace("under", ""));
+  }
+  return bet.under;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
@@ -93,7 +100,7 @@ export async function GET(request: NextRequest) {
       betId: bet.bet_id,
       week: bet.games.week ?? null,
       player: bet.player ? playersMap[bet.player] : undefined,
-      under: bet.under,
+      under: getUnderValue(bet),
       numbers: bet.numbers,
       staked: bet.staked,
       terminal: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,

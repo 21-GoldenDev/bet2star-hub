@@ -569,10 +569,10 @@ export default function PoolsPage() {
                 key: "prize",
                 label: "Option",
                 render: (value: { name: string } | undefined) => (
-                  value ? <div className="text-nowrap">{value.name}</div> : "—"
+                  value ? <div className="text-nowrap">{value.name}</div> : ""
                 )
               },
-              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? (value.length > 0 ? value.join(", ") : "-") : value || "-") },
+              { key: "under", label: "Under", render: (value: string | string[]) => (Array.isArray(value) ? (value.length > 0 ? value.join(", ") : "") : value || "") },
               {
                 key: "matches",
                 label: "Matches",
@@ -593,12 +593,12 @@ export default function PoolsPage() {
                   );
                 },
               },
-              { key: "apl", label: "APL", render: (value: number) => value ? value.toFixed(2) : "-" },
+              { key: "apl", label: "APL", render: (value: number) => value ? value.toFixed(2) : "" },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
               { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
-              { key: "tsn", label: "TSN", render: (value) => value || "—" },
-              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
-              { key: "agent", label: "Agent", render: (value) => value || "—" },
+              { key: "tsn", label: "TSN", render: (value) => value || "" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "" },
+              { key: "agent", label: "Agent", render: (value) => value || "" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "same", label: "SameBet" },
             ]}

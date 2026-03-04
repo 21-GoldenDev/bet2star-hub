@@ -772,7 +772,7 @@ export default function VoidBetsPage() {
             columns={[
               { key: "week", label: "Week" },
               // { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
-              { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "-" },
+              { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "" },
               {
                 key: "player",
                 label: "Player",
@@ -789,19 +789,19 @@ export default function VoidBetsPage() {
               {
                 key: "prize",
                 label: "Option",
-                render: (value: { name?: string } | undefined) => value?.name || "—",
+                render: (value: { name?: string } | undefined) => value?.name || "",
               },
               {
                 key: "under",
                 label: "Under",
                 render: (value: number | number[] | undefined) =>
-                  Array.isArray(value) ? (value.length ? value.join(", ") : "-") : (value || "-"),
+                  Array.isArray(value) ? (value.length ? value.join(", ") : "") : (value || ""),
               },
               {
                 key: "numbers",
                 label: "Numbers",
                 render: (value: number[] | Record<string, number[]> | undefined) => {
-                  if (!value) return "—";
+                  if (!value) return "";
                   if (Array.isArray(value)) {
                     const display = value.slice(0, 3).sort((a, b) => a - b).join(", ");
                     return <div className="text-sm text-muted-foreground">{display}{value.length > 3 ? "..." : ""}</div>;
@@ -817,9 +817,9 @@ export default function VoidBetsPage() {
               },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
               { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
-              { key: "tsn", label: "TSN", render: (value) => value || "—" },
-              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
-              { key: "agent", label: "Agent", render: (value) => value || "—" },
+              { key: "tsn", label: "TSN", render: (value) => value || "" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "" },
+              { key: "agent", label: "Agent", render: (value) => value || "" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
               { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
@@ -836,7 +836,7 @@ export default function VoidBetsPage() {
             columns={[
               { key: "week", label: "Week" },
               // { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
-              { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "-" },
+              { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "" },
               {
                 key: "player",
                 label: "Player",
@@ -853,19 +853,19 @@ export default function VoidBetsPage() {
               {
                 key: "prize",
                 label: "Option",
-                render: (value: { name?: string } | undefined) => value?.name || "—",
+                render: (value: { name?: string } | undefined) => value?.name || "",
               },
               {
                 key: "under",
                 label: "Under",
                 render: (value: string | string[] | undefined) =>
-                  Array.isArray(value) ? (value.length ? value.join(", ") : "-") : (value || "-"),
+                  Array.isArray(value) ? (value.length ? value.join(", ") : "") : (value || ""),
               },
               {
                 key: "matches",
                 label: "Matches",
                 render: (value: string[] | Record<string, string[]> | undefined) => {
-                  if (!value) return "—";
+                  if (!value) return "";
                   if (Array.isArray(value)) {
                     const display = value.slice(0, 3).sort((a, b) => compareStringOrNumber(a, b)).join(", ");
                     return <div className="text-sm text-muted-foreground">{display}{value.length > 3 ? "..." : ""}</div>;
@@ -881,9 +881,9 @@ export default function VoidBetsPage() {
               },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
               { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
-              { key: "tsn", label: "TSN", render: (value) => value || "—" },
-              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
-              { key: "agent", label: "Agent", render: (value) => value || "—" },
+              { key: "tsn", label: "TSN", render: (value) => value || "" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "" },
+              { key: "agent", label: "Agent", render: (value) => value || "" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
               { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
@@ -917,9 +917,9 @@ export default function VoidBetsPage() {
               { key: "under", label: "Under" },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
               { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
-              { key: "tsn", label: "TSN", render: (value) => value || "—" },
-              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
-              { key: "agent", label: "Agent", render: (value) => value || "—" },
+              { key: "tsn", label: "TSN", render: (value) => value || "" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "" },
+              { key: "agent", label: "Agent", render: (value) => value || "" },
               { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
               { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
@@ -953,9 +953,9 @@ export default function VoidBetsPage() {
               { key: "under", label: "Under" },
               { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
               { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
-              { key: "tsn", label: "TSN", render: (value) => value || "—" },
-              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
-              { key: "agent", label: "Agent", render: (value) => value || "—" },
+              { key: "tsn", label: "TSN", render: (value) => value || "" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "" },
+              { key: "agent", label: "Agent", render: (value) => value || "" },
               { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
               { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
               { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },

@@ -392,9 +392,9 @@ export default function SportsPage() {
               label: "Winning",
               render: (value: number) => value ? value.toFixed(2) : "0.00"
             },
-            { key: "tsn", label: "TSN", render: (value) => value || "—" },
-            { key: "terminal", label: "Terminal", render: (value) => value || "—" },
-            { key: "agent", label: "Agent", render: (value) => value || "—" },
+            { key: "tsn", label: "TSN", render: (value) => value || "" },
+            { key: "terminal", label: "Terminal", render: (value) => value || "" },
+            { key: "agent", label: "Agent", render: (value) => value || "" },
             { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
             { key: "same", label: "SameBet" },
           ]}
