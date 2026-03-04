@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("bets_lotto")
-      .select("*, games:game_id (week), terminal:terminal(serial_number)")
+      .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
       .eq("status", "void")
       .order("updated_at", { ascending: false });
 
@@ -69,7 +69,10 @@ export async function GET(request: NextRequest) {
       under: bet.under,
       numbers: bet.numbers,
       staked: bet.staked,
-      terminal: bet.terminal,
+      terminal: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+      tsn: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+      same: 0,
+      agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
       betTime: bet.bet_time,
       prize: bet.prize_id ? prizeMap[bet.prize_id] : undefined,
       status: bet.status,

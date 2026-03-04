@@ -7,6 +7,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +38,17 @@ function formatDateIso(iso?: string) {
   return new Date(iso).toLocaleString();
 }
 
+function getPrizeName(prize: unknown): string {
+  if (typeof prize === "string") return prize;
+  if (prize && typeof prize === "object") {
+    const value = (prize as Record<string, unknown>).name;
+    if (typeof value === "string") {
+      return value;
+    }
+  }
+  return "";
+}
+
 export default function LottoPage() {
   const { toast } = useToast();
   const [allData, setAllData] = useState<LottoBet[]>([]);
@@ -52,6 +64,14 @@ export default function LottoPage() {
   const [weekResult, setWeekResult] = useState<number[]>([]);
   const [gameFilter, setGameFilter] = useState<"all" | GameModeType>("all");
   const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
+  const [sameBetFilter, setSameBetFilter] = useState<string>("");
+  const [tsnFilter, setTsnFilter] = useState<string>("");
+  const [betIdFilter, setBetIdFilter] = useState<string>("");
+  const [betAboveFilter, setBetAboveFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [terminalFilter, setTerminalFilter] = useState<string>("all");
+  const [optionFilter, setOptionFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchWeeks = async () => {
@@ -147,14 +167,104 @@ export default function LottoPage() {
     { value: "under2", label: "Under 2" },
   ];
 
+  const selectedWeek = useMemo(
+    () => weeksAll.find((w) => w.id === weekFilter),
+    [weeksAll, weekFilter],
+  );
+
+  const weekStartDate = useMemo(() => {
+    if (!selectedWeek?.start_time) return undefined;
+    const d = new Date(selectedWeek.start_time);
+    if (Number.isNaN(d.getTime())) return undefined;
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [selectedWeek]);
+
+  const weekEndDate = useMemo(() => {
+    if (!selectedWeek?.end_time) return undefined;
+    const d = new Date(selectedWeek.end_time);
+    if (Number.isNaN(d.getTime())) return undefined;
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }, [selectedWeek]);
+
+  useEffect(() => {
+    if (!rangeFilter) return;
+
+    const fromOutOfRange =
+      !!rangeFilter.from &&
+      ((weekStartDate && rangeFilter.from < weekStartDate) ||
+        (weekEndDate && rangeFilter.from > weekEndDate));
+
+    const toOutOfRange =
+      !!rangeFilter.to &&
+      ((weekStartDate && rangeFilter.to < weekStartDate) ||
+        (weekEndDate && rangeFilter.to > weekEndDate));
+
+    if (fromOutOfRange || toOutOfRange) {
+      setRangeFilter(undefined);
+    }
+  }, [rangeFilter, weekStartDate, weekEndDate]);
+
+  const statusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(allData.map((b) => (b.status || "").trim()).filter((status) => status.length > 0)),
+      ).sort(),
+    [allData],
+  );
+
+  const agentOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(allData.map((b) => (b.agent || "").trim()).filter((agent) => agent.length > 0)),
+      ).sort(),
+    [allData],
+  );
+
+  const terminalOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(allData.map((b) => (b.terminal || "").trim()).filter((terminal) => terminal.length > 0)),
+      ).sort(),
+    [allData],
+  );
+
+  const prizeOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          allData
+            .map((b) => getPrizeName(b.prize))
+            .filter((name) => name.length > 0),
+        ),
+      ).sort(),
+    [allData],
+  );
+
   const filteredAll = useMemo(() => {
     const fromTime = rangeFilter?.from ? new Date(rangeFilter.from).setHours(0, 0, 0, 0) : undefined;
     const toTime = rangeFilter?.to ? new Date(rangeFilter.to).setHours(23, 59, 59, 999) : undefined;
+    const sameBetValue = sameBetFilter.trim() === "" ? undefined : Number(sameBetFilter);
+    const betAboveValue = betAboveFilter.trim() === "" ? undefined : Number(betAboveFilter);
+    const tsnValue = tsnFilter.trim().toLowerCase();
+    const betIdValue = betIdFilter.trim().toLowerCase();
 
     return allData
       .filter((b) => {
         if (weekFilter !== undefined && b.gameId !== weekFilter) return false;
         if (gameFilter !== "all" && b.gameType !== gameFilter) return false;
+        if (Number.isFinite(sameBetValue) && (b.same ?? 0) !== sameBetValue) return false;
+        if (typeof betAboveValue === "number" && Number.isFinite(betAboveValue) && b.staked <= betAboveValue) return false;
+        if (tsnValue && !(b.tsn || "").toLowerCase().includes(tsnValue)) return false;
+        if (betIdValue && !b.betId.toString().toLowerCase().includes(betIdValue)) return false;
+        if (statusFilter !== "all" && (b.status || "") !== statusFilter) return false;
+        if (agentFilter !== "all" && (b.agent || "") !== agentFilter) return false;
+        if (terminalFilter !== "all" && (b.terminal || "") !== terminalFilter) return false;
+
+        const optionName = getPrizeName(b.prize);
+        if (optionFilter !== "all" && optionName !== optionFilter) return false;
+
         const bt = new Date(b.betTime).getTime();
         if (fromTime !== undefined && bt < fromTime) return false;
         if (toTime !== undefined && bt > toTime) return false;
@@ -168,7 +278,20 @@ export default function LottoPage() {
         const apl = isNapPerm ? calcAplDirect(b.staked, b.under, b.numbers.length) : calcAplGrouping(b.staked, b.numbers);
         return { ...b, apl };
       });
-  }, [allData, weekFilter, gameFilter, rangeFilter]);
+  }, [
+    allData,
+    weekFilter,
+    gameFilter,
+    sameBetFilter,
+    betAboveFilter,
+    tsnFilter,
+    betIdFilter,
+    statusFilter,
+    agentFilter,
+    terminalFilter,
+    optionFilter,
+    rangeFilter,
+  ]);
 
   const openDeleteDialog = (row: LottoBet) => {
     setBetToDelete(row);
@@ -242,7 +365,7 @@ export default function LottoPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div>
               <Label>Week</Label>
               <Select
@@ -265,7 +388,7 @@ export default function LottoPage() {
               </Select>
             </div>
 
-            <div>
+            {/* <div>
               <Label>Game</Label>
               <Select value={gameFilter} onValueChange={(val) => setGameFilter(val as typeof gameFilter)}>
                 <SelectTrigger className="mt-1">
@@ -279,10 +402,52 @@ export default function LottoPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div> */}
+
+            <div>
+              <Label>Same Bet Repeated</Label>
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                placeholder="e.g. 2"
+                value={sameBetFilter}
+                onChange={(e) => setSameBetFilter(e.target.value)}
+              />
             </div>
 
-            <div className="md:col-span-2">
-              <Label>Date Range</Label>
+            <div>
+              <Label>TSN</Label>
+              <Input
+                className="mt-1"
+                placeholder="Search TSN"
+                value={tsnFilter}
+                onChange={(e) => setTsnFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet ID</Label>
+              <Input
+                className="mt-1"
+                placeholder="Search Bet ID"
+                value={betIdFilter}
+                onChange={(e) => setBetIdFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet Above</Label>
+              <Input
+                className="mt-1"
+                placeholder="e.g. 5000"
+                value={betAboveFilter}
+                onChange={(e) => setBetAboveFilter(e.target.value)}
+              />
+            </div>
+
+            {/* <div className="md:col-span-2">
+              <Label>From</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="mt-1 w-full justify-start">
@@ -298,6 +463,11 @@ export default function LottoPage() {
                       selected={rangeFilter}
                       onSelect={setRangeFilter}
                       numberOfMonths={2}
+                      disabled={(date) => {
+                        if (weekStartDate && date < weekStartDate) return true;
+                        if (weekEndDate && date > weekEndDate) return true;
+                        return false;
+                      }}
                     />
                     <div className="flex justify-end gap-2 mt-2">
                       <Button variant="outline" size="sm" onClick={() => setRangeFilter(undefined)}>
@@ -307,10 +477,78 @@ export default function LottoPage() {
                   </div>
                 </PopoverContent>
               </Popover>
+            </div> */}
+
+            <div>
+              <Label>Bet Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Agent</Label>
+              <Select value={agentFilter} onValueChange={setAgentFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All agents" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All agents</SelectItem>
+                  {agentOptions.map((agent) => (
+                    <SelectItem key={agent} value={agent}>
+                      {agent}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Terminal</Label>
+              <Select value={terminalFilter} onValueChange={setTerminalFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All terminals" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All terminals</SelectItem>
+                  {terminalOptions.map((terminal) => (
+                    <SelectItem key={terminal} value={terminal}>
+                      {terminal}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Options</Label>
+              <Select value={optionFilter} onValueChange={setOptionFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All options" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All options</SelectItem>
+                  {prizeOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {!!weekFilter && (
-              <div className="md:col-span-4">
+              <div className="md:col-span-6">
                 <Label>Week Result</Label>
                 <div className="mt-1 flex items-center gap-2 flex-wrap">
                   {weekResult.length > 0 ? (
@@ -329,7 +567,7 @@ export default function LottoPage() {
               </div>
             )}
 
-            <div className="md:col-span-4 flex items-center justify-between">
+            <div className="md:col-span-6 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${filteredAll.length} results`}
               </div>
@@ -340,6 +578,14 @@ export default function LottoPage() {
                   setGameFilter("all");
                   setWeekFilter(undefined);
                   setRangeFilter(undefined);
+                  setSameBetFilter("");
+                  setTsnFilter("");
+                  setBetIdFilter("");
+                  setBetAboveFilter("");
+                  setStatusFilter("all");
+                  setAgentFilter("all");
+                  setTerminalFilter("all");
+                  setOptionFilter("all");
                 }}
               >
                 Reset Filters
@@ -353,8 +599,9 @@ export default function LottoPage() {
           data={filteredAll}
           itemsPerPage={10}
           columns={[
-            { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
-            { key: "betId", label: "Bet#", render: (value: bigint) => value.toString() },
+            { key: "week", label: "Week" },
+            // { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
+            { key: "betId", label: "Bet ID", render: (value: bigint) => value.toString() },
             {
               key: "player",
               label: "Player",
@@ -367,6 +614,13 @@ export default function LottoPage() {
                 ) : (
                   <div>Agent</div>
                 ),
+            },
+            {
+              key: "prize",
+              label: "Option",
+              render: (value: { name: string } | undefined) => (
+                value ? <div className="text-nowrap">{value.name}</div> : "—"
+              )
             },
             { key: "under", label: "Under", render: (value: number | number[]) => (Array.isArray(value) ? (value.length > 0 ? value.join(", ") : "-") : value || "-") },
             {
@@ -391,17 +645,12 @@ export default function LottoPage() {
             },
             { key: "apl", label: "APL", render: (value: number) => value ? value.toFixed(2) : "-" },
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
-            {
-              key: "prize",
-              label: "Prize",
-              render: (value: { name: string } | undefined) => (
-                value ? <div className="text-nowrap">{value.name}</div> : "—"
-              )
-            },
-            { key: "award", label: "Award", render: (value: number) => value.toFixed(2) },
-            { key: "terminal", label: "Terminal", render: (value: { serial_number: string } | undefined) => value ? value.serial_number : "—" },
+            { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
+            { key: "tsn", label: "TSN", render: (value) => value || "—" },
+            { key: "terminal", label: "Terminal", render: (value) => value || "—" },
+            { key: "agent", label: "Agent", render: (value) => value || "—" },
             { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
-            { key: "status", label: "Status", render: (value: string | undefined) => renderStatus(value) },
+            { key: "same", label: "SameBet" },
           ]}
           actions={(row) => (
             <div className="flex items-center gap-2">
@@ -546,7 +795,7 @@ export default function LottoPage() {
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Terminal</Label>
                   <p className="mt-1 font-medium">
-                    {(selectedBet.terminal as any)?.serial_number || "—"}
+                    {selectedBet.terminal || "—"}
                   </p>
                 </div>
               </div>

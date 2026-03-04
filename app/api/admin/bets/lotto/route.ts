@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("bets_lotto")
-      .select("*, games:game_id (week), terminal:terminal(serial_number)")
+      .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
       .order("bet_time", { ascending: false })
       .eq("game_id", game_id)
       .eq("status", "active");
@@ -96,11 +96,14 @@ export async function GET(request: NextRequest) {
       under: bet.under,
       numbers: bet.numbers,
       staked: bet.staked,
-      terminal: bet.terminal,
+      terminal: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+      tsn: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
       betTime: bet.bet_time,
       prize: bet.prize_id ? prizeMap[bet.prize_id] : undefined,
       status: bet.status,
       award: bet.award || 0,
+      same: 0,
+      agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
     }));
 
     return NextResponse.json({ data: transformedData }, { status: 200 });

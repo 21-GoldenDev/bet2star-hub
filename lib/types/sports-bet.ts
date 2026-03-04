@@ -7,6 +7,7 @@ export type SportsBetMode = "direct" | "permutation";
 export interface SportsBet {
   id: string;
   game_id: string;
+  week: number;
   number: number;
   player?: {
     fullName: string;
@@ -20,6 +21,9 @@ export interface SportsBet {
   status: string;
   selections: SportsBetSelection;
   award?: number;
+  same?: number;
+  tsn?: string;
+  agent?: string;
 }
 
 export interface CreateSportsBetInput {

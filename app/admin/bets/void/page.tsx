@@ -8,6 +8,7 @@ import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,11 +29,13 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
+import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 
 interface DeletedBet {
   id: string;
   betId?: bigint;
   number?: number;
+  week?: number;
   gameType?: string;
   mode?: string;
   player?: {
@@ -41,6 +44,9 @@ interface DeletedBet {
   };
   staked: number;
   award: number;
+  tsn?: string;
+  agent?: string;
+  same?: number;
   betTime?: string;
   bet_time?: string;
   terminal?: {
@@ -82,6 +88,16 @@ function formatDateIso(iso?: string) {
   return new Date(iso).toLocaleString();
 }
 
+function getPrizeName(prize: unknown): string {
+  if (!prize) return "";
+  if (typeof prize === "string") return prize;
+  if (typeof prize === "object") {
+    const value = (prize as Record<string, unknown>).name;
+    if (typeof value === "string") return value;
+  }
+  return "";
+}
+
 const optionLabels: Record<string, string> = {
   H: "1",
   D: "X",
@@ -115,6 +131,14 @@ export default function VoidBetsPage() {
   const [weekFilter, setWeekFilter] = useState<string>("all");
   const [gameFilter, setGameFilter] = useState<string>("all");
   const [rangeFilter, setRangeFilter] = useState<DateRange | undefined>(undefined);
+  const [sameBetFilter, setSameBetFilter] = useState<string>("");
+  const [tsnFilter, setTsnFilter] = useState<string>("");
+  const [betIdFilter, setBetIdFilter] = useState<string>("");
+  const [betAboveFilter, setBetAboveFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [terminalFilter, setTerminalFilter] = useState<string>("all");
+  const [optionFilter, setOptionFilter] = useState<string>("all");
 
   useEffect(() => {
     fetchWeeks();
@@ -137,6 +161,21 @@ export default function VoidBetsPage() {
   }, [activeTab, weeksLotto, weeksPools, weeksSports, weeksSportsDraw]);
 
   const supportsGameTypeFilter = activeTab === "lotto" || activeTab === "pools";
+
+  const activeTabBets = useMemo(() => {
+    switch (activeTab) {
+      case "lotto":
+        return lottoBets;
+      case "pools":
+        return poolsBets;
+      case "sports":
+        return sportsBets;
+      case "sports-draw":
+        return sportsDrawBets;
+      default:
+        return [];
+    }
+  }, [activeTab, lottoBets, poolsBets, sportsBets, sportsDrawBets]);
 
   useEffect(() => {
     if (weeksForTab.length === 0) return;
@@ -214,24 +253,74 @@ export default function VoidBetsPage() {
     return true;
   };
 
+  const getBetIdText = (bet: any) => String(bet?.betId?.toString?.() || bet?.number || "");
+  const getTerminalText = (bet: any) => {
+    const terminal = bet?.terminal;
+    if (!terminal) return "";
+    if (typeof terminal === "string") return terminal;
+    if (typeof terminal === "object" && typeof terminal.serial_number === "string") return terminal.serial_number;
+    return "";
+  };
+  const getAgentText = (bet: any) => String(bet?.agent || "");
+  const getStatusText = (bet: any) => String(bet?.status || "");
+  const getOptionText = (bet: any) => getPrizeName(bet?.prize);
+
+  const matchesExtraFilters = (bet: any) => {
+    const sameBetValue = sameBetFilter.trim() === "" ? undefined : Number(sameBetFilter);
+    const betAboveValue = betAboveFilter.trim() === "" ? undefined : Number(betAboveFilter);
+    const tsnValue = tsnFilter.trim().toLowerCase();
+    const betIdValue = betIdFilter.trim().toLowerCase();
+
+    if (Number.isFinite(sameBetValue) && Number(bet?.same ?? 0) !== sameBetValue) return false;
+    if (typeof betAboveValue === "number" && Number.isFinite(betAboveValue) && Number(bet?.staked ?? 0) <= betAboveValue) return false;
+    if (tsnValue && !String(bet?.tsn || "").toLowerCase().includes(tsnValue)) return false;
+    if (betIdValue && !getBetIdText(bet).toLowerCase().includes(betIdValue)) return false;
+    if (statusFilter !== "all" && getStatusText(bet) !== statusFilter) return false;
+    if (agentFilter !== "all" && getAgentText(bet) !== agentFilter) return false;
+    if (terminalFilter !== "all" && getTerminalText(bet) !== terminalFilter) return false;
+    if (optionFilter !== "all" && getOptionText(bet) !== optionFilter) return false;
+
+    return true;
+  };
+
+  const statusOptions = useMemo(
+    () => Array.from(new Set(activeTabBets.map((b: any) => getStatusText(b)).filter((v) => v.length > 0))).sort(),
+    [activeTabBets],
+  );
+
+  const agentOptions = useMemo(
+    () => Array.from(new Set(activeTabBets.map((b: any) => getAgentText(b)).filter((v) => v.length > 0))).sort(),
+    [activeTabBets],
+  );
+
+  const terminalOptions = useMemo(
+    () => Array.from(new Set(activeTabBets.map((b: any) => getTerminalText(b)).filter((v) => v.length > 0))).sort(),
+    [activeTabBets],
+  );
+
+  const optionOptions = useMemo(
+    () => Array.from(new Set(activeTabBets.map((b: any) => getOptionText(b)).filter((v) => v.length > 0))).sort(),
+    [activeTabBets],
+  );
+
   const filteredLottoBets = useMemo(
-    () => lottoBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b)),
-    [lottoBets, weekFilter, gameFilter, fromTime, toTime, activeTab]
+    () => lottoBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b) && matchesExtraFilters(b)),
+    [lottoBets, weekFilter, gameFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
   );
 
   const filteredPoolsBets = useMemo(
-    () => poolsBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b)),
-    [poolsBets, weekFilter, gameFilter, fromTime, toTime, activeTab]
+    () => poolsBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b) && matchesExtraFilters(b)),
+    [poolsBets, weekFilter, gameFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
   );
 
   const filteredSportsBets = useMemo(
-    () => sportsBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b)),
-    [sportsBets, weekFilter, fromTime, toTime, activeTab]
+    () => sportsBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b) && matchesExtraFilters(b)),
+    [sportsBets, weekFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
   );
 
   const filteredSportsDrawBets = useMemo(
-    () => sportsDrawBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b)),
-    [sportsDrawBets, weekFilter, fromTime, toTime, activeTab]
+    () => sportsDrawBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b) && matchesExtraFilters(b)),
+    [sportsDrawBets, weekFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
   );
 
   const activeFilteredCount = useMemo(() => {
@@ -352,6 +441,53 @@ export default function VoidBetsPage() {
     }
   }
 
+  function getTerminalLabel(terminal: DeletedBet["terminal"] | string | undefined) {
+    if (!terminal) return "—";
+    if (typeof terminal === "string") return terminal;
+    return terminal.serial_number || "—";
+  }
+
+  function compareStringOrNumber(a: string | number, b: string | number) {
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    const aNum = Number(a);
+    const bNum = Number(b);
+    const aIsNum = !Number.isNaN(aNum);
+    const bIsNum = !Number.isNaN(bNum);
+    if (aIsNum && bIsNum) return aNum - bNum;
+    if (aIsNum) return -1;
+    if (bIsNum) return 1;
+    return String(a).localeCompare(String(b));
+  }
+
+  function calculateAplForVoidBet(row: DeletedBet) {
+    if (row.gameType === "turbo" || row.gameType === "under1" || row.gameType === "under2") {
+      return 0;
+    }
+
+    if (row.gameType === "nap_perm") {
+      const list = Array.isArray(row.numbers)
+        ? row.numbers
+        : Array.isArray(row.matches)
+          ? row.matches
+          : row.numbers && typeof row.numbers === "object"
+            ? Object.values(row.numbers).flat()
+            : row.matches && typeof row.matches === "object"
+              ? Object.values(row.matches).flat()
+              : [];
+      return calcAplDirect(row.staked, row.under as any, list.length);
+    }
+
+    if (row.numbers) {
+      return calcAplGrouping(row.staked, row.numbers as any);
+    }
+
+    if (row.matches) {
+      return calcAplGrouping(row.staked, row.matches as any);
+    }
+
+    return 0;
+  }
+
   const commonColumns: {
     key: keyof DeletedBet;
     label: string;
@@ -371,12 +507,11 @@ export default function VoidBetsPage() {
           ),
       },
       { key: "staked", label: "Staked", render: (value: number) => value.toFixed(2) },
-      { key: "award", label: "Award", render: (value: number) => value.toFixed(2) },
-      {
-        key: "terminal",
-        label: "Terminal",
-        render: (value: { serial_number: string } | undefined) => value?.serial_number || "—"
-      },
+      { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
+      { key: "tsn", label: "TSN", render: (value: string | undefined) => value || "—" },
+      { key: "terminal", label: "Terminal", render: (value: DeletedBet["terminal"] | string | undefined) => getTerminalLabel(value) },
+      { key: "agent", label: "Agent", render: (value: string | undefined) => value || "—" },
+      { key: "same", label: "SameBet", render: (value: number | undefined) => value ?? 0 },
       { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
     ];
 
@@ -427,7 +562,7 @@ export default function VoidBetsPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div>
               <Label>Week</Label>
               <Select value={weekFilter} onValueChange={(val) => setWeekFilter(val)}>
@@ -445,7 +580,7 @@ export default function VoidBetsPage() {
               </Select>
             </div>
 
-            {supportsGameTypeFilter ? (
+            {/* {supportsGameTypeFilter ? (
               <div>
                 <Label>Game</Label>
                 <Select value={gameFilter} onValueChange={(val) => setGameFilter(val)}>
@@ -463,9 +598,9 @@ export default function VoidBetsPage() {
               </div>
             ) : (
               <div className="hidden md:block" />
-            )}
+            )} */}
 
-            <div className="md:col-span-2">
+            {/* <div className="md:col-span-2">
               <Label>Date Range</Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -491,9 +626,119 @@ export default function VoidBetsPage() {
                   </div>
                 </PopoverContent>
               </Popover>
+            </div> */}
+
+            <div>
+              <Label>Same Bet Repeated</Label>
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                placeholder="e.g. 2"
+                value={sameBetFilter}
+                onChange={(e) => setSameBetFilter(e.target.value)}
+              />
             </div>
 
-            <div className="md:col-span-4 flex items-center justify-between">
+            <div>
+              <Label>TSN</Label>
+              <Input
+                className="mt-1"
+                placeholder="Search TSN"
+                value={tsnFilter}
+                onChange={(e) => setTsnFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet ID</Label>
+              <Input
+                className="mt-1"
+                placeholder="Search Bet ID"
+                value={betIdFilter}
+                onChange={(e) => setBetIdFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet Above</Label>
+              <Input
+                className="mt-1"
+                placeholder="e.g. 5000"
+                value={betAboveFilter}
+                onChange={(e) => setBetAboveFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Agent</Label>
+              <Select value={agentFilter} onValueChange={setAgentFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All agents" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All agents</SelectItem>
+                  {agentOptions.map((agent) => (
+                    <SelectItem key={agent} value={agent}>
+                      {agent}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Terminal</Label>
+              <Select value={terminalFilter} onValueChange={setTerminalFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All terminals" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All terminals</SelectItem>
+                  {terminalOptions.map((terminal) => (
+                    <SelectItem key={terminal} value={terminal}>
+                      {terminal}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Options</Label>
+              <Select value={optionFilter} onValueChange={setOptionFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All options" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All options</SelectItem>
+                  {optionOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="md:col-span-6 flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${activeFilteredCount} results`}
               </div>
@@ -504,6 +749,14 @@ export default function VoidBetsPage() {
                   setGameFilter("all");
                   setRangeFilter(undefined);
                   setWeekFilter("all");
+                  setSameBetFilter("");
+                  setTsnFilter("");
+                  setBetIdFilter("");
+                  setBetAboveFilter("");
+                  setStatusFilter("all");
+                  setAgentFilter("all");
+                  setTerminalFilter("all");
+                  setOptionFilter("all");
                 }}
               >
                 Reset Filters
@@ -535,10 +788,59 @@ export default function VoidBetsPage() {
             data={filteredLottoBets}
             itemsPerPage={10}
             columns={[
-              { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
+              { key: "week", label: "Week" },
+              // { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
               { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "-" },
-              ...commonColumns,
+              {
+                key: "player",
+                label: "Player",
+                render: (_: any | undefined, row) =>
+                  row.player ? (
+                    <div>
+                      <div className="font-medium">{row.player.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{row.player.userName}</div>
+                    </div>
+                  ) : (
+                    <div>Agent</div>
+                  ),
+              },
+              {
+                key: "prize",
+                label: "Option",
+                render: (value: { name?: string } | undefined) => value?.name || "—",
+              },
+              {
+                key: "under",
+                label: "Under",
+                render: (value: number | number[] | undefined) =>
+                  Array.isArray(value) ? (value.length ? value.join(", ") : "-") : (value || "-"),
+              },
+              {
+                key: "numbers",
+                label: "Numbers",
+                render: (value: number[] | Record<string, number[]> | undefined) => {
+                  if (!value) return "—";
+                  if (Array.isArray(value)) {
+                    const display = value.slice(0, 3).sort((a, b) => a - b).join(", ");
+                    return <div className="text-sm text-muted-foreground">{display}{value.length > 3 ? "..." : ""}</div>;
+                  }
+                  const groups = Object.keys(value).length;
+                  return <div className="text-sm text-muted-foreground">{groups} group{groups !== 1 ? "s" : ""}</div>;
+                },
+              },
+              {
+                key: "id",
+                label: "APL",
+                render: (_: string, row: DeletedBet) => calculateAplForVoidBet(row).toFixed(2),
+              },
+              { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
+              { key: "tsn", label: "TSN", render: (value) => value || "—" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
+              { key: "agent", label: "Agent", render: (value) => value || "—" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+              { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
+              { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
             ]}
             actions={(row) => renderActions(row, "lotto")}
           />
@@ -550,10 +852,59 @@ export default function VoidBetsPage() {
             data={filteredPoolsBets}
             itemsPerPage={10}
             columns={[
-              { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
+              { key: "week", label: "Week" },
+              // { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
               { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "-" },
-              ...commonColumns,
+              {
+                key: "player",
+                label: "Player",
+                render: (_: any | undefined, row) =>
+                  row.player ? (
+                    <div>
+                      <div className="font-medium">{row.player.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{row.player.userName}</div>
+                    </div>
+                  ) : (
+                    <div>Agent</div>
+                  ),
+              },
+              {
+                key: "prize",
+                label: "Option",
+                render: (value: { name?: string } | undefined) => value?.name || "—",
+              },
+              {
+                key: "under",
+                label: "Under",
+                render: (value: string | string[] | undefined) =>
+                  Array.isArray(value) ? (value.length ? value.join(", ") : "-") : (value || "-"),
+              },
+              {
+                key: "matches",
+                label: "Matches",
+                render: (value: string[] | Record<string, string[]> | undefined) => {
+                  if (!value) return "—";
+                  if (Array.isArray(value)) {
+                    const display = value.slice(0, 3).sort((a, b) => compareStringOrNumber(a, b)).join(", ");
+                    return <div className="text-sm text-muted-foreground">{display}{value.length > 3 ? "..." : ""}</div>;
+                  }
+                  const groups = Object.keys(value).length;
+                  return <div className="text-sm text-muted-foreground">{groups} group{groups !== 1 ? "s" : ""}</div>;
+                },
+              },
+              {
+                key: "id",
+                label: "APL",
+                render: (_: string, row: DeletedBet) => calculateAplForVoidBet(row).toFixed(2),
+              },
+              { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
+              { key: "tsn", label: "TSN", render: (value) => value || "—" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
+              { key: "agent", label: "Agent", render: (value) => value || "—" },
               { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+              { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
+              { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
             ]}
             actions={(row) => renderActions(row, "pools")}
           />
@@ -565,10 +916,31 @@ export default function VoidBetsPage() {
             data={filteredSportsBets}
             itemsPerPage={10}
             columns={[
+              { key: "week", label: "Week" },
               { key: "number", label: "Bet ID" },
-              { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
-              ...commonColumns,
+              // { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
+              {
+                key: "player",
+                label: "Player",
+                render: (_: any | undefined, row) =>
+                  row.player ? (
+                    <div>
+                      <div className="font-medium">{row.player.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{row.player.userName}</div>
+                    </div>
+                  ) : (
+                    <div>Agent</div>
+                  ),
+              },
+              { key: "under", label: "Under" },
+              { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
+              { key: "tsn", label: "TSN", render: (value) => value || "—" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
+              { key: "agent", label: "Agent", render: (value) => value || "—" },
               { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+              { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
+              { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
             ]}
             actions={(row) => renderActions(row, "sports")}
           />
@@ -580,10 +952,31 @@ export default function VoidBetsPage() {
             data={filteredSportsDrawBets}
             itemsPerPage={10}
             columns={[
+              { key: "week", label: "Week" },
               { key: "number", label: "Bet ID" },
-              { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
-              ...commonColumns,
+              // { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
+              {
+                key: "player",
+                label: "Player",
+                render: (_: any | undefined, row) =>
+                  row.player ? (
+                    <div>
+                      <div className="font-medium">{row.player.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{row.player.userName}</div>
+                    </div>
+                  ) : (
+                    <div>Agent</div>
+                  ),
+              },
+              { key: "under", label: "Under" },
+              { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              { key: "award", label: "Winning", render: (value: number) => value.toFixed(2) },
+              { key: "tsn", label: "TSN", render: (value) => value || "—" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "—" },
+              { key: "agent", label: "Agent", render: (value) => value || "—" },
               { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+              { key: "deletedAt", label: "Deleted At", render: (value: string) => formatDateIso(value) },
+              { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
             ]}
             actions={(row) => renderActions(row, "sports-draw")}
           />

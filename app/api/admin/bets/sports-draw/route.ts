@@ -33,29 +33,12 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("bets_sports_draw")
-      .select("*")
+      .select("*, games:game_id (week, id), terminal:terminal(serial_number, agent:agent_id(username))")
       .in("game_id", drawGameIds)
       .eq("status", "active")
       .order("bet_time", { ascending: false });
 
     if (error) throw error;
-
-    const terminalIds = Array.from(new Set((data || []).map((bet) => bet.terminal).filter(Boolean)));
-    let terminalMap: Record<string, { serial_number: string }> = {};
-
-    if (terminalIds.length > 0) {
-      const { data: terminals, error: terminalsError } = await supabase
-        .from("terminal")
-        .select("id, serial_number")
-        .in("id", terminalIds);
-
-      if (!terminalsError && terminals) {
-        terminalMap = terminals.reduce((acc, terminal) => {
-          acc[terminal.id] = { serial_number: terminal.serial_number };
-          return acc;
-        }, {} as Record<string, { serial_number: string }>);
-      }
-    }
 
     const playerIds = data
       .map((bet) => bet.player)
@@ -84,8 +67,12 @@ export async function GET(request: NextRequest) {
 
     const transformedBets = (data || []).map((bet) => ({
       ...bet,
+      week: bet.games?.week,
       player: bet.player ? playersMap[bet.player] || null : null,
-      terminal: bet.terminal ? terminalMap[bet.terminal] || null : null,
+      terminal: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+      tsn: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+      same: 0,
+      agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
     }));
 
     // Fetch matches directly from the sports_draw games

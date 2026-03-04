@@ -15,6 +15,9 @@ export type BaseBet = {
   betTime: string;
   prize?: string;
   status?: string; // "active", "closed", "void"
+  same?: number;
+  tsn?: string;
+  agent?: string;
 };
 
 export type DirectBet = BaseBet & {

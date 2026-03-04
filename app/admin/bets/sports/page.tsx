@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +63,15 @@ export default function SportsPage() {
   const [loading, setLoading] = useState(true);
   const [weekFilter, setWeekFilter] = useState<number | "">("");
   const [weeksAll, setWeeksAll] = useState<number[]>([]);
+  const [gameFilter, setGameFilter] = useState<"all" | "direct" | "permutation">("all");
+  const [sameBetFilter, setSameBetFilter] = useState<string>("");
+  const [tsnFilter, setTsnFilter] = useState<string>("");
+  const [betIdFilter, setBetIdFilter] = useState<string>("");
+  const [betAboveFilter, setBetAboveFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [terminalFilter, setTerminalFilter] = useState<string>("all");
+  const [optionFilter, setOptionFilter] = useState<string>("all");
   const { toast } = useToast();
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<SportsBet | null>(null);
@@ -154,6 +164,67 @@ export default function SportsPage() {
     }
   }
 
+  const statusOptions = useMemo(
+    () => Array.from(new Set(dataSports.map((b) => b.status).filter((v) => !!v))).sort(),
+    [dataSports],
+  );
+
+  const agentOptions = useMemo(
+    () => Array.from(new Set(dataSports.map((b) => (b.agent || "").trim()).filter((v) => v.length > 0))).sort(),
+    [dataSports],
+  );
+
+  const terminalOptions = useMemo(
+    () => Array.from(new Set(dataSports.map((b) => (b.terminal || "").trim()).filter((v) => v.length > 0))).sort(),
+    [dataSports],
+  );
+
+  const optionOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          dataSports.flatMap((b) =>
+            Object.values(b.selections || {}).flat().map((value) => String(value)),
+          ),
+        ),
+      ).sort(),
+    [dataSports],
+  );
+
+  const filteredSports = useMemo(() => {
+    const sameBetValue = sameBetFilter.trim() === "" ? undefined : Number(sameBetFilter);
+    const betAboveValue = betAboveFilter.trim() === "" ? undefined : Number(betAboveFilter);
+    const tsnValue = tsnFilter.trim().toLowerCase();
+    const betIdValue = betIdFilter.trim().toLowerCase();
+
+    return dataSports.filter((b) => {
+      if (gameFilter !== "all" && b.mode !== gameFilter) return false;
+      if (Number.isFinite(sameBetValue) && (b.same ?? 0) !== sameBetValue) return false;
+      if (typeof betAboveValue === "number" && Number.isFinite(betAboveValue) && b.staked <= betAboveValue) return false;
+      if (tsnValue && !(b.tsn || "").toLowerCase().includes(tsnValue)) return false;
+      if (betIdValue && !b.number.toString().toLowerCase().includes(betIdValue)) return false;
+      if (statusFilter !== "all" && (b.status || "") !== statusFilter) return false;
+      if (agentFilter !== "all" && (b.agent || "") !== agentFilter) return false;
+      if (terminalFilter !== "all" && (b.terminal || "") !== terminalFilter) return false;
+      if (optionFilter !== "all") {
+        const values = Object.values(b.selections || {}).flat().map((value) => String(value));
+        if (!values.includes(optionFilter)) return false;
+      }
+      return true;
+    });
+  }, [
+    dataSports,
+    gameFilter,
+    sameBetFilter,
+    betAboveFilter,
+    tsnFilter,
+    betIdFilter,
+    statusFilter,
+    agentFilter,
+    terminalFilter,
+    optionFilter,
+  ]);
+
   if (loading) {
     return <div className="p-6">Loading...</div>;
   }
@@ -165,7 +236,7 @@ export default function SportsPage() {
 
       <section className="mt-6 space-y-4">
         <div className="bg-card p-4 rounded-lg border border-border">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             <div>
               <Label>Week</Label>
               <Select
@@ -185,9 +256,144 @@ export default function SportsPage() {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">{dataSports.length} results</div>
-              <Button variant="outline" size="sm" onClick={() => setWeekFilter("")}>
+            <div>
+              <Label>Game</Label>
+              <Select value={gameFilter} onValueChange={(val) => setGameFilter(val as typeof gameFilter)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All games" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All games</SelectItem>
+                  <SelectItem value="direct">Direct</SelectItem>
+                  <SelectItem value="permutation">Permutation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Same Bet Repeated</Label>
+              <Input
+                className="mt-1"
+                type="number"
+                min={0}
+                placeholder="e.g. 2"
+                value={sameBetFilter}
+                onChange={(e) => setSameBetFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>TSN</Label>
+              <Input
+                className="mt-1"
+                placeholder="Search TSN"
+                value={tsnFilter}
+                onChange={(e) => setTsnFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet ID</Label>
+              <Input
+                className="mt-1"
+                placeholder="Search Bet ID"
+                value={betIdFilter}
+                onChange={(e) => setBetIdFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet Above</Label>
+              <Input
+                className="mt-1"
+                placeholder="e.g. 5000"
+                value={betAboveFilter}
+                onChange={(e) => setBetAboveFilter(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label>Bet Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  {statusOptions.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Agent</Label>
+              <Select value={agentFilter} onValueChange={setAgentFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All agents" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All agents</SelectItem>
+                  {agentOptions.map((agent) => (
+                    <SelectItem key={agent} value={agent}>
+                      {agent}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Terminal</Label>
+              <Select value={terminalFilter} onValueChange={setTerminalFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All terminals" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All terminals</SelectItem>
+                  {terminalOptions.map((terminal) => (
+                    <SelectItem key={terminal} value={terminal}>
+                      {terminal}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Options</Label>
+              <Select value={optionFilter} onValueChange={setOptionFilter}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="All options" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All options</SelectItem>
+                  {optionOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {optionLabels[option] || option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="md:col-span-6 flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">{filteredSports.length} results</div>
+              <Button variant="outline" size="sm" onClick={() => {
+                setWeekFilter("");
+                setGameFilter("all");
+                setSameBetFilter("");
+                setTsnFilter("");
+                setBetIdFilter("");
+                setBetAboveFilter("");
+                setStatusFilter("all");
+                setAgentFilter("all");
+                setTerminalFilter("all");
+                setOptionFilter("all");
+              }}>
                 Reset Filters
               </Button>
             </div>
@@ -196,9 +402,10 @@ export default function SportsPage() {
 
         <DataTable
           title="Sports Bets"
-          data={dataSports}
+          data={filteredSports}
           itemsPerPage={10}
           columns={[
+            { key: "week", label: "Week" },
             { key: "number", label: "Bet ID" },
             {
               key: "player",
@@ -213,17 +420,19 @@ export default function SportsPage() {
                   <div>Agent</div>
                 ),
             },
-            { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
+            // { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
             { key: "under", label: "Under" },
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(2) },
             {
               key: "award",
-              label: "Award",
+              label: "Winning",
               render: (value: number) => value ? value.toFixed(2) : "0.00"
             },
-            { key: "terminal", label: "Terminal", render: (value: { serial_number: string } | undefined) => value ? value.serial_number : "—" },
-            { key: "status", label: "Status", render: renderStatus },
+            { key: "tsn", label: "TSN", render: (value) => value || "—" },
+            { key: "terminal", label: "Terminal", render: (value) => value || "—" },
+            { key: "agent", label: "Agent", render: (value) => value || "—" },
             { key: "bet_time", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+            { key: "same", label: "SameBet" },
           ]}
           actions={(row) => (
             <div className="flex items-center gap-2">

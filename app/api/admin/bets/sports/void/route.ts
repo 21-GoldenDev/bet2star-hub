@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("bets_sport")
-      .select("*, games:game_id (week, id), terminal:terminal(serial_number)")
+      .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
       .eq("status", "void")
       .order("updated_at", { ascending: false });
 
@@ -62,6 +62,11 @@ export async function GET(request: NextRequest) {
     const transformedData = data?.map((bet) => {
       return {
         ...bet,
+        terminal: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+        tsn: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
+        same: 0,
+        agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
+        week: bet.games?.week || null,
         player: bet.player ? playersMap[bet.player] || null : null,
         deletedAt: bet.updated_at,
       };
