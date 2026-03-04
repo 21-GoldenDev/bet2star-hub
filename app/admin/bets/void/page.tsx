@@ -441,6 +441,15 @@ export default function VoidBetsPage() {
     }
   }
 
+  function renderStatus(status: string | undefined) {
+    switch (status) {
+      case "active": return <span className="text-green-600 font-medium">Active</span>;
+      case "closed": return <span className="text-blue-600 font-medium">Closed</span>;
+      case "void": return <span className="text-red-600 font-medium">Void</span>;
+      default: return <span className="text-muted-foreground">N/A</span>;
+    }
+  }
+
   function getTerminalLabel(terminal: DeletedBet["terminal"] | string | undefined) {
     if (!terminal) return "—";
     if (typeof terminal === "string") return terminal;
@@ -1020,232 +1029,230 @@ export default function VoidBetsPage() {
 
           {selectedBet && (
             <div className="space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Bet Type</Label>
-                  <p className="mt-1 font-medium capitalize">{selectedBet.type}</p>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Bet ID</Label>
-                  <p className="mt-1 font-medium">
-                    {selectedBet.bet.betId?.toString() || selectedBet.bet.number || "—"}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">
-                    {selectedBet.type === "sports" ? "Mode" : "Game Type"}
-                  </Label>
-                  <p className="mt-1 font-medium capitalize">
-                    {selectedBet.type === "sports"
-                      ? selectedBet.bet.mode
-                      : getGameLabel(selectedBet.bet.gameType || "")}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
-                  <p className="mt-1">
-                    <span className="text-red-600 font-medium">Deleted</span>
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Bet Time</Label>
-                  <p className="mt-1 font-medium text-sm">
-                    {formatDateIso(selectedBet.bet.betTime || selectedBet.bet.bet_time)}
-                  </p>
-                </div>
-              </div>
+              {(() => {
+                const bet = selectedBet.bet;
+                const isSportsType = selectedBet.type === "sports" || selectedBet.type === "sports-draw";
 
-              {/* Player Info */}
-              <div className="border-t pt-4">
-                <Label className="text-xs font-semibold text-muted-foreground block mb-2">Player</Label>
-                {selectedBet.bet.player ? (
-                  <div>
-                    <p className="font-medium">{selectedBet.bet.player.fullName}</p>
-                    <p className="text-sm text-muted-foreground">{selectedBet.bet.player.userName}</p>
-                  </div>
-                ) : (
-                  <p className="font-medium">Agent</p>
-                )}
-              </div>
-
-              {/* Content based on bet type */}
-              {(selectedBet.type === "lotto" || selectedBet.type === "pools") && selectedBet.bet.numbers && (
-                <div className="border-t pt-4">
-                  <Label className="text-xs font-semibold text-muted-foreground block mb-3">
-                    {selectedBet.type === "lotto" ? "Numbers" : "Matches"}
-                  </Label>
-                  {Array.isArray(selectedBet.bet.numbers || selectedBet.bet.matches) ? (
-                    <div className="flex flex-wrap gap-2">
-                      {(selectedBet.bet.numbers as number[] || selectedBet.bet.matches as string[] || [])
-                        .sort((a, b) => {
-                          if (typeof a === "number" && typeof b === "number") return a - b;
-                          return String(a).localeCompare(String(b));
-                        })
-                        .map((item, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1 rounded bg-primary/10 border border-primary/20 text-sm font-medium"
-                          >
-                            {item}
-                          </span>
-                        ))}
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">Bet ID</Label>
+                        <p className="mt-1 font-medium">{bet.betId?.toString() || bet.number || "—"}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">
+                          {isSportsType ? "Mode" : "Game Type"}
+                        </Label>
+                        <p className="mt-1 font-medium capitalize">
+                          {isSportsType ? (bet.mode || "—") : getGameLabel(bet.gameType || "")}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
+                        <p className="mt-1">{renderStatus(bet.status)}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">Bet Time</Label>
+                        <p className="mt-1 font-medium text-sm">{formatDateIso(bet.betTime || bet.bet_time)}</p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {Object.entries((selectedBet.bet.numbers || selectedBet.bet.matches) as Record<string, any[]>).map(([gid, items], index) => (
-                        <div key={gid} className="space-y-2">
-                          <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0]}</p>
-                          <div className="flex flex-wrap gap-2 ml-2">
-                            {items
-                              .sort((a, b) => {
-                                if (typeof a === "number" && typeof b === "number") return a - b;
-                                return String(a).localeCompare(String(b));
-                              })
-                              .map((item, idx) => (
-                                <span
-                                  key={idx}
-                                  className="px-2 py-1 rounded bg-primary/10 border border-primary/20 text-sm"
-                                >
-                                  {item}
-                                </span>
-                              ))}
-                          </div>
+
+                    <div className="border-t pt-4">
+                      <Label className="text-xs font-semibold text-muted-foreground block mb-2">Player</Label>
+                      {bet.player ? (
+                        <div>
+                          <p className="font-medium">{bet.player.fullName}</p>
+                          <p className="text-sm text-muted-foreground">{bet.player.userName}</p>
                         </div>
-                      ))}
+                      ) : (
+                        <p className="font-medium">Agent</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
 
-              {selectedBet.type === "sports" && selectedBet.bet.selections && (
-                <div className="border-t pt-4">
-                  <Label className="text-xs font-semibold text-muted-foreground block mb-3">Selections</Label>
-                  <div className="space-y-2">
-                    {Object.entries(selectedBet.bet.selections)
-                      .map(([matchNum, odds]) => {
-                        const matches = dataMatches[selectedBet.bet.game_id || ""] || [];
-                        const match = matches.find((m) => m.number.toString() === matchNum.toString());
-                        return { matchNum, odds, match };
-                      })
-                      .sort((a, b) => {
-                        if (!a.match || !b.match) return 0;
-                        return new Date(a.match.start_time).getTime() - new Date(b.match.start_time).getTime();
-                      })
-                      .map(({ matchNum, odds, match }) => (
-                        <div key={matchNum} className="border rounded-md p-3 bg-card hover:bg-muted/50 transition-colors">
-                          <div className="flex items-start justify-between gap-3">
-                            {/* Left: Match Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">#{matchNum}</span>
-                                {match && (
-                                  <>
-                                    <span className="text-xs text-muted-foreground truncate">{match.league}</span>
-                                    <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
-                                      {new Date(match.start_time).toLocaleString(undefined, {
-                                        year: 'numeric',
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        hour12: false,
-                                      })}
-                                    </span>
-                                  </>
-                                )}
-                              </div>
+                    {(selectedBet.type === "lotto" || selectedBet.type === "pools") && (
+                      <div className="border-t pt-4">
+                        <Label className="text-xs font-semibold text-muted-foreground block mb-3">
+                          {selectedBet.type === "lotto" ? "Numbers" : "Matches"}
+                        </Label>
+                        {(() => {
+                          const value = selectedBet.type === "lotto" ? bet.numbers : bet.matches;
+                          if (!value) return <p className="text-sm text-muted-foreground">—</p>;
 
-                              {/* Teams & Score */}
-                              {match ? (
-                                <div className="space-y-0.5 text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <span className="flex-1 truncate">{match.home}</span>
-                                    <span className="font-bold text-base min-w-6 text-center">
-                                      {match.home_goal !== null && match.home_goal !== undefined ? match.home_goal : "-"}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="flex-1 truncate">{match.away}</span>
-                                    <span className="font-bold text-base min-w-6 text-center">
-                                      {match.away_goal !== null && match.away_goal !== undefined ? match.away_goal : "-"}
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-muted-foreground">Match details unavailable</div>
-                              )}
-                            </div>
-
-                            {/* Right: Bet Selections */}
-                            <div className="flex flex-col gap-1 items-end">
-                              {(odds || []).map((opt: string, idx: number) => {
-                                const label = optionLabels[opt] || opt;
-                                return (
+                          if (Array.isArray(value)) {
+                            return (
+                              <div className="flex flex-wrap gap-2">
+                                {value.sort((a, b) => compareStringOrNumber(a, b)).map((item, idx) => (
                                   <span
                                     key={idx}
-                                    className="px-2 py-0.5 rounded bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
+                                    className="px-3 py-1 rounded bg-primary/10 border border-primary/20 text-sm font-medium"
                                   >
-                                    {label}:{" "}
-                                    {match?.prizes?.[Object.keys(optionLabels).indexOf(opt)]
-                                      ? match.prizes[Object.keys(optionLabels).indexOf(opt)]
-                                      : "—"}
+                                    {item}
                                   </span>
-                                );
-                              })}
+                                ))}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-3">
+                              {Object.entries(value).map(([gid, items], index) => (
+                                <div key={gid} className="space-y-2">
+                                  <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0]}</p>
+                                  <div className="flex flex-wrap gap-2 ml-2">
+                                    {items
+                                      .sort((a: string | number, b: string | number) => compareStringOrNumber(a, b))
+                                      .map((item: string | number, idx: number) => (
+                                        <span
+                                          key={idx}
+                                          className="px-2 py-1 rounded bg-primary/10 border border-primary/20 text-sm"
+                                        >
+                                          {item}
+                                        </span>
+                                      ))}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {isSportsType && bet.selections && (
+                      <div className="border-t pt-4">
+                        <Label className="text-xs font-semibold text-muted-foreground block mb-3">Selections</Label>
+                        <div className="space-y-2">
+                          {Object.entries(bet.selections)
+                            .map(([matchNum, odds]) => {
+                              const matches = dataMatches[bet.game_id || ""] || [];
+                              const match = matches.find((m) => m.number.toString() === matchNum.toString());
+                              return { matchNum, odds, match };
+                            })
+                            .sort((a, b) => {
+                              if (!a.match || !b.match) return 0;
+                              return new Date(a.match.start_time).getTime() - new Date(b.match.start_time).getTime();
+                            })
+                            .map(({ matchNum, odds, match }) => (
+                              <div key={matchNum} className="border rounded-md p-3 bg-card hover:bg-muted/50 transition-colors">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">#{matchNum}</span>
+                                      {match && (
+                                        <>
+                                          <span className="text-xs text-muted-foreground truncate">{match.league}</span>
+                                          <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
+                                            {new Date(match.start_time).toLocaleString(undefined, {
+                                              year: "numeric",
+                                              month: "2-digit",
+                                              day: "2-digit",
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                              hour12: false,
+                                            })}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+
+                                    {match ? (
+                                      <div className="space-y-0.5 text-sm">
+                                        <div className="flex items-center gap-2">
+                                          <span className="flex-1 truncate">{match.home}</span>
+                                          <span className="font-bold text-base min-w-6 text-center">
+                                            {match.home_goal !== null && match.home_goal !== undefined ? match.home_goal : "-"}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="flex-1 truncate">{match.away}</span>
+                                          <span className="font-bold text-base min-w-6 text-center">
+                                            {match.away_goal !== null && match.away_goal !== undefined ? match.away_goal : "-"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-muted-foreground">Match details unavailable</div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex flex-col gap-1 items-end">
+                                    {(odds || []).map((opt: string, idx: number) => {
+                                      const label = optionLabels[opt] || opt;
+                                      const prizeIndex = selectedBet.type === "sports-draw" ? 0 : Object.keys(optionLabels).indexOf(opt);
+                                      return (
+                                        <span
+                                          key={idx}
+                                          className="px-2 py-0.5 rounded bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap"
+                                        >
+                                          {label}: {match?.prizes?.[prizeIndex] ? match.prizes[prizeIndex] : "—"}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
                         </div>
-                      ))}
-                  </div>
-                </div>
-              )}
+                      </div>
+                    )}
 
-              {/* Under & Terminal */}
-              <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Under</Label>
-                  <p className="mt-1 font-medium">
-                    {Array.isArray(selectedBet.bet.under)
-                      ? selectedBet.bet.under.length > 0
-                        ? selectedBet.bet.under.join(", ")
-                        : "-"
-                      : selectedBet.bet.under || "-"}
-                  </p>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Terminal</Label>
-                  <p className="mt-1 font-medium">
-                    {(selectedBet.bet.terminal as any)?.serial_number || "—"}
-                  </p>
-                </div>
-              </div>
+                    <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">Under</Label>
+                        <p className="mt-1 font-medium">
+                          {Array.isArray(bet.under)
+                            ? bet.under.length > 0
+                              ? bet.under.join(", ")
+                              : "-"
+                            : bet.under || "-"}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">Terminal</Label>
+                        <p className="mt-1 font-medium">{getTerminalLabel(bet.terminal)}</p>
+                      </div>
+                    </div>
 
-              {/* Financial Info */}
-              <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Staked</Label>
-                  <p className="mt-1 font-medium text-lg">{selectedBet.bet.staked.toFixed(2)}</p>
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
-                  <p className="mt-1 font-medium text-lg">{selectedBet.bet.award.toFixed(2)}</p>
-                </div>
-              </div>
+                    <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-semibold text-muted-foreground">Staked</Label>
+                        <p className="mt-1 font-medium text-lg">{bet.staked.toFixed(2)}</p>
+                      </div>
+                      {!isSportsType && (
+                        <div>
+                          <Label className="text-xs font-semibold text-muted-foreground">APL</Label>
+                          <p className="mt-1 font-medium text-lg">{calculateAplForVoidBet(bet).toFixed(2)}</p>
+                        </div>
+                      )}
+                      {isSportsType && (
+                        <div>
+                          <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
+                          <p className="mt-1 font-medium text-lg">{bet.award.toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
 
-              {/* Prize (if available) */}
-              {selectedBet.bet.prize && (
-                <div className="border-t pt-4">
-                  <Label className="text-xs font-semibold text-muted-foreground">Prize</Label>
-                  <p className="mt-1 font-medium">{selectedBet.bet.prize.name}</p>
-                </div>
-              )}
+                    {!isSportsType && (
+                      <div className="border-t pt-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs font-semibold text-muted-foreground">Prize</Label>
+                          <p className="mt-1 font-medium text-nowrap">{bet.prize?.name || "—"}</p>
+                        </div>
+                        <div>
+                          <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
+                          <p className="mt-1 font-medium text-lg">{bet.award.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    )}
 
-              {/* Deleted At */}
-              <div className="border-t pt-4">
-                <Label className="text-xs font-semibold text-muted-foreground">Deleted At</Label>
-                <p className="mt-1 font-medium text-sm">{formatDateIso(selectedBet.bet.deletedAt)}</p>
-              </div>
+                    <div className="border-t pt-4">
+                      <Label className="text-xs font-semibold text-muted-foreground">Deleted At</Label>
+                      <p className="mt-1 font-medium text-sm">{formatDateIso(bet.deletedAt)}</p>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
         </DialogContent>

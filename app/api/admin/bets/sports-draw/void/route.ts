@@ -49,7 +49,30 @@ export async function GET(_request: NextRequest) {
       deletedAt: bet.updated_at,
     }));
 
-    return NextResponse.json({ data: transformedData, matches: {} });
+    const gameIds = Array.from(new Set((data || []).map((bet) => bet.game_id).filter(Boolean)));
+    let sportsMatchesMap: Record<string, any[]> = {};
+
+    if (gameIds.length > 0) {
+      const { data: matchesData, error: matchesError } = await supabase
+        .from("sports")
+        .select("*")
+        .in("game_id", gameIds);
+
+      if (!matchesError && matchesData) {
+        sportsMatchesMap = matchesData.reduce((acc, match) => {
+          if (!acc[match.game_id]) acc[match.game_id] = [];
+          acc[match.game_id].push(match);
+          return acc;
+        }, {} as Record<string, any[]>);
+      }
+    }
+
+    const matchesMap = transformedData.reduce((acc, bet) => {
+      acc[bet.game_id] = sportsMatchesMap[bet.game_id] || [];
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    return NextResponse.json({ data: transformedData, matches: matchesMap });
   } catch (error) {
     console.error("Error fetching sports draw void bets:", error);
     return NextResponse.json(
