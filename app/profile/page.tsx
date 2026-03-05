@@ -16,7 +16,8 @@ import {
   Shield,
   Bell,
   CreditCard,
-  History,
+  ReceiptText,
+  Ticket,
   Settings,
   ChevronRight,
   Edit3,
@@ -76,14 +77,15 @@ const Profile = () => {
   }, [user]);
 
   const stats = [
-    { label: "Total Bets", value: "247", icon: History },
+    { label: "Total Bets", value: "247", icon: Ticket },
     { label: "Win Rate", value: "62%", icon: TrendingUp },
     { label: "Total Won", value: "$3,450", icon: Trophy },
   ];
 
   const menuItems = [
     { icon: CreditCard, label: "Payment Methods", path: "/deposit" },
-    { icon: History, label: "Transaction History", path: "/transactions" },
+    { icon: ReceiptText, label: "Transaction History", path: "/transactions" },
+    { icon: Ticket, label: "Bet History", path: "/bet-history" },
     { icon: Bell, label: "Notifications", path: "#" },
     { icon: Shield, label: "Security", path: "#" },
     { icon: Settings, label: "Preferences", path: "#" },

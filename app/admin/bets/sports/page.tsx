@@ -45,6 +45,24 @@ function formatDateIso(iso?: string) {
   return new Date(iso).toLocaleString();
 }
 
+const factorial = (n: number): number => {
+  if (n <= 1) return 1;
+  return n * factorial(n - 1);
+};
+
+const combination = (n: number, r: number): number => {
+  if (r > n) return 0;
+  return factorial(n) / (factorial(r) * factorial(n - r));
+};
+
+
+function calculateAplForSportsBet(bet: SportsBet) {
+  const numLines = bet.under.reduce((acc, val) => acc + combination(Object.values(bet.selections).length, val), 0);
+  if (numLines === 0) return 0;
+  const apl = (Number(bet.staked) || 0) / numLines;
+  return apl;
+}
+
 const optionLabels: Record<string, string> = {
   H: "1",
   D: "X",
@@ -386,10 +404,11 @@ export default function SportsPage() {
             },
             // { key: "mode", label: "Mode", render: (value: string) => <div className="capitalize">{value}</div> },
             { key: "under", label: "Under" },
+            { key: "id", label: "APL", render: (_: string, row) => calculateAplForSportsBet(row as SportsBet).toFixed(2) },
             { key: "staked", label: "Staked", render: (value: number) => value.toFixed(2) },
             {
               key: "award",
-              label: "Winning",
+              label: "Possible Winning",
               render: (value: number) => value ? value.toFixed(2) : "0.00"
             },
             { key: "tsn", label: "TSN", render: (value) => value || "" },
@@ -582,10 +601,14 @@ export default function SportsPage() {
               </div>
 
               {/* Financial Info */}
-              <div className="border-t pt-4 grid grid-cols-2 gap-4">
+              <div className="border-t pt-4 grid grid-cols-3 gap-4">
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Staked</Label>
                   <p className="mt-1 font-medium text-lg">{selectedBet.staked.toFixed(2)}</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-semibold text-muted-foreground">APL</Label>
+                  <p className="mt-1 font-medium text-lg">{calculateAplForSportsBet(selectedBet).toFixed(2)}</p>
                 </div>
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Award</Label>

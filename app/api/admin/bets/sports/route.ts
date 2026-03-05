@@ -11,10 +11,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ bets: [] });
     }
 
+    const parsedWeek = parseInt(week, 10);
+    if (!Number.isFinite(parsedWeek)) {
+      return NextResponse.json({ bets: [], matches: {} });
+    }
+
+    const { data: games, error: gamesError } = await supabase
+      .from("games")
+      .select("id")
+      .eq("type", "sports")
+      .eq("week", parsedWeek);
+
+    if (gamesError) throw gamesError;
+
+    const gameIds = (games || []).map((g) => g.id);
+
     const { data, error } = await supabase
       .from("bets_sport")
       .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
-      .eq("games.week", parseInt(week))
+      .in("game_id", gameIds)
       .eq("status", "active")
       .order("bet_time", { ascending: false });
 
@@ -48,7 +63,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const gameIds = Array.from(new Set(data.map((bet) => bet.games?.id).filter(Boolean)));
     let matchesMap: Record<string, any[]> = {};
 
     if (gameIds.length > 0) {
