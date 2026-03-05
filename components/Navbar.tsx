@@ -3,10 +3,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Wallet, User, Menu, X, LogIn, LogOut } from "lucide-react";
+import { Wallet, User, Menu, X, LogIn, LogOut, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import clsx from "clsx";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { signOut } from "@/lib/auth";
 import { toast } from "@/components/ui/use-toast";
@@ -96,19 +102,18 @@ const Navbar = () => {
   const isActive = (path: string) => pathname === path;
   const isAdminPage = pathname.startsWith("/admin");
 
-  const navLinks = [
-    { path: "/", label: "Home" },
+  const navLinks = [{ path: "/", label: "Home" }];
+  const gameLinks = [
+    { path: "/lotto", label: "Lotto" },
+    { path: "/pools", label: "Pools" },
+    { path: "/sports", label: "Sports Betting" },
+    { path: "/sports-draw", label: "Football Pool" },
   ];
 
   if (isAdminPage) {
     navLinks.push({ path: "/admin", label: "Admin Dashboard" });
   } else {
-    navLinks.push(
-      { path: "/lotto", label: "Lotto" },
-      { path: "/pools", label: "Pools" },
-      { path: "/sports", label: "Sports Betting" },
-      { path: "/sports-draw", label: "Football Pool" }
-    );
+    navLinks.push({ path: "/transactions", label: "Transactions" });
     if (isAdmin) {
       navLinks.push({ path: "/admin", label: "Admin Dashboard" });
     }
@@ -145,6 +150,25 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="px-4 py-2 rounded-lg font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                  >
+                    Games
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {gameLinks.map((link) => (
+                    <DropdownMenuItem key={link.path} asChild>
+                      <Link href={link.path}>{link.label}</Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
 
@@ -160,16 +184,26 @@ const Navbar = () => {
                         {balance !== null ? `₦${balance.toLocaleString()}` : "--"}
                       </span>
                     </div>
-                    <Link href="/deposit">
-                      <Button variant="gold" size="sm" className="hidden sm:flex">
-                        Deposit
-                      </Button>
-                    </Link>
-                    <Link href="/withdraw">
-                      <Button variant="cyan" size="sm" className="hidden sm:flex">
-                        Withdraw
-                      </Button>
-                    </Link>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2">
+                          Wallet
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link href="/deposit">Deposit</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/withdraw">Withdraw</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/transactions">Transactions</Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 )}
                 <Link href="/profile">
@@ -207,6 +241,21 @@ const Navbar = () => {
           <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
             <div className="flex flex-col gap-2">
               {!isAdminPage && navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  href={link.path}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={clsx(
+                    "px-4 py-3 rounded-lg font-medium transition-all",
+                    isActive(link.path)
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {!isAdminPage && gameLinks.map((link) => (
                 <Link
                   key={link.path}
                   href={link.path}

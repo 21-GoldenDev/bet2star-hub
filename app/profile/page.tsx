@@ -83,7 +83,7 @@ const Profile = () => {
 
   const menuItems = [
     { icon: CreditCard, label: "Payment Methods", path: "/deposit" },
-    { icon: History, label: "Betting History", path: "#" },
+    { icon: History, label: "Transaction History", path: "/transactions" },
     { icon: Bell, label: "Notifications", path: "#" },
     { icon: Shield, label: "Security", path: "#" },
     { icon: Settings, label: "Preferences", path: "#" },

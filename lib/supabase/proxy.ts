@@ -8,6 +8,7 @@ const protectedRoutes = [
   '/sports',
   '/sports-draw',
   '/profile',
+  '/transactions',
   '/deposit',
   '/withdraw',
 ];
