@@ -113,7 +113,6 @@ const Navbar = () => {
   if (isAdminPage) {
     navLinks.push({ path: "/admin", label: "Admin Dashboard" });
   } else {
-    navLinks.push({ path: "/transactions", label: "Transactions" });
     if (isAdmin) {
       navLinks.push({ path: "/admin", label: "Admin Dashboard" });
     }
