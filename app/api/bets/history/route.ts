@@ -19,6 +19,11 @@ const extractWeeks = (rows: any[] | null) => {
   return weeks.sort((a, b) => b - a);
 };
 
+const formatMode = (mode?: string | null) => {
+  if (!mode) return "-";
+  return mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
+};
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
@@ -69,6 +74,7 @@ export async function GET(request: NextRequest) {
 
     let query;
     let weeksQuery;
+    let summaryQuery;
 
     if (tabParam === "lotto") {
       query = supabase
@@ -85,12 +91,20 @@ export async function GET(request: NextRequest) {
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
+      summaryQuery = supabase
+        .from("bets_lotto")
+        .select("gameType, under, staked, award, games:game_id (week), prize:prize_id (name)")
+        .eq("player", user.id)
+        .or("status.is.null,status.neq.void");
+
       if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
       if (Number.isFinite(betIdFilter)) weeksQuery = weeksQuery.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
+
+      if (Number.isFinite(weekFilter)) summaryQuery = summaryQuery.eq("games.week", weekFilter);
     } else if (tabParam === "pools") {
       query = supabase
         .from("bets_pools")
@@ -106,12 +120,20 @@ export async function GET(request: NextRequest) {
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
+      summaryQuery = supabase
+        .from("bets_pools")
+        .select("gameType, under, staked, award, games:game_id (week), prize:prize_id (name)")
+        .eq("player", user.id)
+        .or("status.is.null,status.neq.void");
+
       if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
       if (Number.isFinite(betIdFilter)) weeksQuery = weeksQuery.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
+
+      if (Number.isFinite(weekFilter)) summaryQuery = summaryQuery.eq("games.week", weekFilter);
     } else if (tabParam === "sports") {
       query = supabase
         .from("bets_sport")
@@ -126,6 +148,8 @@ export async function GET(request: NextRequest) {
         .select("games:game_id (week)")
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
+
+      summaryQuery = null;
 
       if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("number", betIdFilter);
@@ -148,6 +172,8 @@ export async function GET(request: NextRequest) {
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
+      summaryQuery = null;
+
       if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("number", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
@@ -156,10 +182,16 @@ export async function GET(request: NextRequest) {
       if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
     }
 
-    const [{ data, error, count }, { data: weekRows, error: weekError }] = await Promise.all([
+    const [{ data, error, count }, { data: weekRows, error: weekError }, summaryResp] = await Promise.all([
       query,
       weeksQuery,
+      summaryQuery
+        ? summaryQuery
+        : Promise.resolve({ data: [], error: null } as { data: any[]; error: any }),
     ]);
+
+    const summaryRows = summaryResp?.data || [];
+    const summaryError = summaryResp?.error || null;
 
     if (error) {
       console.error("Failed to fetch bet history:", error);
@@ -169,6 +201,34 @@ export async function GET(request: NextRequest) {
     if (weekError) {
       console.error("Failed to fetch week options:", weekError);
     }
+
+    if (summaryError) {
+      console.error("Failed to fetch summary:", summaryError);
+    }
+
+    const summaryMap = new Map<string, { option: string; sales: number; winnings: number }>();
+    if (tabParam === "lotto" || tabParam === "pools") {
+      for (const row of summaryRows || []) {
+        let option = "-";
+        if (!(row as any).prize && row.gameType === "turbo") {
+          option = `Turbo ${row.under[0]}`;
+        } else if ((row as any).prize) {
+          option = Array.isArray((row as any).prize)
+            ? ((row as any).prize[0]?.name || "-")
+            : ((row as any).prize.name || "-");
+        }
+
+        const sales = Number((row as any).staked) || 0;
+        const winnings = Number((row as any).award) || 0;
+
+        const current = summaryMap.get(option) || { option, sales: 0, winnings: 0 };
+        current.sales += sales;
+        current.winnings += winnings;
+        summaryMap.set(option, current);
+      }
+    }
+
+    const summary = Array.from(summaryMap.values()).sort((a, b) => a.option.localeCompare(b.option));
 
     let matches: Record<string, any[]> = {};
     if ((tabParam === "sports" || tabParam === "sports-draw") && Array.isArray(data) && data.length > 0) {
@@ -195,6 +255,7 @@ export async function GET(request: NextRequest) {
       data: data || [],
       weeks: extractWeeks(weekRows || []),
       matches,
+      summary,
       pagination: {
         page,
         pageSize,

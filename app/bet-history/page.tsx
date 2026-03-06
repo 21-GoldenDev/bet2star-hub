@@ -127,6 +127,7 @@ type PaginatedBetResult = {
   totalPages: number;
   weeks: number[];
   matches: Record<string, MatchInfo[]>;
+  summary: { option: string; sales: number; winnings: number }[];
 };
 
 type MatchInfo = {
@@ -313,6 +314,7 @@ async function fetchTabBets(
     totalPages: Number(result?.pagination?.totalPages || 1),
     weeks: Array.isArray(result?.weeks) ? result.weeks : [],
     matches: (result?.matches || {}) as Record<string, MatchInfo[]>,
+    summary: Array.isArray(result?.summary) ? result.summary : [],
   };
 }
 
@@ -508,6 +510,12 @@ export default function BetHistoryPage() {
   const [betsByTab, setBetsByTab] = useState<Record<BetTab, BetRow[]>>(EMPTY_BETS);
   const [totalsByTab, setTotalsByTab] = useState<Record<BetTab, number>>(EMPTY_TOTALS);
   const [weeksByTab, setWeeksByTab] = useState<Record<BetTab, number[]>>(EMPTY_WEEKS);
+  const [summaryByTab, setSummaryByTab] = useState<Record<BetTab, { option: string; sales: number; winnings: number }[]>>({
+    lotto: [],
+    pools: [],
+    sports: [],
+    "sports-draw": [],
+  });
   const [matchesByTab, setMatchesByTab] = useState<Record<BetTab, Record<string, MatchInfo[]>>>({
     lotto: {},
     pools: {},
@@ -531,7 +539,7 @@ export default function BetHistoryPage() {
       setLoading(true);
       try {
         const page = pagesByTab[activeTab];
-        const { rows, total, totalPages, weeks, matches } = await fetchTabBets(activeTab, page, {
+        const { rows, total, totalPages, weeks, matches, summary } = await fetchTabBets(activeTab, page, {
           week: weekFilter,
           betId: betIdFilter,
           betAbove: betAboveFilter,
@@ -542,6 +550,7 @@ export default function BetHistoryPage() {
         setTotalPagesByTab((prev) => ({ ...prev, [activeTab]: totalPages }));
         setWeeksByTab((prev) => ({ ...prev, [activeTab]: weeks }));
         setMatchesByTab((prev) => ({ ...prev, [activeTab]: matches }));
+        setSummaryByTab((prev) => ({ ...prev, [activeTab]: summary }));
       } catch (error) {
         console.error("Failed to load bet history:", error);
         toast({ title: "Failed to load bet history", variant: "destructive" });
@@ -559,6 +568,18 @@ export default function BetHistoryPage() {
       [activeTab]: 1,
     }));
   }, [activeTab, weekFilter, betIdFilter, betAboveFilter]);
+
+  useEffect(() => {
+    const tabWeeks = weeksByTab[activeTab] || [];
+    if (!tabWeeks.length) return;
+
+    const latestWeek = String(tabWeeks[0]);
+    const hasSelectedWeek = weekFilter && tabWeeks.includes(Number(weekFilter));
+
+    if (!hasSelectedWeek) {
+      setWeekFilter(latestWeek);
+    }
+  }, [activeTab, weeksByTab, weekFilter]);
 
   const activeRows = useMemo(() => betsByTab[activeTab] || [], [betsByTab, activeTab]);
 
@@ -678,52 +699,6 @@ export default function BetHistoryPage() {
           <p className="text-muted-foreground">View your placed bets across all game types</p>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-4 mb-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Select
-              value={weekFilter || "all"}
-              onValueChange={(value) => setWeekFilter(value === "all" ? "" : value)}
-            >
-              <SelectTrigger className="bg-muted border-border">
-                <SelectValue placeholder="Filter by week" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Weeks</SelectItem>
-                {(weeksByTab[activeTab] || []).map((week) => (
-                  <SelectItem key={week} value={String(week)}>
-                    Week {week}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="text"
-              placeholder="Filter by bet ID"
-              value={betIdFilter}
-              onChange={(e) => setBetIdFilter(e.target.value)}
-              className="bg-muted border-border"
-            />
-            <Input
-              type="number"
-              min="0"
-              placeholder="Filter by bet above"
-              value={betAboveFilter}
-              onChange={(e) => setBetAboveFilter(e.target.value)}
-              className="bg-muted border-border"
-            />
-            <Button
-              variant="outline"
-              onClick={() => {
-                setWeekFilter("");
-                setBetIdFilter("");
-                setBetAboveFilter("");
-              }}
-            >
-              Reset Filters
-            </Button>
-          </div>
-        </div>
-
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BetTab)}>
           <TabsList className="mb-4 h-auto flex-wrap">
             <TabsTrigger value="lotto">Lotto</TabsTrigger>
@@ -731,6 +706,67 @@ export default function BetHistoryPage() {
             <TabsTrigger value="sports">Sports</TabsTrigger>
             <TabsTrigger value="sports-draw">Football Pool</TabsTrigger>
           </TabsList>
+
+          <div className="bg-card border border-border rounded-2xl p-4 mb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <Select
+                value={weekFilter}
+                onValueChange={(value) => setWeekFilter(value)}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Filter by week" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(weeksByTab[activeTab] || []).map((week) => (
+                    <SelectItem key={week} value={String(week)}>
+                      Week {week}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="text"
+                placeholder="Filter by bet ID"
+                value={betIdFilter}
+                onChange={(e) => setBetIdFilter(e.target.value)}
+                className="bg-muted border-border"
+              />
+              <Input
+                type="number"
+                min="0"
+                placeholder="Filter by bet above"
+                value={betAboveFilter}
+                onChange={(e) => setBetAboveFilter(e.target.value)}
+                className="bg-muted border-border"
+              />
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const latestWeek = weeksByTab[activeTab]?.[0];
+                  setWeekFilter(latestWeek ? String(latestWeek) : "");
+                  setBetIdFilter("");
+                  setBetAboveFilter("");
+                }}
+              >
+                Reset Filters
+              </Button>
+            </div>
+          </div>
+
+          {(summaryByTab[activeTab] || []).length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-4 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Sales & Winnings by Prize</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {(summaryByTab[activeTab] || []).map((item) => (
+                  <div key={item.option} className="rounded-lg border border-border bg-muted/40 p-3">
+                    <p className="text-sm font-medium text-foreground truncate">{item.option || "-"}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Sales: {formatCurrency(item.sales)}</p>
+                    <p className="text-xs text-muted-foreground">Winnings: {formatCurrency(item.winnings)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {(Object.keys(TAB_LABELS) as BetTab[]).map((tab) => (
             <TabsContent key={tab} value={tab}>
