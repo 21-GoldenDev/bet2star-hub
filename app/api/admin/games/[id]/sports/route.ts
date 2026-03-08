@@ -62,10 +62,20 @@ export async function POST(
       );
     }
 
-    const { league, number, home, away, prizes, status, start_time, end_time } = body ?? {};
+    const { league_id, number, home, away, prizes, status, start_time, end_time } = body ?? {};
 
-    if (!league || number === undefined || !home || !away) {
+    if (!league_id || number === undefined || !home || !away) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    const { data: leagueData, error: leagueError } = await supabase
+      .from("sports_leagues")
+      .select("id, name")
+      .eq("id", league_id)
+      .single();
+
+    if (leagueError || !leagueData) {
+      return NextResponse.json({ error: "Invalid league selected" }, { status: 400 });
     }
 
     const prizesArray = Array.isArray(prizes) && prizes.length > 0
@@ -77,7 +87,8 @@ export async function POST(
       .insert([
         {
           game_id: id,
-          league,
+          league: leagueData.name,
+          league_id: leagueData.id,
           number,
           home,
           away,

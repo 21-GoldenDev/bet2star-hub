@@ -9,6 +9,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? "");
+const leagueNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ leagues: data ?? [] }, { status: 200 });
+    const leagues = [...(data ?? [])].sort((a, b) =>
+      leagueNameCollator.compare(a?.name ?? "", b?.name ?? "")
+    );
+
+    return NextResponse.json({ leagues }, { status: 200 });
   } catch (error) {
     console.error("Error fetching sports leagues:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

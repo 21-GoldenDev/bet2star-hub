@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,10 +15,10 @@ import {
 } from "@/components/ui/select";
 import { Edit2, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { SportsMatch } from "@/lib/types/sports";
+import { SportsCountry, SportsLeague, SportsMatch } from "@/lib/types/sports";
 
 interface MatchEditInfo {
-  league: string;
+  league_id: string;
   number: number;
   home: string;
   away: string;
@@ -32,21 +32,25 @@ interface MatchEditInfo {
 
 interface Props {
   match: SportsMatch;
+  countries: SportsCountry[];
+  leagues: SportsLeague[];
   gameId: string;
   drawMode?: boolean;
-  leagueOptions: string[];
   onDelete: (match: SportsMatch) => void;
   onRefresh: () => void;
 }
 
-export default function MatchCard({ match, gameId, drawMode = false, leagueOptions, onDelete, onRefresh }: Props) {
+export default function MatchCard({ match, countries, leagues, gameId, drawMode = false, onDelete, onRefresh }: Props) {
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
   const EMPTY_PRIZES = drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
 
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [editCountryId, setEditCountryId] = useState("");
+  const selectedLeague = leagues.find((league) => league.id === (match.league_id ?? ""));
+  const currentLeagueName = selectedLeague?.name || match.league;
   const [editRowForm, setEditRowForm] = useState<MatchEditInfo>({
-    league: match.league,
+    league_id: match.league_id ?? selectedLeague?.id ?? leagues.find((league) => league.name === match.league)?.id ?? "",
     number: match.number,
     home: match.home,
     away: match.away,
@@ -60,13 +64,25 @@ export default function MatchCard({ match, gameId, drawMode = false, leagueOptio
     end_time: match.end_time ?? "",
   });
   const { toast } = useToast();
-  const availableLeagueOptions = Array.from(
-    new Set([
-      ...leagueOptions,
-      match.league,
-      editRowForm.league,
-    ].filter((league): league is string => Boolean(league)))
-  );
+  const availableLeagueOptions = leagues.filter((league) => league.country_id === editCountryId);
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    if (!editCountryId) {
+      setEditRowForm((prev) => ({ ...prev, league_id: "" }));
+      return;
+    }
+
+    const firstLeagueForCountryId = leagues.find((league) => league.country_id === editCountryId)?.id ?? "";
+    setEditRowForm((prev) => {
+      const leagueStillValid = leagues.some(
+        (league) => league.country_id === editCountryId && league.id === prev.league_id
+      );
+      if (leagueStillValid) return prev;
+      return { ...prev, league_id: firstLeagueForCountryId };
+    });
+  }, [editCountryId, isEditing, leagues]);
 
   const formatDateTimeLocal = (value?: string) => {
     if (!value) return "";
@@ -78,9 +94,13 @@ export default function MatchCard({ match, gameId, drawMode = false, leagueOptio
   };
 
   const startInlineEdit = () => {
+    const resolvedLeague = leagues.find((league) => league.id === (match.league_id ?? ""))
+      || leagues.find((league) => league.name === match.league);
+    const leagueCountryId = resolvedLeague?.country_id ?? "";
     setIsEditing(true);
+    setEditCountryId(leagueCountryId || countries[0]?.id || "");
     setEditRowForm({
-      league: match.league,
+      league_id: resolvedLeague?.id ?? "",
       number: match.number,
       home: match.home,
       away: match.away,
@@ -108,7 +128,7 @@ export default function MatchCard({ match, gameId, drawMode = false, leagueOptio
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          league: editRowForm.league,
+          league_id: editRowForm.league_id,
           number: editRowForm.number,
           home: editRowForm.home,
           away: editRowForm.away,
@@ -172,18 +192,39 @@ export default function MatchCard({ match, gameId, drawMode = false, leagueOptio
             </div>
           </div>
           <div>
+            <Label className="text-xs">Country</Label>
+            <Select value={editCountryId} onValueChange={setEditCountryId}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder={countries.length > 0 ? "Select country" : "No countries available"} />
+              </SelectTrigger>
+              <SelectContent>
+                {countries.map((country) => (
+                  <SelectItem key={country.id} value={country.id}>
+                    {country.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label className="text-xs">League</Label>
             <Select
-              value={editRowForm.league}
-              onValueChange={(value) => setEditRowForm({ ...editRowForm, league: value })}
+              value={editRowForm.league_id}
+              onValueChange={(value) => setEditRowForm({ ...editRowForm, league_id: value })}
             >
               <SelectTrigger className="h-9">
-                <SelectValue placeholder="Select league" />
+                <SelectValue
+                  placeholder={
+                    editCountryId
+                      ? (availableLeagueOptions.length > 0 ? "Select league" : "No leagues for selected country")
+                      : "Select country first"
+                  }
+                />
               </SelectTrigger>
               <SelectContent>
                 {availableLeagueOptions.map((league) => (
-                  <SelectItem key={league} value={league}>
-                    {league}
+                  <SelectItem key={league.id} value={league.id}>
+                    {league.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -324,7 +365,10 @@ export default function MatchCard({ match, gameId, drawMode = false, leagueOptio
                 >
                   {(match as any).status ?? "active"}
                 </Badge>
-                <span className="text-xs font-medium text-primary/80 truncate">{match.league}</span>
+                <span className="text-xs font-medium text-primary/80 truncate">{currentLeagueName}</span>
+                <span className="text-xs font-medium text-gray-500 truncate">
+                  {selectedLeague?.country?.name || leagues.find((league) => league.name === match.league)?.country?.name || "Unknown Country"}
+                </span>
               </div>
               <div className="bg-linear-to-r from-primary/5 to-transparent rounded px-2 py-1.5 mb-1.5">
                 <p className="font-bold text-sm truncate">

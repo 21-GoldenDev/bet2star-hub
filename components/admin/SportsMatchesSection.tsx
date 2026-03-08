@@ -35,7 +35,7 @@ import { SportsCountry, SportsLeague, SportsMatch } from "@/lib/types/sports";
 import MatchCard from "./MatchCard";
 
 interface MatchInfo {
-  league: string;
+  league_id: string;
   number: number;
   home: string;
   away: string;
@@ -46,7 +46,7 @@ interface MatchInfo {
 }
 
 const DEFAULT_MATCH = {
-  league: "",
+  league_id: "",
   number: 1,
   home: "",
   away: "",
@@ -66,7 +66,9 @@ interface Props {
 
 export default function SportsMatchesSection({ gameId, sports, loading, drawMode, onRefresh }: Props) {
   const [isAddSportsOpen, setIsAddSportsOpen] = useState(false);
+  const [isManageMetaOpen, setIsManageMetaOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [addSportsCountryId, setAddSportsCountryId] = useState("");
   const [sportsForm, setSportsForm] = useState<MatchInfo>({ ...DEFAULT_MATCH, prizes: drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0] });
   const [isMatchDeleteAlertOpen, setIsMatchDeleteAlertOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<SportsMatch | null>(null);
@@ -80,22 +82,40 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
   const { toast } = useToast();
 
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
-  const leagueOptions = Array.from(
-    new Set([
-      ...leagues.map((league) => league.name),
-      ...sports.map((match) => match.league).filter((league): league is string => Boolean(league)),
-    ])
-  );
+  const addDialogLeagueOptions = leagues.filter((league) => league.country_id === addSportsCountryId);
+  const leaguesForSelectedCountry = leagueCountryId
+    ? leagues.filter((league) => league.country_id === leagueCountryId)
+    : leagues;
 
   const handleOpenAddSports = () => {
+    const defaultCountryId = countries[0]?.id ?? "";
+    const defaultLeagueId = leagues.find((league) => league.country_id === defaultCountryId)?.id ?? "";
+
+    setAddSportsCountryId(defaultCountryId);
     setSportsForm({
       ...DEFAULT_MATCH,
-      league: leagueOptions[0] ?? "",
+      league_id: defaultLeagueId,
       number: Math.max(...sports.map(s => s.number), 0) + 1,
       prizes: drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0],
     });
     setIsAddSportsOpen(true);
   };
+
+  useEffect(() => {
+    if (!addSportsCountryId) {
+      setSportsForm((prev) => ({ ...prev, league_id: "" }));
+      return;
+    }
+
+    const firstLeagueForCountryId = leagues.find((league) => league.country_id === addSportsCountryId)?.id ?? "";
+    setSportsForm((prev) => {
+      const leagueStillValid = leagues.some(
+        (league) => league.country_id === addSportsCountryId && league.id === prev.league_id
+      );
+      if (leagueStillValid) return prev;
+      return { ...prev, league_id: firstLeagueForCountryId };
+    });
+  }, [addSportsCountryId, leagues]);
 
   const fetchMetadata = async () => {
     try {
@@ -254,7 +274,7 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
   };
 
   const addSportsMatch = async () => {
-    if (!sportsForm.league || !sportsForm.home || !sportsForm.away) {
+    if (!addSportsCountryId || !sportsForm.league_id || !sportsForm.home || !sportsForm.away) {
       toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
       return;
     }
@@ -326,256 +346,292 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
           <h2 className="text-2xl font-bold">Sports Matches</h2>
           <p className="text-muted-foreground mt-1">Manage matches and goals for this sports game</p>
         </div>
-        <Dialog open={isAddSportsOpen} onOpenChange={setIsAddSportsOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" disabled={loading} onClick={handleOpenAddSports}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Match
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-125 max-h-screen overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Match</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>League</Label>
-                <Select
-                  value={sportsForm.league}
-                  onValueChange={(value) => setSportsForm({ ...sportsForm, league: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={leagueOptions.length > 0 ? "Select league" : "No leagues available"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leagueOptions.map((league) => (
-                      <SelectItem key={league} value={league}>
-                        {league}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {leagueOptions.length === 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">Create a league before adding matches.</p>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Number</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={sportsForm.number}
-                    onChange={(e) => setSportsForm({ ...sportsForm, number: Number(e.target.value) })}
-                  />
+        <div className="flex items-center gap-2">
+          <Dialog open={isManageMetaOpen} onOpenChange={setIsManageMetaOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">Manage Countries & Leagues</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-3xl max-h-screen overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Manage Countries & Leagues</DialogTitle>
+              </DialogHeader>
+              <Card className="p-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Countries</h3>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Country name"
+                        value={countryName}
+                        onChange={(e) => setCountryName(e.target.value)}
+                        disabled={managing}
+                      />
+                      <Button onClick={addCountry} disabled={managing || !countryName.trim()}>
+                        Add
+                      </Button>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {(metaLoading && countries.length === 0) ? (
+                        <p className="text-sm text-muted-foreground">Loading countries...</p>
+                      ) : countries.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No countries yet.</p>
+                      ) : (
+                        countries.map((country) => (
+                          <div key={country.id} className="flex items-center justify-between border rounded-md px-2 py-1.5">
+                            <span className="text-sm">{country.name}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteCountry(country.id)}
+                              disabled={managing}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h3 className="font-semibold">Leagues</h3>
+                    <div className="space-y-2">
+                      <Select value={leagueCountryId} onValueChange={setLeagueCountryId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((country) => (
+                            <SelectItem key={country.id} value={country.id}>
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="League name"
+                          value={leagueName}
+                          onChange={(e) => setLeagueName(e.target.value)}
+                          disabled={managing}
+                        />
+                        <Button onClick={addLeague} disabled={managing || !leagueCountryId || !leagueName.trim()}>
+                          Add
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {(metaLoading && leagues.length === 0) ? (
+                        <p className="text-sm text-muted-foreground">Loading leagues...</p>
+                      ) : leagues.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No leagues yet.</p>
+                      ) : leagueCountryId && leaguesForSelectedCountry.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No leagues for selected country.</p>
+                      ) : (
+                        leaguesForSelectedCountry.map((league) => (
+                          <div key={league.id} className="flex items-center justify-between border rounded-md px-2 py-1.5 gap-2">
+                            <span className="text-sm truncate">{league.name}</span>
+                            <span className="text-xs text-muted-foreground truncate">{league.country?.name}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteLeague(league.id)}
+                              disabled={managing}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
+              </Card>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isAddSportsOpen} onOpenChange={setIsAddSportsOpen}>
+            <DialogTrigger asChild>
+              <Button size="lg" disabled={loading} onClick={handleOpenAddSports}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Match
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-125 max-h-screen overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Match</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
                 <div>
-                  <Label>Status</Label>
-                  <Select
-                    value={sportsForm.status}
-                    onValueChange={(value) =>
-                      setSportsForm({ ...sportsForm, status: value as "active" | "void" })
-                    }
-                  >
+                  <Label>Country</Label>
+                  <Select value={addSportsCountryId} onValueChange={setAddSportsCountryId}>
                     <SelectTrigger>
-                      <SelectValue />
+                      <SelectValue placeholder={countries.length > 0 ? "Select country" : "No countries available"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="void">Void</SelectItem>
+                      {countries.map((country) => (
+                        <SelectItem key={country.id} value={country.id}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <Label>Start Time</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formatDateTimeLocal(sportsForm.start_time)}
-                    onChange={(e) => setSportsForm({ ...sportsForm, start_time: e.target.value })}
-                  />
+                  {countries.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">Create a country before adding matches.</p>
+                  )}
                 </div>
                 <div>
-                  <Label>End Time</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formatDateTimeLocal(sportsForm.end_time)}
-                    onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
-                  />
+                  <Label>League</Label>
+                  <Select
+                    value={sportsForm.league_id}
+                    onValueChange={(value) => setSportsForm({ ...sportsForm, league_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={addDialogLeagueOptions.length > 0 ? "Select league" : "No leagues available"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {addDialogLeagueOptions.map((league) => (
+                      <SelectItem key={league.id} value={league.id}>
+                        {league.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {addSportsCountryId && addDialogLeagueOptions.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">No leagues found for selected country.</p>
+                  )}
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Home Team</Label>
-                  <Input
-                    value={sportsForm.home}
-                    onChange={(e) => setSportsForm({ ...sportsForm, home: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Away Team</Label>
-                  <Input
-                    value={sportsForm.away}
-                    onChange={(e) => setSportsForm({ ...sportsForm, away: e.target.value })}
-                  />
-                </div>
-              </div>
-              {drawMode ? (
-                <div>
-                  <Label>Prize</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Number</Label>
                     <Input
                       type="number"
-                      min="0"
-                      value={sportsForm.prizes[0] ?? 0}
-                      onChange={(e) => {
-                        const value = Math.max(0, Number(e.target.value));
-                        const updated = [...sportsForm.prizes];
-                        updated[0] = value;
-                        setSportsForm({ ...sportsForm, prizes: updated });
-                      }}
+                      min="1"
+                      value={sportsForm.number}
+                      onChange={(e) => setSportsForm({ ...sportsForm, number: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <Select
+                      value={sportsForm.status}
+                      onValueChange={(value) =>
+                        setSportsForm({ ...sportsForm, status: value as "active" | "void" })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="void">Void</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <Label>Start Time</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formatDateTimeLocal(sportsForm.start_time)}
+                      onChange={(e) => setSportsForm({ ...sportsForm, start_time: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>End Time</Label>
+                    <Input
+                      type="datetime-local"
+                      value={formatDateTimeLocal(sportsForm.end_time)}
+                      onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
                     />
                   </div>
                 </div>
-              ) : (
-                <div>
-                  <Label>Prizes</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PRIZE_LABELS.map((label, idx) => (
-                      <div key={label} className="flex items-center gap-2">
-                        <span className="w-24 text-sm text-muted-foreground">{label}</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={sportsForm.prizes[idx] ?? 0}
-                          onChange={(e) => {
-                            const value = Math.max(0, Number(e.target.value));
-                            const updated = [...sportsForm.prizes];
-                            updated[idx] = value;
-                            setSportsForm({ ...sportsForm, prizes: updated });
-                          }}
-                        />
-                      </div>
-                    ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label>Home Team</Label>
+                    <Input
+                      value={sportsForm.home}
+                      onChange={(e) => setSportsForm({ ...sportsForm, home: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Away Team</Label>
+                    <Input
+                      value={sportsForm.away}
+                      onChange={(e) => setSportsForm({ ...sportsForm, away: e.target.value })}
+                    />
                   </div>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsAddSportsOpen(false)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button className="flex-1" onClick={addSportsMatch} disabled={submitting || leagueOptions.length === 0}>
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add Match"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card className="p-4 mb-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-3">
-            <h3 className="font-semibold">Countries</h3>
-            <div className="flex gap-2">
-              <Input
-                placeholder="Country name"
-                value={countryName}
-                onChange={(e) => setCountryName(e.target.value)}
-                disabled={managing}
-              />
-              <Button onClick={addCountry} disabled={managing || !countryName.trim()}>
-                Add
-              </Button>
-            </div>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {(metaLoading && countries.length === 0) ? (
-                <p className="text-sm text-muted-foreground">Loading countries...</p>
-              ) : countries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No countries yet.</p>
-              ) : (
-                countries.map((country) => (
-                  <div key={country.id} className="flex items-center justify-between border rounded-md px-2 py-1.5">
-                    <span className="text-sm">{country.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteCountry(country.id)}
-                      disabled={managing}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                {drawMode ? (
+                  <div>
+                    <Label>Prize</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        value={sportsForm.prizes[0] ?? 0}
+                        onChange={(e) => {
+                          const value = Math.max(0, Number(e.target.value));
+                          const updated = [...sportsForm.prizes];
+                          updated[0] = value;
+                          setSportsForm({ ...sportsForm, prizes: updated });
+                        }}
+                      />
+                    </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <h3 className="font-semibold">Leagues</h3>
-            <div className="space-y-2">
-              <Select value={leagueCountryId} onValueChange={setLeagueCountryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {countries.map((country) => (
-                    <SelectItem key={country.id} value={country.id}>
-                      {country.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="League name"
-                  value={leagueName}
-                  onChange={(e) => setLeagueName(e.target.value)}
-                  disabled={managing}
-                />
-                <Button onClick={addLeague} disabled={managing || !leagueCountryId || !leagueName.trim()}>
-                  Add
-                </Button>
-              </div>
-            </div>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto">
-              {(metaLoading && leagues.length === 0) ? (
-                <p className="text-sm text-muted-foreground">Loading leagues...</p>
-              ) : leagues.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No leagues yet.</p>
-              ) : (
-                leagues.map((league) => (
-                  <div key={league.id} className="flex items-center justify-between border rounded-md px-2 py-1.5 gap-2">
-                    <span className="text-sm truncate">{league.name}</span>
-                    <span className="text-xs text-muted-foreground truncate">{league.country?.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteLeague(league.id)}
-                      disabled={managing}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                ) : (
+                  <div>
+                    <Label>Prizes</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRIZE_LABELS.map((label, idx) => (
+                        <div key={label} className="flex items-center gap-2">
+                          <span className="w-24 text-sm text-muted-foreground">{label}</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            value={sportsForm.prizes[idx] ?? 0}
+                            onChange={(e) => {
+                              const value = Math.max(0, Number(e.target.value));
+                              const updated = [...sportsForm.prizes];
+                              updated[idx] = value;
+                              setSportsForm({ ...sportsForm, prizes: updated });
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setIsAddSportsOpen(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={addSportsMatch}
+                    disabled={submitting || countries.length === 0 || addDialogLeagueOptions.length === 0}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add Match"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
-      </Card>
+      </div>
 
       {loading ? (
         <div className="flex justify-center items-center py-12">
@@ -595,9 +651,10 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
             <MatchCard
               key={match.id}
               match={match}
+              countries={countries}
+              leagues={leagues}
               gameId={gameId}
               drawMode={drawMode}
-              leagueOptions={leagueOptions}
               onDelete={openMatchDeleteDialog}
               onRefresh={onRefresh}
             />

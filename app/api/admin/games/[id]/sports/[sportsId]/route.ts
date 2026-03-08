@@ -62,10 +62,23 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { league, number, home, away, home_goal, away_goal, prizes, status, start_time, end_time } = body ?? {};
+    const { league_id, number, home, away, home_goal, away_goal, prizes, status, start_time, end_time } = body ?? {};
 
     const updateData: Record<string, any> = {};
-    if (league !== undefined) updateData.league = league;
+    if (league_id !== undefined) {
+      const { data: leagueData, error: leagueError } = await supabase
+        .from("sports_leagues")
+        .select("id, name")
+        .eq("id", league_id)
+        .single();
+
+      if (leagueError || !leagueData) {
+        return NextResponse.json({ error: "Invalid league selected" }, { status: 400 });
+      }
+
+      updateData.league_id = leagueData.id;
+      updateData.league = leagueData.name;
+    }
     if (number !== undefined) updateData.number = number;
     if (home !== undefined) updateData.home = home;
     if (away !== undefined) updateData.away = away;

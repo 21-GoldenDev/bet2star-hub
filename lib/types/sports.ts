@@ -2,6 +2,7 @@ export interface SportsMatch {
   id: string;
   game_id: string;
   league: string;
+  league_id?: string;
   number: number;
   home: string;
   away: string;
@@ -32,7 +33,7 @@ export interface SportsLeague {
 }
 
 export interface CreateSportsMatchInput {
-  league: string;
+  league_id: string;
   number: number;
   home: string;
   away: string;
@@ -43,7 +44,7 @@ export interface CreateSportsMatchInput {
 }
 
 export interface UpdateSportsMatchInput {
-  league?: string;
+  league_id?: string;
   number?: number;
   home?: string;
   away?: string;

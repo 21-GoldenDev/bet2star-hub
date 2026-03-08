@@ -9,6 +9,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? "");
+const countryNameCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 export async function GET() {
   try {
@@ -21,7 +22,11 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ countries: data ?? [] }, { status: 200 });
+    const countries = [...(data ?? [])].sort((a, b) =>
+      countryNameCollator.compare(a?.name ?? "", b?.name ?? "")
+    );
+
+    return NextResponse.json({ countries }, { status: 200 });
   } catch (error) {
     console.error("Error fetching sports countries:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
