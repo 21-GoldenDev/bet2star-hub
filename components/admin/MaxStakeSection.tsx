@@ -34,6 +34,7 @@ export default function MaxStakeSection({
   loading,
   onRefresh,
 }: Props) {
+  const isSportsLike = gameType === "sports" || gameType === "sports_draw";
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -53,7 +54,7 @@ export default function MaxStakeSection({
         match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
           ?.max_amount || "",
       };
-    } else if (gameType === "sports" || gameType === "sports_draw") {
+    } else if (isSportsLike) {
       return {
         match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
         match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
@@ -71,7 +72,7 @@ export default function MaxStakeSection({
 
       let stakesToUpdate: any[] = [];
 
-      if (gameType === "pools" || gameType === "sports" || gameType === "sports_draw") {
+      if (gameType === "pools" || isSportsLike) {
         const stakes = multipleMaxStakes as any;
         const requiredFields = gameType === "pools"
           ? ["match1", "match2", "match3plus"]
@@ -166,7 +167,9 @@ export default function MaxStakeSection({
             <p className="text-sm text-muted-foreground mt-1">
               {gameType === "pools"
                 ? "Set maximum stake amounts for different match requirements"
-                : "Set the maximum stake amount for this game"}
+                  : isSportsLike
+                    ? "Set maximum stake amounts for different match requirements"
+                    : "Set the maximum stake amount for this game"}
             </p>
           </div>
           {!isEditing && (
@@ -241,7 +244,7 @@ export default function MaxStakeSection({
                   />
                 </div>
               </>
-            ) : gameType === "sports" || gameType === "sports_draw" ? (
+            ) : isSportsLike ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="match1">Maximum Stake (Match At Least = 1)</Label>
@@ -344,7 +347,7 @@ export default function MaxStakeSection({
                       match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
                         ?.max_amount.toString() || "",
                     });
-                  } else if (gameType === "sports") {
+                  } else if (isSportsLike) {
                     setMultipleMaxStakes({
                       match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount.toString() || "",
                       match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount.toString() || "",
@@ -379,7 +382,7 @@ export default function MaxStakeSection({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least = 1
+                      U1
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toLocaleString() || "—"}
@@ -387,7 +390,7 @@ export default function MaxStakeSection({
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least = 2
+                      U2
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toLocaleString() || "—"}
@@ -395,7 +398,7 @@ export default function MaxStakeSection({
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least ≥ 3
+                      U3+
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{(maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3))?.max_amount?.toLocaleString() || "—"}
@@ -403,12 +406,12 @@ export default function MaxStakeSection({
                   </div>
                 </div>
               </>
-            ) : gameType === "sports" ? (
+            ) : isSportsLike ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least = 1
+                      U1
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toLocaleString() || "—"}
@@ -416,7 +419,7 @@ export default function MaxStakeSection({
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least = 2
+                      U2
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toLocaleString() || "—"}
@@ -424,7 +427,7 @@ export default function MaxStakeSection({
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least = 3
+                      U3
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{maxStakes.find((s) => s.match_at_least === 3)?.max_amount?.toLocaleString() || "—"}
@@ -432,7 +435,7 @@ export default function MaxStakeSection({
                   </div>
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm text-muted-foreground mb-1">
-                      Match At Least ≥ 4
+                      U4+
                     </div>
                     <div className="text-2xl font-bold">
                       ₦{(maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4))?.max_amount?.toLocaleString() || "—"}
