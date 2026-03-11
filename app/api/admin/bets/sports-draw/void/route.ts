@@ -95,30 +95,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data, error } = await supabase
+    const { data: existingBet, error: fetchError } = await supabase
       .from("bets_sports_draw")
-      .update({ status: "void", updated_at: new Date().toISOString() })
+      .select("*")
       .eq("id", id)
-      .select();
+      .single();
 
-    if (error) throw error;
+    if (fetchError) {
+      console.error("Error fetching bet:", fetchError);
+      return NextResponse.json(
+        { error: "Failed to fetch bet" },
+        { status: 500 }
+      );
+    }
 
-    if (!data || data.length === 0) {
+    if (!existingBet) {
       return NextResponse.json(
         { error: "Bet not found" },
         { status: 404 }
       );
     }
 
+    const { data, error } = await supabase
+      .from("bets_sports_draw")
+      .update({ status: "void", award: existingBet.staked })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) {
+      console.error("Error deleting bet:", error);
+      return NextResponse.json(
+        { error: "Failed to delete bet" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Bet voided successfully",
-      data: data[0],
+      message: "Bet deleted successfully",
+      data: data,
     });
   } catch (error) {
-    console.error("Error voiding sports draw bet:", error);
+    console.error("Error deleting bet:", error);
     return NextResponse.json(
-      { error: "Failed to void bet" },
+      { error: "Failed to delete bet" },
       { status: 500 }
     );
   }
