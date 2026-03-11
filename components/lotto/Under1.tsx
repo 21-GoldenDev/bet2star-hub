@@ -124,21 +124,23 @@ const Under1 = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], ma
 
         {/* Column 2: Number Grid */}
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
-            {numbers.map((num) => (
-              <button
-                key={num}
-                onClick={() => toggleNumber(num)}
-                className={clsx(
-                  "p-3 rounded-xl font-medium text-sm transition-all duration-300",
-                  selectedNumbers.includes(num)
-                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                )}
-              >
-                {num}
-              </button>
-            ))}
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="flex flex-wrap gap-2">
+              {numbers.map((num) => (
+                <button
+                  key={num}
+                  onClick={() => toggleNumber(num)}
+                  className={clsx(
+                    "aspect-square w-12 rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
+                    selectedNumbers.includes(num)
+                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                  )}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

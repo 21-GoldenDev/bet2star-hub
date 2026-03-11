@@ -22,8 +22,8 @@ interface Props {
 }
 
 const TwoBanker = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], maxStake }: Props) => {
-  const [totalUnder, setTotalUnder] = useState<number>(2);
-  const [groupAU, setGroupAU] = useState<number>(0);
+  const [totalUnder, setTotalUnder] = useState<number>(3);
+  const [groupAU, setGroupAU] = useState<number>(2);
   const [groupANumbers, setGroupANumbers] = useState<number[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
@@ -157,24 +157,26 @@ const TwoBanker = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [],
           )}
         </div>
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
-            {numbers.map((num) => {
-              const inGroupA = groupANumbers.includes(num);
-              return (
-                <button
-                  key={num}
-                  onClick={() => toggleNumberForGroupA(num)}
-                  className={clsx(
-                    "p-3 rounded-xl font-medium text-sm transition-all duration-300",
-                    inGroupA
-                      ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                      : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                  )}
-                >
-                  {num}
-                </button>
-              );
-            })}
+          <div className="p-4 rounded-xl bg-card border border-border">
+            <div className="flex flex-wrap gap-2">
+              {numbers.map((num) => {
+                const inGroupA = groupANumbers.includes(num);
+                return (
+                  <button
+                    key={num}
+                    onClick={() => toggleNumberForGroupA(num)}
+                    className={clsx(
+                      "aspect-square w-12 rounded-xl font-bold text-lg cursor-pointer transition-all duration-300",
+                      inGroupA
+                        ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                        : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                    )}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
         <div className="lg:col-span-3 flex flex-col gap-4">
