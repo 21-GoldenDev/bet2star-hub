@@ -158,7 +158,7 @@ export default function LottoSalesPage() {
   }, [terminalResults, selectedStaff, selectedAgent, selectedTerminal]);
 
   const totalTerminalSales = filteredTerminalResults.reduce(
-    (sum, r) => sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
+    (sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0),
     0
   );
   const totalTerminalWin = filteredTerminalResults.reduce(
@@ -185,6 +185,7 @@ export default function LottoSalesPage() {
   }, [terminalResults, selectedStaff, selectedAgent]);
 
   const filtersActive = selectedStaff !== "all" || selectedAgent !== "all" || selectedTerminal !== "all";
+  const isStaffOnlyFilter = true; // selectedStaff !== "all" && selectedAgent === "all" && selectedTerminal === "all";
 
   return (
     <div className="space-y-6">
@@ -210,7 +211,7 @@ export default function LottoSalesPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="w-44">
+          {/* <div className="w-44">
             <Select
               value={selectedStaff}
               onValueChange={(value) => {
@@ -282,7 +283,7 @@ export default function LottoSalesPage() {
                 )}
               </SelectContent>
             </Select>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -387,8 +388,12 @@ export default function LottoSalesPage() {
               <TableRow>
                 <TableHead className="border text-center">Week</TableHead>
                 <TableHead className="border text-center">Staff</TableHead>
-                <TableHead className="border text-center">Agent</TableHead>
-                <TableHead className="border text-center">Terminal</TableHead>
+                {!isStaffOnlyFilter && (
+                  <>
+                    <TableHead className="border text-center">Agent</TableHead>
+                    <TableHead className="border text-center">Terminal</TableHead>
+                  </>
+                )}
                 <TableHead className="border text-center">Sales</TableHead>
                 <TableHead className="border text-center">Payable</TableHead>
                 <TableHead className="border text-center">Win</TableHead>
@@ -412,60 +417,51 @@ export default function LottoSalesPage() {
 
                 Object.entries(grouped).forEach(([staff, agents]) => {
                   const staffRowspan = Object.values(agents).reduce((sum, terminals) => sum + terminals.length, 0);
-                  let isFirstStaffRow = true;
+                  if (isStaffOnlyFilter) {
+                    globalIdx += 1;
 
-                  Object.entries(agents).forEach(([agent, terminals]) => {
-                    const agentRowspan = terminals.length;
-                    let isFirstAgentRow = true;
+                    const staffTerminals = Object.values(agents).flat();
 
-                    terminals.forEach((result) => {
-                      const rowIndex = globalIdx;
-                      globalIdx += 1;
+                    const staffTerminalSales = staffTerminals.reduce(
+                      (sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0),
+                      0
+                    );
+                    const staffTerminalPayable = staffTerminals.reduce(
+                      (sum, r) => sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
+                      0
+                    );
+                    const staffTerminalWin = staffTerminals.reduce(
+                      (sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0),
+                      0
+                    );
 
-                      rows.push(
-                        <TableRow key={rowIndex}>
-                          {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={terminalRowspan}>
-                              {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
-                            </TableCell>
-                          )}
-                          {isFirstStaffRow && (
-                            <TableCell className="border" rowSpan={staffRowspan}>
-                              {staff}
-                            </TableCell>
-                          )}
-                          {isFirstAgentRow && (
-                            <TableCell className="border" rowSpan={agentRowspan}>
-                              {agent}
-                            </TableCell>
-                          )}
-                          <TableCell className="border">{result.terminal}</TableCell>
-                          <TableCell className="border">
-                            {result.sales.map((sale, i) => (
-                              <div key={i} className="text-nowrap">{sale.prize.name} = {sale.amount.toLocaleString()}</div>
-                            ))}
+                    rows.push(
+                      <TableRow key={globalIdx}>
+                        {globalIdx === 1 && (
+                          <TableCell className="border" rowSpan={terminalRowspan}>
+                            {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
                           </TableCell>
-                          <TableCell className="border">
-                            {result.sales.map((sale, i) => (
-                              <div key={i} className="text-nowrap">{sale.prize.name} = {(sale.amount * sale.prize.commission / 100).toLocaleString()}</div>
-                            ))}
-                          </TableCell>
-                          <TableCell className="border">
-                            {result.win.map((win, i) => (
-                              <div key={i}>{win.prize} = {win.amount.toLocaleString()}</div>
-                            ))}
-                          </TableCell>
-                          {rowIndex === 0 && (
+                        )}
+                        <TableCell className="border">
+                          {staff}
+                        </TableCell>
+                        <TableCell className="border">
+                          {staffTerminalSales.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="border">
+                          {staffTerminalPayable.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="border">
+                          {staffTerminalWin.toLocaleString()}
+                        </TableCell>
+                        {globalIdx === 1 && (
+                          <>
                             <TableCell className="border" rowSpan={terminalRowspan}>
                               {totalTerminalWin.toLocaleString()}
                             </TableCell>
-                          )}
-                          {rowIndex === 0 && (
                             <TableCell className="border" rowSpan={terminalRowspan}>
                               {(totalTerminalSales - totalTerminalWin).toLocaleString()}
                             </TableCell>
-                          )}
-                          {rowIndex === 0 && (
                             <TableCell className="border" rowSpan={terminalRowspan}>
                               {totalTerminalSales - totalTerminalWin > 0 ? (
                                 <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
@@ -473,14 +469,81 @@ export default function LottoSalesPage() {
                                 <Badge variant="destructive">Red</Badge>
                               )}
                             </TableCell>
-                          )}
-                        </TableRow>
-                      );
+                          </>
+                        )}
+                      </TableRow>
+                    )
+                  } else {
+                    let isFirstStaffRow = true;
 
-                      isFirstStaffRow = false;
-                      isFirstAgentRow = false;
+                    Object.entries(agents).forEach(([agent, terminals]) => {
+                      const agentRowspan = terminals.length;
+                      let isFirstAgentRow = true;
+
+                      terminals.forEach((result) => {
+                        const rowIndex = globalIdx;
+                        globalIdx += 1;
+
+                        rows.push(
+                          <TableRow key={rowIndex}>
+                            {rowIndex === 0 && (
+                              <TableCell className="border" rowSpan={terminalRowspan}>
+                                {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
+                              </TableCell>
+                            )}
+                            {isFirstStaffRow && (
+                              <TableCell className="border" rowSpan={staffRowspan}>
+                                {staff}
+                              </TableCell>
+                            )}
+                            {isFirstAgentRow && (
+                              <TableCell className="border" rowSpan={agentRowspan}>
+                                {agent}
+                              </TableCell>
+                            )}
+                            <TableCell className="border">{result.terminal}</TableCell>
+                            <TableCell className="border">
+                              {result.sales.map((sale, i) => (
+                                <div key={i} className="text-nowrap">{sale.prize.name} = {sale.amount.toLocaleString()}</div>
+                              ))}
+                            </TableCell>
+                            <TableCell className="border">
+                              {result.sales.map((sale, i) => (
+                                <div key={i} className="text-nowrap">{sale.prize.name} = {(sale.amount * sale.prize.commission / 100).toLocaleString()}</div>
+                              ))}
+                            </TableCell>
+                            <TableCell className="border">
+                              {result.win.map((win, i) => (
+                                <div key={i}>{win.prize} = {win.amount.toLocaleString()}</div>
+                              ))}
+                            </TableCell>
+                            {rowIndex === 0 && (
+                              <TableCell className="border" rowSpan={terminalRowspan}>
+                                {totalTerminalWin.toLocaleString()}
+                              </TableCell>
+                            )}
+                            {rowIndex === 0 && (
+                              <TableCell className="border" rowSpan={terminalRowspan}>
+                                {(totalTerminalSales - totalTerminalWin).toLocaleString()}
+                              </TableCell>
+                            )}
+                            {rowIndex === 0 && (
+                              <TableCell className="border" rowSpan={terminalRowspan}>
+                                {totalTerminalSales - totalTerminalWin > 0 ? (
+                                  <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
+                                ) : (
+                                  <Badge variant="destructive">Red</Badge>
+                                )}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+
+                        isFirstStaffRow = false;
+                        isFirstAgentRow = false;
+                      });
                     });
-                  });
+                  }
                 });
 
                 return rows;
