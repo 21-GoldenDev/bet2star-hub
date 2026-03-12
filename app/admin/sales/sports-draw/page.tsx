@@ -531,6 +531,114 @@ export default function SportsDrawSalesPage() {
               {!filteredTerminalResults.length && (
                 <TableRow>
                   <TableCell className="border" colSpan={10}>
+                    No agent sales data available
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          <div className="font-semibold text-2xl">Terminal Sales</div>
+          <Table className="text-center border">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="border text-center">Week</TableHead>
+                <TableHead className="border text-center">Staff</TableHead>
+                <TableHead className="border text-center">Agent</TableHead>
+                <TableHead className="border text-center">Terminal</TableHead>
+                <TableHead className="border text-center">Sales</TableHead>
+                <TableHead className="border text-center">Payable</TableHead>
+                <TableHead className="border text-center">Win</TableHead>
+                <TableHead className="border text-center">Total Win</TableHead>
+                <TableHead className="border text-center">Bal Company</TableHead>
+                <TableHead className="border text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(() => {
+                const grouped: { [staff: string]: { [agent: string]: TerminalResult[] } } = {};
+                filteredTerminalResults.forEach((result) => {
+                  if (!grouped[result.staff]) grouped[result.staff] = {};
+                  if (!grouped[result.staff][result.agent]) grouped[result.staff][result.agent] = [];
+                  grouped[result.staff][result.agent].push(result);
+                });
+
+                const rows: React.ReactElement[] = [];
+                const terminalRowspan = filteredTerminalResults.length;
+                let globalIdx = 0;
+
+                Object.entries(grouped).forEach(([staff, agents]) => {
+                  const staffRowspan = Object.values(agents).reduce((sum, terminals) => sum + terminals.length, 0);
+                  let isFirstStaffRow = true;
+
+                  Object.entries(agents).forEach(([agent, terminals]) => {
+                    const agentRowspan = terminals.length;
+                    let isFirstAgentRow = true;
+
+                    terminals.forEach((result) => {
+                      const rowIndex = globalIdx;
+                      globalIdx += 1;
+
+                      rows.push(
+                        <TableRow key={rowIndex}>
+                          {rowIndex === 0 && (
+                            <TableCell className="border" rowSpan={terminalRowspan}>
+                              {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
+                            </TableCell>
+                          )}
+                          {isFirstStaffRow && (
+                            <TableCell className="border" rowSpan={staffRowspan}>
+                              {staff}
+                            </TableCell>
+                          )}
+                          {isFirstAgentRow && (
+                            <TableCell className="border" rowSpan={agentRowspan}>
+                              {agent}
+                            </TableCell>
+                          )}
+                          <TableCell className="border">{result.terminal}</TableCell>
+                          <TableCell className="border">
+                            {result.sales.reduce((s, sale) => s + sale.amount, 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="border">
+                            {result.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="border">
+                            {result.win.reduce((s, w) => s + w.amount, 0).toLocaleString()}
+                          </TableCell>
+                          {rowIndex === 0 && (
+                            <TableCell className="border" rowSpan={terminalRowspan}>
+                              {totalTerminalWin.toLocaleString()}
+                            </TableCell>
+                          )}
+                          {rowIndex === 0 && (
+                            <TableCell className="border" rowSpan={terminalRowspan}>
+                              {(totalTerminalSales - totalTerminalWin).toLocaleString()}
+                            </TableCell>
+                          )}
+                          {rowIndex === 0 && (
+                            <TableCell className="border" rowSpan={terminalRowspan}>
+                              {totalTerminalSales - totalTerminalWin > 0 ? (
+                                <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
+                              ) : (
+                                <Badge variant="destructive">Red</Badge>
+                              )}
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+
+                      isFirstStaffRow = false;
+                      isFirstAgentRow = false;
+                    });
+                  });
+                });
+
+                return rows;
+              })()}
+              {!filteredTerminalResults.length && (
+                <TableRow>
+                  <TableCell className="border" colSpan={10}>
                     No terminal sales data available
                   </TableCell>
                 </TableRow>
