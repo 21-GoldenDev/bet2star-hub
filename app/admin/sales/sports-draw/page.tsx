@@ -611,23 +611,15 @@ export default function SportsDrawSalesPage() {
                     <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
                     <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
                     <TableCell className="border">{row.win.toLocaleString()}</TableCell>
-                    {idx === 0 && (
-                      <>
-                        <TableCell className="border" rowSpan={paginatedStaffRows.length}>
-                          {staffTabTotalWin.toLocaleString()}
-                        </TableCell>
-                        <TableCell className="border" rowSpan={paginatedStaffRows.length}>
-                          {(staffTabTotalSales - staffTabTotalWin).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="border" rowSpan={paginatedStaffRows.length}>
-                          {staffTabTotalSales - staffTabTotalWin > 0 ? (
-                            <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
-                          ) : (
-                            <Badge variant="destructive">Red</Badge>
-                          )}
-                        </TableCell>
-                      </>
-                    )}
+                    <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                    <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
+                    <TableCell className="border">
+                      {row.sales - row.win > 0 ? (
+                        <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
+                      ) : (
+                        <Badge variant="destructive">Red</Badge>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {!staffRows.length && (
@@ -689,25 +681,15 @@ export default function SportsDrawSalesPage() {
                           <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
                           <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
                           <TableCell className="border">{row.win.toLocaleString()}</TableCell>
-                          {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
-                              {agentTabTotalWin.toLocaleString()}
-                            </TableCell>
-                          )}
-                          {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
-                              {(agentTabTotalSales - agentTabTotalWin).toLocaleString()}
-                            </TableCell>
-                          )}
-                          {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
-                              {agentTabTotalSales - agentTabTotalWin > 0 ? (
-                                <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
-                              ) : (
-                                <Badge variant="destructive">Red</Badge>
-                              )}
-                            </TableCell>
-                          )}
+                          <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                          <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
+                          <TableCell className="border">
+                            {row.sales - row.win > 0 ? (
+                              <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
+                            ) : (
+                              <Badge variant="destructive">Red</Badge>
+                            )}
+                          </TableCell>
                         </TableRow>
                       );
                     });
@@ -784,25 +766,15 @@ export default function SportsDrawSalesPage() {
                             <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
                             <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
                             <TableCell className="border">{row.win.toLocaleString()}</TableCell>
-                            {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
-                                {terminalTabTotalWin.toLocaleString()}
-                              </TableCell>
-                            )}
-                            {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
-                                {(terminalTabTotalSales - terminalTabTotalWin).toLocaleString()}
-                              </TableCell>
-                            )}
-                            {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
-                                {terminalTabTotalSales - terminalTabTotalWin > 0 ? (
-                                  <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
-                                ) : (
-                                  <Badge variant="destructive">Red</Badge>
-                                )}
-                              </TableCell>
-                            )}
+                            <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                            <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
+                            <TableCell className="border">
+                              {row.sales - row.win > 0 ? (
+                                <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
+                              ) : (
+                                <Badge variant="destructive">Red</Badge>
+                              )}
+                            </TableCell>
                           </TableRow>
                         );
                       });
