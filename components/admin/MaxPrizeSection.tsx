@@ -209,7 +209,7 @@ export default function MaxPrizeSection({ gameId, gameType, maxPrize, loading, o
             {activeKeys.map((key) => (
               <div key={key} className="p-4 bg-muted rounded-lg">
                 <div className="text-sm text-muted-foreground mb-1">{key}</div>
-                <div className="text-2xl font-bold">{displayValues[key].toLocaleString()}</div>
+                <div className="font-bold">{displayValues[key].toLocaleString()}</div>
               </div>
             ))}
           </div>
