@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -62,6 +63,8 @@ const defaultSales = {
   online: 0,
 };
 
+const ITEMS_PER_PAGE = 10;
+
 export default function SportsDrawSalesPage() {
   const [weeks, setWeeks] = useState<GameWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>();
@@ -69,6 +72,9 @@ export default function SportsDrawSalesPage() {
   const [staffFilter, setStaffFilter] = useState("all");
   const [agentFilter, setAgentFilter] = useState("all");
   const [terminalFilter, setTerminalFilter] = useState("all");
+  const [staffPage, setStaffPage] = useState(1);
+  const [agentPage, setAgentPage] = useState(1);
+  const [terminalPage, setTerminalPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [totalResult, setTotalResult] = useState<TotalResult>({
     sales: defaultSales,
@@ -183,7 +189,22 @@ export default function SportsDrawSalesPage() {
     setStaffFilter("all");
     setAgentFilter("all");
     setTerminalFilter("all");
+    setStaffPage(1);
+    setAgentPage(1);
+    setTerminalPage(1);
   }, [selectedWeek]);
+
+  useEffect(() => {
+    setStaffPage(1);
+  }, [staffFilter]);
+
+  useEffect(() => {
+    setAgentPage(1);
+  }, [staffFilter, agentFilter]);
+
+  useEffect(() => {
+    setTerminalPage(1);
+  }, [staffFilter, agentFilter, terminalFilter]);
 
   useEffect(() => {
     if (staffFilter !== "all" && !staffOptions.includes(staffFilter)) {
@@ -250,6 +271,142 @@ export default function SportsDrawSalesPage() {
   const terminalTabTotalWin = terminalFilteredResults.reduce(
     (sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0),
     0
+  );
+
+  const staffRows = useMemo(() => {
+    const grouped: Record<string, TerminalResult[]> = {};
+    staffFilteredResults.forEach((result) => {
+      if (!grouped[result.staff]) grouped[result.staff] = [];
+      grouped[result.staff].push(result);
+    });
+
+    return Object.entries(grouped)
+      .map(([staff, terminals]) => ({
+        staff,
+        sales: terminals.reduce((sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0), 0),
+        payable: terminals.reduce(
+          (sum, r) =>
+            sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
+          0
+        ),
+        win: terminals.reduce((sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0), 0),
+      }))
+      .sort((a, b) => a.staff.localeCompare(b.staff));
+  }, [staffFilteredResults]);
+
+  const agentRows = useMemo(() => {
+    const grouped: Record<string, Record<string, TerminalResult[]>> = {};
+    agentFilteredResults.forEach((result) => {
+      if (!grouped[result.staff]) grouped[result.staff] = {};
+      if (!grouped[result.staff][result.agent]) grouped[result.staff][result.agent] = [];
+      grouped[result.staff][result.agent].push(result);
+    });
+
+    const rows: Array<{ staff: string; agent: string; sales: number; payable: number; win: number }> = [];
+    Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .forEach(([staff, agents]) => {
+        Object.entries(agents)
+          .sort(([a], [b]) => a.localeCompare(b))
+          .forEach(([agent, terminals]) => {
+            rows.push({
+              staff,
+              agent,
+              sales: terminals.reduce((sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0), 0),
+              payable: terminals.reduce(
+                (sum, r) =>
+                  sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
+                0
+              ),
+              win: terminals.reduce((sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0), 0),
+            });
+          });
+      });
+
+    return rows;
+  }, [agentFilteredResults]);
+
+  const terminalRows = useMemo(() => {
+    return [...terminalFilteredResults]
+      .sort((a, b) => {
+        const staffSort = a.staff.localeCompare(b.staff);
+        if (staffSort !== 0) return staffSort;
+        const agentSort = a.agent.localeCompare(b.agent);
+        if (agentSort !== 0) return agentSort;
+        return a.terminal.localeCompare(b.terminal);
+      })
+      .map((result) => ({
+        staff: result.staff,
+        agent: result.agent,
+        terminal: result.terminal,
+        sales: result.sales.reduce((s, sale) => s + sale.amount, 0),
+        payable: result.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
+        win: result.win.reduce((s, w) => s + w.amount, 0),
+      }));
+  }, [terminalFilteredResults]);
+
+  const staffTotalPages = Math.max(1, Math.ceil(staffRows.length / ITEMS_PER_PAGE));
+  const agentTotalPages = Math.max(1, Math.ceil(agentRows.length / ITEMS_PER_PAGE));
+  const terminalTotalPages = Math.max(1, Math.ceil(terminalRows.length / ITEMS_PER_PAGE));
+
+  useEffect(() => {
+    if (staffPage > staffTotalPages) setStaffPage(staffTotalPages);
+  }, [staffPage, staffTotalPages]);
+
+  useEffect(() => {
+    if (agentPage > agentTotalPages) setAgentPage(agentTotalPages);
+  }, [agentPage, agentTotalPages]);
+
+  useEffect(() => {
+    if (terminalPage > terminalTotalPages) setTerminalPage(terminalTotalPages);
+  }, [terminalPage, terminalTotalPages]);
+
+  const paginatedStaffRows = useMemo(() => {
+    const start = (staffPage - 1) * ITEMS_PER_PAGE;
+    return staffRows.slice(start, start + ITEMS_PER_PAGE);
+  }, [staffRows, staffPage]);
+
+  const paginatedAgentRows = useMemo(() => {
+    const start = (agentPage - 1) * ITEMS_PER_PAGE;
+    return agentRows.slice(start, start + ITEMS_PER_PAGE);
+  }, [agentRows, agentPage]);
+
+  const paginatedTerminalRows = useMemo(() => {
+    const start = (terminalPage - 1) * ITEMS_PER_PAGE;
+    return terminalRows.slice(start, start + ITEMS_PER_PAGE);
+  }, [terminalRows, terminalPage]);
+
+  const selectedWeekNumber = weeks.find((w) => w.id === selectedWeek)?.week || "-";
+
+  const renderPagination = (
+    currentPage: number,
+    totalPages: number,
+    totalItems: number,
+    setPage: (page: number) => void
+  ) => (
+    <div className="flex flex-wrap items-center justify-between gap-3 border rounded-md px-3 py-2">
+      <p className="text-sm text-muted-foreground">
+        Page {currentPage} of {totalPages} ({totalItems} records)
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
   );
 
   return (
@@ -443,79 +600,37 @@ export default function SportsDrawSalesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(() => {
-                  const grouped: { [staff: string]: { [agent: string]: TerminalResult[] } } = {};
-                  staffFilteredResults.forEach((result) => {
-                    if (!grouped[result.staff]) grouped[result.staff] = {};
-                    if (!grouped[result.staff][result.agent]) grouped[result.staff][result.agent] = [];
-                    grouped[result.staff][result.agent].push(result);
-                  });
-
-                  const rows: React.ReactElement[] = [];
-                  const terminalRowspan = staffFilteredResults.length;
-                  let globalIdx = 0;
-
-                  Object.entries(grouped).forEach(([staff, agents]) => {
-                    globalIdx += 1;
-
-                    const staffTerminals = Object.values(agents).flat();
-
-                    const staffTerminalSales = staffTerminals.reduce(
-                      (sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0),
-                      0
-                    );
-                    const staffTerminalPayable = staffTerminals.reduce(
-                      (sum, r) => sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
-                      0
-                    );
-                    const staffTerminalWin = staffTerminals.reduce(
-                      (sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0),
-                      0
-                    );
-
-                    rows.push(
-                      <TableRow key={globalIdx}>
-                        {globalIdx === 1 && (
-                          <TableCell className="border" rowSpan={terminalRowspan}>
-                            {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
-                          </TableCell>
-                        )}
-                        <TableCell className="border">
-                          {staff}
+                {paginatedStaffRows.map((row, idx) => (
+                  <TableRow key={`${row.staff}-${idx}`}>
+                    {idx === 0 && (
+                      <TableCell className="border" rowSpan={paginatedStaffRows.length}>
+                        {selectedWeekNumber}
+                      </TableCell>
+                    )}
+                    <TableCell className="border">{row.staff}</TableCell>
+                    <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
+                    <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
+                    <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                    {idx === 0 && (
+                      <>
+                        <TableCell className="border" rowSpan={paginatedStaffRows.length}>
+                          {staffTabTotalWin.toLocaleString()}
                         </TableCell>
-                        <TableCell className="border">
-                          {staffTerminalSales.toLocaleString()}
+                        <TableCell className="border" rowSpan={paginatedStaffRows.length}>
+                          {(staffTabTotalSales - staffTabTotalWin).toLocaleString()}
                         </TableCell>
-                        <TableCell className="border">
-                          {staffTerminalPayable.toLocaleString()}
+                        <TableCell className="border" rowSpan={paginatedStaffRows.length}>
+                          {staffTabTotalSales - staffTabTotalWin > 0 ? (
+                            <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
+                          ) : (
+                            <Badge variant="destructive">Red</Badge>
+                          )}
                         </TableCell>
-                        <TableCell className="border">
-                          {staffTerminalWin.toLocaleString()}
-                        </TableCell>
-                        {globalIdx === 1 && (
-                          <>
-                            <TableCell className="border" rowSpan={terminalRowspan}>
-                              {staffTabTotalWin.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="border" rowSpan={terminalRowspan}>
-                              {(staffTabTotalSales - staffTabTotalWin).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="border" rowSpan={terminalRowspan}>
-                              {staffTabTotalSales - staffTabTotalWin > 0 ? (
-                                <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
-                              ) : (
-                                <Badge variant="destructive">Red</Badge>
-                              )}
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    );
-                  });
-
-                  return rows;
-                })()}
-                {!staffFilteredResults.length && (
+                      </>
+                    )}
+                  </TableRow>
+                ))}
+                {!staffRows.length && (
                   <TableRow>
                     <TableCell className="border" colSpan={10}>
                       No staff sales data available
@@ -524,6 +639,7 @@ export default function SportsDrawSalesPage() {
                 )}
               </TableBody>
             </Table>
+            {renderPagination(staffPage, staffTotalPages, staffRows.length, setStaffPage)}
           </TabsContent>
 
           <TabsContent value="agent" className="space-y-4">
@@ -543,74 +659,48 @@ export default function SportsDrawSalesPage() {
               </TableHeader>
               <TableBody>
                 {(() => {
-                  const grouped: { [staff: string]: { [agent: string]: TerminalResult[] } } = {};
-                  agentFilteredResults.forEach((result) => {
-                    if (!grouped[result.staff]) grouped[result.staff] = {};
-                    if (!grouped[result.staff][result.agent]) grouped[result.staff][result.agent] = [];
-                    grouped[result.staff][result.agent].push(result);
-                  });
+                  const groupedRows = paginatedAgentRows.reduce((acc, row) => {
+                    if (!acc[row.staff]) acc[row.staff] = [];
+                    acc[row.staff].push(row);
+                    return acc;
+                  }, {} as Record<string, typeof paginatedAgentRows>);
 
                   const rows: React.ReactElement[] = [];
-                  const agentRowSpan = Object.entries(grouped).reduce((sum, [, agents]) => sum + Object.values(agents).length, 0);
                   let globalIdx = 0;
 
-                  Object.entries(grouped).forEach(([staff, agents]) => {
-                    const staffRowspan = Object.values(agents).length;
-                    let isFirstStaffRow = true;
-
-                    Object.entries(agents).forEach(([agent, terminals]) => {
+                  Object.entries(groupedRows).forEach(([staff, agents]) => {
+                    agents.forEach((row, idx) => {
                       const rowIndex = globalIdx;
                       globalIdx += 1;
 
-                      const agentTerminalSales = terminals.reduce(
-                        (sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0),
-                        0
-                      );
-                      const agentTerminalPayable = terminals.reduce(
-                        (sum, r) => sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
-                        0
-                      );
-                      const agentTerminalWin = terminals.reduce(
-                        (sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0),
-                        0
-                      );
-
                       rows.push(
-                        <TableRow key={rowIndex}>
+                        <TableRow key={`${staff}-${row.agent}-${idx}`}>
                           {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={agentRowSpan}>
-                              {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
+                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
+                              {selectedWeekNumber}
                             </TableCell>
                           )}
-                          {isFirstStaffRow && (
-                            <TableCell className="border" rowSpan={staffRowspan}>
+                          {idx === 0 && (
+                            <TableCell className="border" rowSpan={agents.length}>
                               {staff}
                             </TableCell>
                           )}
-                          <TableCell className="border">
-                            {agent}
-                          </TableCell>
-                          <TableCell className="border">
-                            {agentTerminalSales.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="border">
-                            {agentTerminalPayable.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="border">
-                            {agentTerminalWin.toLocaleString()}
-                          </TableCell>
+                          <TableCell className="border">{row.agent}</TableCell>
+                          <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
+                          <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
+                          <TableCell className="border">{row.win.toLocaleString()}</TableCell>
                           {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={agentRowSpan}>
+                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
                               {agentTabTotalWin.toLocaleString()}
                             </TableCell>
                           )}
                           {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={agentRowSpan}>
+                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
                               {(agentTabTotalSales - agentTabTotalWin).toLocaleString()}
                             </TableCell>
                           )}
                           {rowIndex === 0 && (
-                            <TableCell className="border" rowSpan={agentRowSpan}>
+                            <TableCell className="border" rowSpan={paginatedAgentRows.length}>
                               {agentTabTotalSales - agentTabTotalWin > 0 ? (
                                 <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
                               ) : (
@@ -620,14 +710,12 @@ export default function SportsDrawSalesPage() {
                           )}
                         </TableRow>
                       );
-
-                      isFirstStaffRow = false;
                     });
                   });
 
                   return rows;
                 })()}
-                {!agentFilteredResults.length && (
+                {!agentRows.length && (
                   <TableRow>
                     <TableCell className="border" colSpan={10}>
                       No agent sales data available
@@ -636,6 +724,7 @@ export default function SportsDrawSalesPage() {
                 )}
               </TableBody>
             </Table>
+            {renderPagination(agentPage, agentTotalPages, agentRows.length, setAgentPage)}
           </TabsContent>
 
           <TabsContent value="terminal" className="space-y-4">
@@ -656,68 +745,57 @@ export default function SportsDrawSalesPage() {
               </TableHeader>
               <TableBody>
                 {(() => {
-                  const grouped: { [staff: string]: { [agent: string]: TerminalResult[] } } = {};
-                  terminalFilteredResults.forEach((result) => {
-                    if (!grouped[result.staff]) grouped[result.staff] = {};
-                    if (!grouped[result.staff][result.agent]) grouped[result.staff][result.agent] = [];
-                    grouped[result.staff][result.agent].push(result);
-                  });
+                  const groupedRows = paginatedTerminalRows.reduce((acc, row) => {
+                    if (!acc[row.staff]) acc[row.staff] = {};
+                    if (!acc[row.staff][row.agent]) acc[row.staff][row.agent] = [];
+                    acc[row.staff][row.agent].push(row);
+                    return acc;
+                  }, {} as Record<string, Record<string, typeof paginatedTerminalRows>>);
 
                   const rows: React.ReactElement[] = [];
-                  const terminalRowspan = terminalFilteredResults.length;
                   let globalIdx = 0;
 
-                  Object.entries(grouped).forEach(([staff, agents]) => {
-                    const staffRowspan = Object.values(agents).reduce((sum, terminals) => sum + terminals.length, 0);
-                    let isFirstStaffRow = true;
+                  Object.entries(groupedRows).forEach(([staff, agents]) => {
+                    const staffRowSpan = Object.values(agents).reduce((sum, terminals) => sum + terminals.length, 0);
 
-                    Object.entries(agents).forEach(([agent, terminals]) => {
-                      const agentRowspan = terminals.length;
-                      let isFirstAgentRow = true;
-
-                      terminals.forEach((result) => {
+                    Object.entries(agents).forEach(([agent, terminals], agentIdx) => {
+                      terminals.forEach((row, terminalIdx) => {
                         const rowIndex = globalIdx;
                         globalIdx += 1;
 
                         rows.push(
-                          <TableRow key={rowIndex}>
+                          <TableRow key={`${staff}-${agent}-${row.terminal}-${terminalIdx}`}>
                             {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={terminalRowspan}>
-                                {weeks.find((w) => w.id === selectedWeek)?.week || "-"}
+                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
+                                {selectedWeekNumber}
                               </TableCell>
                             )}
-                            {isFirstStaffRow && (
-                              <TableCell className="border" rowSpan={staffRowspan}>
+                            {agentIdx === 0 && terminalIdx === 0 && (
+                              <TableCell className="border" rowSpan={staffRowSpan}>
                                 {staff}
                               </TableCell>
                             )}
-                            {isFirstAgentRow && (
-                              <TableCell className="border" rowSpan={agentRowspan}>
+                            {terminalIdx === 0 && (
+                              <TableCell className="border" rowSpan={terminals.length}>
                                 {agent}
                               </TableCell>
                             )}
-                            <TableCell className="border">{result.terminal}</TableCell>
-                            <TableCell className="border">
-                              {result.sales.reduce((s, sale) => s + sale.amount, 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="border">
-                              {result.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0).toLocaleString()}
-                            </TableCell>
-                            <TableCell className="border">
-                              {result.win.reduce((s, w) => s + w.amount, 0).toLocaleString()}
-                            </TableCell>
+                            <TableCell className="border">{row.terminal}</TableCell>
+                            <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
+                            <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
+                            <TableCell className="border">{row.win.toLocaleString()}</TableCell>
                             {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={terminalRowspan}>
+                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
                                 {terminalTabTotalWin.toLocaleString()}
                               </TableCell>
                             )}
                             {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={terminalRowspan}>
+                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
                                 {(terminalTabTotalSales - terminalTabTotalWin).toLocaleString()}
                               </TableCell>
                             )}
                             {rowIndex === 0 && (
-                              <TableCell className="border" rowSpan={terminalRowspan}>
+                              <TableCell className="border" rowSpan={paginatedTerminalRows.length}>
                                 {terminalTabTotalSales - terminalTabTotalWin > 0 ? (
                                   <Badge className="bg-green-600 hover:bg-green-700">Green</Badge>
                                 ) : (
@@ -727,16 +805,13 @@ export default function SportsDrawSalesPage() {
                             )}
                           </TableRow>
                         );
-
-                        isFirstStaffRow = false;
-                        isFirstAgentRow = false;
                       });
                     });
                   });
 
                   return rows;
                 })()}
-                {!terminalFilteredResults.length && (
+                {!terminalRows.length && (
                   <TableRow>
                     <TableCell className="border" colSpan={10}>
                       No terminal sales data available
@@ -745,6 +820,7 @@ export default function SportsDrawSalesPage() {
                 )}
               </TableBody>
             </Table>
+            {renderPagination(terminalPage, terminalTotalPages, terminalRows.length, setTerminalPage)}
           </TabsContent>
         </Tabs>
       )}
