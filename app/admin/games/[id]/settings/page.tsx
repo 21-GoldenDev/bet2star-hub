@@ -16,6 +16,7 @@ import SportsMatchesSection from "@/components/admin/SportsMatchesSection";
 import LottoNumbersSection from "@/components/admin/LottoNumbersSection";
 import MaxStakeSection from "@/components/admin/MaxStakeSection";
 import TerminalCommissionsSection from "@/components/admin/TerminalCommissionsSection";
+import MaxPrizeSection from "@/components/admin/MaxPrizeSection";
 
 interface GamePrizeWithInfo {
   id: string;
@@ -42,6 +43,7 @@ export default function GameSettingsPage() {
   const [allPrizes, setAllPrizes] = useState<PrizeInfo[]>([]);
   const [gamePrizes, setGamePrizes] = useState<GamePrizeWithInfo[]>([]);
   const [maxStakes, setMaxStakes] = useState<MaxStake[]>([]);
+  const [maxPrize, setMaxPrize] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
@@ -101,6 +103,14 @@ export default function GameSettingsPage() {
         if (maxStakesRes.ok) {
           const maxStakesData = await maxStakesRes.json();
           setMaxStakes(maxStakesData.maxStakes || []);
+        }
+
+        if (gameType === "sports" || gameType === "sports_draw") {
+          const maxPrizeRes = await fetch(`/api/admin/games/${gameId}/max-prize`);
+          if (maxPrizeRes.ok) {
+            const maxPrizeData = await maxPrizeRes.json();
+            setMaxPrize(maxPrizeData.maxPrize || {});
+          }
         }
       }
 
@@ -212,6 +222,13 @@ export default function GameSettingsPage() {
       )}
       {(game?.type === "sports" || game?.type === "sports_draw") ? (
         <>
+          <MaxPrizeSection
+            gameId={gameId}
+            gameType={game.type as "sports" | "sports_draw"}
+            maxPrize={maxPrize}
+            loading={loading}
+            onRefresh={fetchData}
+          />
           <TerminalCommissionsSection
             gameId={gameId}
             initialCommissions={terminalCommissions}

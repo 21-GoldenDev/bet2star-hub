@@ -13,6 +13,22 @@ const supabase = createClient(
   supabaseServiceKey ?? ""
 );
 
+const SPORTS_DEFAULT_MAX_PRIZE = {
+  "1": 2,
+  X: 1.6,
+  "2": 1.9,
+  "1X": 1.1,
+  "12": 2.1,
+  X2: 3.2,
+  "OV 2.5": 3,
+  "UN 2.5": 3.5,
+  GG: 3.1,
+};
+
+const SPORTS_DRAW_DEFAULT_MAX_PRIZE = {
+  X: 1.6,
+};
+
 export async function GET(request: NextRequest) {
   try {
     const { data, error } = await supabase
@@ -117,6 +133,12 @@ export async function POST(request: NextRequest) {
           start_time: startTime,
           end_time: endTime,
           results: results || null,
+          max_prize:
+            type === "sports"
+              ? SPORTS_DEFAULT_MAX_PRIZE
+              : type === "sports_draw"
+                ? SPORTS_DRAW_DEFAULT_MAX_PRIZE
+                : null,
         },
       ])
       .select()
