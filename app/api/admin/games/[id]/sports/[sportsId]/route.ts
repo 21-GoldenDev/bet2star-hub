@@ -11,6 +11,24 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? "");
 
+const SPORTS_MAX_PRIZE_KEYS = ["1", "X", "2", "1X", "12", "X2", "OV 2.5", "UN 2.5", "GG"] as const;
+
+const SPORTS_DEFAULT_MAX_PRIZE: Record<string, number> = {
+  "1": 2,
+  X: 1.6,
+  "2": 1.9,
+  "1X": 1.1,
+  "12": 2.1,
+  X2: 3.2,
+  "OV 2.5": 3,
+  "UN 2.5": 3.5,
+  GG: 3.1,
+};
+
+const SPORTS_DRAW_DEFAULT_MAX_PRIZE: Record<string, number> = {
+  X: 1.6,
+};
+
 function extractSportsDrawOddsMap(prizeIds: any): Record<number, number> {
   if (!prizeIds || typeof prizeIds !== "object" || Array.isArray(prizeIds)) return {};
   const entries = Array.isArray(prizeIds.draw_odds) ? prizeIds.draw_odds : [];
@@ -45,7 +63,7 @@ export async function PUT(
     const { id, sportsId } = await params;
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .select("id, type, week, start_time, end_time, prize_ids")
+      .select("id, type, week, start_time, end_time, prize_ids, max_prize")
       .eq("id", id)
       .single();
 
@@ -85,9 +103,52 @@ export async function PUT(
     if (home_goal !== undefined) updateData.home_goal = home_goal;
     if (away_goal !== undefined) updateData.away_goal = away_goal;
     if (prizes !== undefined) {
-      updateData.prizes = Array.isArray(prizes) && prizes.length > 0
+      const submittedPrizes = Array.isArray(prizes) && prizes.length > 0
         ? prizes
         : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+      const maxPrizeConfig = game.max_prize && typeof game.max_prize === "object" && !Array.isArray(game.max_prize)
+        ? game.max_prize
+        : {};
+
+      if (game.type === "sports") {
+        for (let i = 0; i < submittedPrizes.length && i < SPORTS_MAX_PRIZE_KEYS.length; i++) {
+          const prizeValue = Number(submittedPrizes[i]);
+          if (!Number.isFinite(prizeValue)) continue;
+
+          const key = SPORTS_MAX_PRIZE_KEYS[i];
+          const configuredLimit = Number(maxPrizeConfig[key]);
+          const limit = Number.isFinite(configuredLimit) && configuredLimit > 0
+            ? configuredLimit
+            : SPORTS_DEFAULT_MAX_PRIZE[key];
+
+          if (prizeValue > limit) {
+            return NextResponse.json(
+              { error: `Prize for ${key} cannot be greater than max_prize (${limit})` },
+              { status: 400 }
+            );
+          }
+        }
+      } else {
+        const configuredDrawLimit = Number(maxPrizeConfig.X);
+        const drawLimit = Number.isFinite(configuredDrawLimit) && configuredDrawLimit > 0
+          ? configuredDrawLimit
+          : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
+
+        for (const value of submittedPrizes) {
+          const prizeValue = Number(value);
+          if (!Number.isFinite(prizeValue)) continue;
+
+          if (prizeValue > drawLimit) {
+            return NextResponse.json(
+              { error: `Prize for X cannot be greater than max_prize (${drawLimit})` },
+              { status: 400 }
+            );
+          }
+        }
+      }
+
+      updateData.prizes = submittedPrizes;
     }
     if (status !== undefined) {
       updateData.status = status === "void" ? "void" : "active";

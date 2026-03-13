@@ -59,12 +59,13 @@ const DEFAULT_MATCH = {
 interface Props {
   gameId: string;
   sports: SportsMatch[];
+  maxPrize: Record<string, number>;
   loading: boolean;
   drawMode: boolean;
   onRefresh: () => void;
 }
 
-export default function SportsMatchesSection({ gameId, sports, loading, drawMode, onRefresh }: Props) {
+export default function SportsMatchesSection({ gameId, sports, maxPrize, loading, drawMode, onRefresh }: Props) {
   const [isAddSportsOpen, setIsAddSportsOpen] = useState(false);
   const [isManageMetaOpen, setIsManageMetaOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -80,6 +81,36 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
   const [metaLoading, setMetaLoading] = useState(false);
   const [managing, setManaging] = useState(false);
   const { toast } = useToast();
+
+  const MAX_PRIZE_KEYS = ["1", "X", "2", "1X", "12", "X2", "OV 2.5", "UN 2.5", "GG"] as const;
+  const SPORTS_DEFAULT_MAX_PRIZE: Record<string, number> = {
+    "1": 2,
+    X: 1.6,
+    "2": 1.9,
+    "1X": 1.1,
+    "12": 2.1,
+    X2: 3.2,
+    "OV 2.5": 3,
+    "UN 2.5": 3.5,
+    GG: 3.1,
+  };
+  const SPORTS_DRAW_DEFAULT_MAX_PRIZE: Record<string, number> = { X: 1.6 };
+
+  const getPrizeLimitByIndex = (index: number) => {
+    if (drawMode) {
+      const configured = Number(maxPrize.X);
+      return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
+    }
+
+    const key = MAX_PRIZE_KEYS[index];
+    const configured = Number(maxPrize[key]);
+    return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DEFAULT_MAX_PRIZE[key];
+  };
+
+  const clampPrizeValue = (value: number, index: number) => {
+    const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    return Math.min(safeValue, getPrizeLimitByIndex(index));
+  };
 
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
   const addDialogLeagueOptions = leagues.filter((league) => league.country_id === addSportsCountryId);
@@ -278,6 +309,18 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
       toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
       return;
     }
+
+    const firstExceeded = sportsForm.prizes.findIndex((value, index) => Number(value) > getPrizeLimitByIndex(index));
+    if (firstExceeded >= 0) {
+      const label = drawMode ? "X" : PRIZE_LABELS[firstExceeded];
+      toast({
+        title: "Error",
+        description: `${label} prize cannot be greater than max prize`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       const startIso = sportsForm.start_time ? new Date(sportsForm.start_time).toISOString() : null;
@@ -570,9 +613,10 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
                       <Input
                         type="number"
                         min="0"
+                        max={getPrizeLimitByIndex(0)}
                         value={sportsForm.prizes[0] ?? 0}
                         onChange={(e) => {
-                          const value = Math.max(0, Number(e.target.value));
+                          const value = clampPrizeValue(Number(e.target.value), 0);
                           const updated = [...sportsForm.prizes];
                           updated[0] = value;
                           setSportsForm({ ...sportsForm, prizes: updated });
@@ -590,9 +634,10 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
                           <Input
                             type="number"
                             min="0"
+                            max={getPrizeLimitByIndex(idx)}
                             value={sportsForm.prizes[idx] ?? 0}
                             onChange={(e) => {
-                              const value = Math.max(0, Number(e.target.value));
+                              const value = clampPrizeValue(Number(e.target.value), idx);
                               const updated = [...sportsForm.prizes];
                               updated[idx] = value;
                               setSportsForm({ ...sportsForm, prizes: updated });
@@ -654,6 +699,7 @@ export default function SportsMatchesSection({ gameId, sports, loading, drawMode
               countries={countries}
               leagues={leagues}
               gameId={gameId}
+              maxPrize={maxPrize}
               drawMode={drawMode}
               onDelete={openMatchDeleteDialog}
               onRefresh={onRefresh}

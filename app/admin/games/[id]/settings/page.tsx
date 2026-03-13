@@ -238,6 +238,7 @@ export default function GameSettingsPage() {
           <SportsMatchesSection
             gameId={gameId}
             sports={sports}
+            maxPrize={maxPrize}
             loading={loading}
             drawMode={game.type === "sports_draw"}
             onRefresh={fetchData}

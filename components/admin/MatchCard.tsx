@@ -35,14 +35,44 @@ interface Props {
   countries: SportsCountry[];
   leagues: SportsLeague[];
   gameId: string;
+  maxPrize: Record<string, number>;
   drawMode?: boolean;
   onDelete: (match: SportsMatch) => void;
   onRefresh: () => void;
 }
 
-export default function MatchCard({ match, countries, leagues, gameId, drawMode = false, onDelete, onRefresh }: Props) {
+export default function MatchCard({ match, countries, leagues, gameId, maxPrize, drawMode = false, onDelete, onRefresh }: Props) {
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
   const EMPTY_PRIZES = drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const MAX_PRIZE_KEYS = ["1", "X", "2", "1X", "12", "X2", "OV 2.5", "UN 2.5", "GG"] as const;
+  const SPORTS_DEFAULT_MAX_PRIZE: Record<string, number> = {
+    "1": 2,
+    X: 1.6,
+    "2": 1.9,
+    "1X": 1.1,
+    "12": 2.1,
+    X2: 3.2,
+    "OV 2.5": 3,
+    "UN 2.5": 3.5,
+    GG: 3.1,
+  };
+  const SPORTS_DRAW_DEFAULT_MAX_PRIZE: Record<string, number> = { X: 1.6 };
+
+  const getPrizeLimitByIndex = (index: number) => {
+    if (drawMode) {
+      const configured = Number(maxPrize.X);
+      return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
+    }
+
+    const key = MAX_PRIZE_KEYS[index];
+    const configured = Number(maxPrize[key]);
+    return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DEFAULT_MAX_PRIZE[key];
+  };
+
+  const clampPrizeValue = (value: number, index: number) => {
+    const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    return Math.min(safeValue, getPrizeLimitByIndex(index));
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -120,6 +150,17 @@ export default function MatchCard({ match, countries, leagues, gameId, drawMode 
   };
 
   const saveInlineEdit = async () => {
+    const firstExceeded = editRowForm.prizes.findIndex((value, index) => Number(value) > getPrizeLimitByIndex(index));
+    if (firstExceeded >= 0) {
+      const label = drawMode ? "X" : PRIZE_LABELS[firstExceeded];
+      toast({
+        title: "Error",
+        description: `${label} prize cannot be greater than max prize`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       const startIso = editRowForm.start_time ? new Date(editRowForm.start_time).toISOString() : null;
@@ -300,10 +341,11 @@ export default function MatchCard({ match, countries, leagues, gameId, drawMode 
                 <Input
                   type="number"
                   min="0"
+                  max={getPrizeLimitByIndex(0)}
                   className="h-9 text-xs"
                   value={editRowForm.prizes[0] ?? 0}
                   onChange={(e) => {
-                    const value = Math.max(0, Number(e.target.value));
+                    const value = clampPrizeValue(Number(e.target.value), 0);
                     const updated = [...editRowForm.prizes];
                     updated[0] = value;
                     setEditRowForm({ ...editRowForm, prizes: updated });
@@ -321,10 +363,11 @@ export default function MatchCard({ match, countries, leagues, gameId, drawMode 
                     <Input
                       type="number"
                       min="0"
+                      max={getPrizeLimitByIndex(idx)}
                       className="h-9 text-xs"
                       value={editRowForm.prizes[idx] ?? 0}
                       onChange={(e) => {
-                        const value = Math.max(0, Number(e.target.value));
+                        const value = clampPrizeValue(Number(e.target.value), idx);
                         const updated = [...editRowForm.prizes];
                         updated[idx] = value;
                         setEditRowForm({ ...editRowForm, prizes: updated });
