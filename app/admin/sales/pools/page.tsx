@@ -332,16 +332,41 @@ export default function PoolsSalesPage() {
     });
 
     return Object.entries(grouped)
-      .map(([staff, terminals]) => ({
-        staff,
-        sales: terminals.reduce((sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0), 0),
-        payable: terminals.reduce(
-          (sum, r) =>
-            sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
-          0
-        ),
-        win: terminals.reduce((sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0), 0),
-      }))
+      .map(([staff, terminals]) => {
+        const salesByPrize: Record<string, number> = {};
+        const payableByPrize: Record<string, number> = {};
+        const winByPrize: Record<string, number> = {};
+
+        terminals.forEach((terminal) => {
+          terminal.sales.forEach((sale) => {
+            const prize = sale.prize.name || "Unknown";
+            salesByPrize[prize] = (salesByPrize[prize] || 0) + sale.amount;
+            payableByPrize[prize] =
+              (payableByPrize[prize] || 0) + (sale.amount * sale.prize.commission) / 100;
+          });
+
+          terminal.win.forEach((win) => {
+            const prize = win.prize || "Unknown";
+            winByPrize[prize] = (winByPrize[prize] || 0) + win.amount;
+          });
+        });
+
+        return {
+          staff,
+          sales: Object.values(salesByPrize).reduce((sum, value) => sum + value, 0),
+          payable: Object.values(payableByPrize).reduce((sum, value) => sum + value, 0),
+          win: Object.values(winByPrize).reduce((sum, value) => sum + value, 0),
+          salesLines: Object.entries(salesByPrize)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([label, value]) => ({ label, value })),
+          payableLines: Object.entries(payableByPrize)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([label, value]) => ({ label, value })),
+          winLines: Object.entries(winByPrize)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([label, value]) => ({ label, value })),
+        };
+      })
       .sort((a, b) => a.staff.localeCompare(b.staff));
   }, [staffFilteredResults]);
 
@@ -353,23 +378,55 @@ export default function PoolsSalesPage() {
       grouped[result.staff][result.agent].push(result);
     });
 
-    const rows: Array<{ staff: string; agent: string; sales: number; payable: number; win: number }> = [];
+    const rows: Array<{
+      staff: string;
+      agent: string;
+      sales: number;
+      payable: number;
+      win: number;
+      salesLines: Array<{ label: string; value: number }>;
+      payableLines: Array<{ label: string; value: number }>;
+      winLines: Array<{ label: string; value: number }>;
+    }> = [];
     Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b))
       .forEach(([staff, agents]) => {
         Object.entries(agents)
           .sort(([a], [b]) => a.localeCompare(b))
           .forEach(([agent, terminals]) => {
+            const salesByPrize: Record<string, number> = {};
+            const payableByPrize: Record<string, number> = {};
+            const winByPrize: Record<string, number> = {};
+
+            terminals.forEach((terminal) => {
+              terminal.sales.forEach((sale) => {
+                const prize = sale.prize.name || "Unknown";
+                salesByPrize[prize] = (salesByPrize[prize] || 0) + sale.amount;
+                payableByPrize[prize] =
+                  (payableByPrize[prize] || 0) + (sale.amount * sale.prize.commission) / 100;
+              });
+
+              terminal.win.forEach((win) => {
+                const prize = win.prize || "Unknown";
+                winByPrize[prize] = (winByPrize[prize] || 0) + win.amount;
+              });
+            });
+
             rows.push({
               staff,
               agent,
-              sales: terminals.reduce((sum, r) => sum + r.sales.reduce((s, sale) => s + sale.amount, 0), 0),
-              payable: terminals.reduce(
-                (sum, r) =>
-                  sum + r.sales.reduce((s, sale) => s + (sale.amount * sale.prize.commission) / 100, 0),
-                0
-              ),
-              win: terminals.reduce((sum, r) => sum + r.win.reduce((s, w) => s + w.amount, 0), 0),
+              sales: Object.values(salesByPrize).reduce((sum, value) => sum + value, 0),
+              payable: Object.values(payableByPrize).reduce((sum, value) => sum + value, 0),
+              win: Object.values(winByPrize).reduce((sum, value) => sum + value, 0),
+              salesLines: Object.entries(salesByPrize)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([label, value]) => ({ label, value })),
+              payableLines: Object.entries(payableByPrize)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([label, value]) => ({ label, value })),
+              winLines: Object.entries(winByPrize)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([label, value]) => ({ label, value })),
             });
           });
       });
@@ -727,9 +784,21 @@ export default function PoolsSalesPage() {
                       </TableCell>
                     )}
                     <TableCell className="border">{row.staff}</TableCell>
-                    <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
-                    <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
-                    <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                    <TableCell className="border">
+                      {row.salesLines.map((sale, i) => (
+                        <div key={i} className="text-nowrap">{sale.label} = {sale.value.toLocaleString()}</div>
+                      ))}
+                    </TableCell>
+                    <TableCell className="border">
+                      {row.payableLines.map((sale, i) => (
+                        <div key={i} className="text-nowrap">{sale.label} = {sale.value.toLocaleString()}</div>
+                      ))}
+                    </TableCell>
+                    <TableCell className="border">
+                      {row.winLines.map((win, i) => (
+                        <div key={i} className="text-nowrap">{win.label} = {win.value.toLocaleString()}</div>
+                      ))}
+                    </TableCell>
                     <TableCell className="border">{row.win.toLocaleString()}</TableCell>
                     <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
                     <TableCell className="border">
@@ -838,9 +907,21 @@ export default function PoolsSalesPage() {
                             </TableCell>
                           )}
                           <TableCell className="border">{row.agent}</TableCell>
-                          <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
-                          <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
-                          <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                          <TableCell className="border">
+                            {row.salesLines.map((sale, i) => (
+                              <div key={i} className="text-nowrap">{sale.label} = {sale.value.toLocaleString()}</div>
+                            ))}
+                          </TableCell>
+                          <TableCell className="border">
+                            {row.payableLines.map((sale, i) => (
+                              <div key={i} className="text-nowrap">{sale.label} = {sale.value.toLocaleString()}</div>
+                            ))}
+                          </TableCell>
+                          <TableCell className="border">
+                            {row.winLines.map((win, i) => (
+                              <div key={i} className="text-nowrap">{win.label} = {win.value.toLocaleString()}</div>
+                            ))}
+                          </TableCell>
                           <TableCell className="border">{row.win.toLocaleString()}</TableCell>
                           <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
                           <TableCell className="border">
