@@ -51,7 +51,7 @@ const DEFAULT_MATCH = {
   home: "",
   away: "",
   prizes: [],
-  status: "active" as "active" | "void",
+  status: "void" as "active" | "void",
   start_time: "",
   end_time: "",
 };
@@ -99,16 +99,16 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
   const getPrizeLimitByIndex = (index: number) => {
     if (drawMode) {
       const configured = Number(maxPrize.X);
-      return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
+      return Number.isFinite(configured) && configured > 1 ? configured : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
     }
 
     const key = MAX_PRIZE_KEYS[index];
     const configured = Number(maxPrize[key]);
-    return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DEFAULT_MAX_PRIZE[key];
+    return Number.isFinite(configured) && configured > 1 ? configured : SPORTS_DEFAULT_MAX_PRIZE[key];
   };
 
   const clampPrizeValue = (value: number, index: number) => {
-    const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    const safeValue = Number.isFinite(value) ? Math.max(1, value) : 1;
     return Math.min(safeValue, getPrizeLimitByIndex(index));
   };
 
@@ -127,7 +127,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
       ...DEFAULT_MATCH,
       league_id: defaultLeagueId,
       number: Math.max(...sports.map(s => s.number), 0) + 1,
-      prizes: drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0],
+      prizes: drawMode ? [1] : [1, 1, 1, 1, 1, 1, 1, 1, 1],
     });
     setIsAddSportsOpen(true);
   };
@@ -331,7 +331,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
         body: JSON.stringify({
           ...sportsForm,
           prizes: sportsForm.prizes,
-          status: sportsForm.status || "active",
+          status: sportsForm.status || "void",
           start_time: startIso,
           end_time: endIso,
         }),
@@ -614,7 +614,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
                         type="number"
                         min="0"
                         max={getPrizeLimitByIndex(0)}
-                        value={sportsForm.prizes[0] ?? 0}
+                        value={sportsForm.prizes[0] ?? 1}
                         onChange={(e) => {
                           const value = clampPrizeValue(Number(e.target.value), 0);
                           const updated = [...sportsForm.prizes];
@@ -635,7 +635,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
                             type="number"
                             min="0"
                             max={getPrizeLimitByIndex(idx)}
-                            value={sportsForm.prizes[idx] ?? 0}
+                            value={sportsForm.prizes[idx] ?? 1}
                             onChange={(e) => {
                               const value = clampPrizeValue(Number(e.target.value), idx);
                               const updated = [...sportsForm.prizes];

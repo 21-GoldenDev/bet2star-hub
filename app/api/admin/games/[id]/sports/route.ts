@@ -10,6 +10,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl ?? "", supabaseServiceKey ?? "");
 
+const SPORTS_PRIZE_LABELS = ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
+
 // Removed the resolveSportsMatchGameId function - now sports_draw games manage their own matches
 
 export async function GET(
@@ -78,9 +80,24 @@ export async function POST(
       return NextResponse.json({ error: "Invalid league selected" }, { status: 400 });
     }
 
+    const defaultPrizes = game.type === "sports_draw"
+      ? [1]
+      : [1, 1, 1, 1, 1, 1, 1, 1, 1];
     const prizesArray = Array.isArray(prizes) && prizes.length > 0
       ? prizes
-      : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+      : defaultPrizes;
+    const normalizedStatus: "active" | "void" = status === "active" ? "active" : "void";
+
+    if (normalizedStatus === "active") {
+      const invalidIndex = prizesArray.findIndex((value: any) => !Number.isFinite(Number(value)) || Number(value) <= 1);
+      if (invalidIndex >= 0) {
+        const label = game.type === "sports_draw" ? "X" : (SPORTS_PRIZE_LABELS[invalidIndex] ?? `#${invalidIndex + 1}`);
+        return NextResponse.json(
+          { error: `Please enter ${label} prize accurately. It must be greater than 1.0.` },
+          { status: 400 }
+        );
+      }
+    }
 
     const { data, error } = await supabase
       .from("sports")
@@ -93,7 +110,7 @@ export async function POST(
           home,
           away,
           prizes: prizesArray,
-          status: status === "void" ? "void" : "active",
+          status: normalizedStatus,
           start_time,
           end_time,
         },

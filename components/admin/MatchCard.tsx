@@ -16,6 +16,7 @@ import {
 import { Edit2, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SportsCountry, SportsLeague, SportsMatch } from "@/lib/types/sports";
+import clsx from "clsx";
 
 interface MatchEditInfo {
   league_id: string;
@@ -43,7 +44,7 @@ interface Props {
 
 export default function MatchCard({ match, countries, leagues, gameId, maxPrize, drawMode = false, onDelete, onRefresh }: Props) {
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
-  const EMPTY_PRIZES = drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const EMPTY_PRIZES = drawMode ? [1] : [1, 1, 1, 1, 1, 1, 1, 1, 1];
   const MAX_PRIZE_KEYS = ["1", "X", "2", "1X", "12", "X2", "OV 2.5", "UN 2.5", "GG"] as const;
   const SPORTS_DEFAULT_MAX_PRIZE: Record<string, number> = {
     "1": 2,
@@ -61,17 +62,24 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
   const getPrizeLimitByIndex = (index: number) => {
     if (drawMode) {
       const configured = Number(maxPrize.X);
-      return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
+      return Number.isFinite(configured) && configured > 1 ? configured : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
     }
 
     const key = MAX_PRIZE_KEYS[index];
     const configured = Number(maxPrize[key]);
-    return Number.isFinite(configured) && configured > 0 ? configured : SPORTS_DEFAULT_MAX_PRIZE[key];
+    return Number.isFinite(configured) && configured > 1 ? configured : SPORTS_DEFAULT_MAX_PRIZE[key];
   };
 
   const clampPrizeValue = (value: number, index: number) => {
-    const safeValue = Number.isFinite(value) ? Math.max(0, value) : 0;
+    const safeValue = Number.isFinite(value) ? Math.max(1, value) : 1;
     return Math.min(safeValue, getPrizeLimitByIndex(index));
+  };
+
+  const getPrizeLabel = (index: number) => (drawMode ? "X" : PRIZE_LABELS[index] ?? `#${index + 1}`);
+
+  const getInvalidPrizeLabelForActivation = (prizes: number[]) => {
+    const firstInvalid = prizes.findIndex((value) => !Number.isFinite(Number(value)) || Number(value) <= 1);
+    return firstInvalid >= 0 ? getPrizeLabel(firstInvalid) : null;
   };
 
   const [isEditing, setIsEditing] = useState(false);
@@ -150,6 +158,18 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
   };
 
   const saveInlineEdit = async () => {
+    if (editRowForm.status === "active") {
+      const invalidLabel = getInvalidPrizeLabelForActivation(editRowForm.prizes);
+      if (invalidLabel) {
+        toast({
+          title: "Error",
+          description: `Please enter ${invalidLabel} prize accurately. It must be greater than 1.0.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     const firstExceeded = editRowForm.prizes.findIndex((value, index) => Number(value) > getPrizeLimitByIndex(index));
     if (firstExceeded >= 0) {
       const label = drawMode ? "X" : PRIZE_LABELS[firstExceeded];
@@ -199,6 +219,49 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
     }
   };
 
+  const quickToggleStatus = async () => {
+    const currentStatus = (match as any).status === "void" ? "void" : "active";
+    const nextStatus: "active" | "void" = currentStatus === "active" ? "void" : "active";
+
+    if (nextStatus === "active") {
+      const invalidLabel = getInvalidPrizeLabelForActivation(Array.isArray(match.prizes) ? match.prizes : []);
+      if (invalidLabel) {
+        toast({
+          title: "Error",
+          description: `Please enter ${invalidLabel} prize accurately. It must be greater than 1.0.`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/admin/games/${gameId}/sports/${match.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update match status");
+
+      toast({
+        title: "Success",
+        description: `Match ${nextStatus === "active" ? "activated" : "inactivated"}`,
+      });
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update match status",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Card className="p-4">
       {isEditing ? (
@@ -227,7 +290,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="void">Void</SelectItem>
+                  <SelectItem value="void">Inactive</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -365,7 +428,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                       min="0"
                       max={getPrizeLimitByIndex(idx)}
                       className="h-9 text-xs"
-                      value={editRowForm.prizes[idx] ?? 0}
+                      value={editRowForm.prizes[idx] ?? 1}
                       onChange={(e) => {
                         const value = clampPrizeValue(Number(e.target.value), idx);
                         const updated = [...editRowForm.prizes];
@@ -402,11 +465,18 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                   #{match.number}
                 </Badge>
                 <Badge
-                  variant={(match as any).status === "void" ? "secondary" : "default"}
-                  className={`text-xs font-semibold px-2.5 py-0.5 capitalize ${(match as any).status === "void" ? "bg-gray-500" : "bg-green-600 hover:bg-green-700"
-                    }`}
+                  variant={(match as any).status === "void" ? "destructive" : "default"}
+                  className={clsx(
+                    "text-xs font-semibold px-2.5 py-0.5 capitalize",
+                    { "bg-green-600 hover:bg-green-700": (match as any).status !== "void" }
+                  )}
                 >
-                  {(match as any).status ?? "active"}
+                  {(() => {
+                    const status = (match as any).status ?? "active";
+                    if (status === "void") return "Inactive";
+                    if (status === "active") return "Active";
+                    return status;
+                  })()}
                 </Badge>
                 <span className="text-xs font-medium text-primary/80 truncate">{currentLeagueName}</span>
                 <span className="text-xs font-medium text-gray-500 truncate">
@@ -451,10 +521,20 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
             </div>
             <div className="flex gap-1.5">
               <Button
+                variant={(match as any).status === "void" ? "default" : "destructive"}
+                size="sm"
+                onClick={quickToggleStatus}
+                className="h-8 px-2 text-xs"
+                disabled={submitting}
+              >
+                {(match as any).status === "void" ? "Set Active" : "Set Inactive"}
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={startInlineEdit}
                 className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                disabled={submitting}
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </Button>
@@ -463,6 +543,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 size="sm"
                 onClick={() => onDelete(match)}
                 className="h-8 w-8 p-0 hover:bg-destructive hover:text-destructive-foreground"
+                disabled={submitting}
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </Button>

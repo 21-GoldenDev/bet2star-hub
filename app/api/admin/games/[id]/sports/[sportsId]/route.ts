@@ -29,6 +29,8 @@ const SPORTS_DRAW_DEFAULT_MAX_PRIZE: Record<string, number> = {
   X: 1.6,
 };
 
+const SPORTS_PRIZE_LABELS = ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
+
 function extractSportsDrawOddsMap(prizeIds: any): Record<number, number> {
   if (!prizeIds || typeof prizeIds !== "object" || Array.isArray(prizeIds)) return {};
   const entries = Array.isArray(prizeIds.draw_odds) ? prizeIds.draw_odds : [];
@@ -49,7 +51,7 @@ function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): a
     const drawOdd = oddsMap[matchNumber];
     if (!Number.isFinite(drawOdd) || drawOdd < 0) return match;
 
-    const prizes = Array.isArray(match?.prizes) ? [...match.prizes] : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const prizes = Array.isArray(match?.prizes) ? [...match.prizes] : [1, 1, 1, 1, 1, 1, 1, 1, 1];
     prizes[1] = drawOdd;
     return { ...match, prizes };
   });
@@ -82,6 +84,8 @@ export async function PUT(
     const body = await request.json();
     const { league_id, number, home, away, home_goal, away_goal, prizes, status, start_time, end_time } = body ?? {};
 
+    const activatingMatch = status !== undefined && status !== "void";
+
     const updateData: Record<string, any> = {};
     if (league_id !== undefined) {
       const { data: leagueData, error: leagueError } = await supabase
@@ -102,10 +106,11 @@ export async function PUT(
     if (away !== undefined) updateData.away = away;
     if (home_goal !== undefined) updateData.home_goal = home_goal;
     if (away_goal !== undefined) updateData.away_goal = away_goal;
-    if (prizes !== undefined) {
-      const submittedPrizes = Array.isArray(prizes) && prizes.length > 0
-        ? prizes
-        : [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const submittedPrizes = prizes !== undefined
+      ? (Array.isArray(prizes) && prizes.length > 0 ? prizes : [1, 1, 1, 1, 1, 1, 1, 1, 1])
+      : null;
+
+    if (submittedPrizes !== null) {
 
       const maxPrizeConfig = game.max_prize && typeof game.max_prize === "object" && !Array.isArray(game.max_prize)
         ? game.max_prize
@@ -118,7 +123,7 @@ export async function PUT(
 
           const key = SPORTS_MAX_PRIZE_KEYS[i];
           const configuredLimit = Number(maxPrizeConfig[key]);
-          const limit = Number.isFinite(configuredLimit) && configuredLimit > 0
+          const limit = Number.isFinite(configuredLimit) && configuredLimit > 1
             ? configuredLimit
             : SPORTS_DEFAULT_MAX_PRIZE[key];
 
@@ -131,7 +136,7 @@ export async function PUT(
         }
       } else {
         const configuredDrawLimit = Number(maxPrizeConfig.X);
-        const drawLimit = Number.isFinite(configuredDrawLimit) && configuredDrawLimit > 0
+        const drawLimit = Number.isFinite(configuredDrawLimit) && configuredDrawLimit > 1
           ? configuredDrawLimit
           : SPORTS_DRAW_DEFAULT_MAX_PRIZE.X;
 
@@ -150,6 +155,30 @@ export async function PUT(
 
       updateData.prizes = submittedPrizes;
     }
+
+    if (activatingMatch) {
+      const { data: existingMatch, error: existingMatchError } = await supabase
+        .from("sports")
+        .select("prizes")
+        .eq("id", sportsId)
+        .eq("game_id", id)
+        .single();
+
+      if (existingMatchError || !existingMatch) {
+        return NextResponse.json({ error: "Match not found" }, { status: 404 });
+      }
+
+      const activePrizes = submittedPrizes ?? (Array.isArray(existingMatch.prizes) ? existingMatch.prizes : []);
+      const invalidIndex = activePrizes.findIndex((value: any) => !Number.isFinite(Number(value)) || Number(value) <= 1);
+      if (invalidIndex >= 0) {
+        const label = game.type === "sports_draw" ? "X" : (SPORTS_PRIZE_LABELS[invalidIndex] ?? `#${invalidIndex + 1}`);
+        return NextResponse.json(
+          { error: `Please enter ${label} prize accurately. It must be greater than 1.0.` },
+          { status: 400 }
+        );
+      }
+    }
+
     if (status !== undefined) {
       updateData.status = status === "void" ? "void" : "active";
     }
