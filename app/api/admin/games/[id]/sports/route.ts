@@ -64,7 +64,7 @@ export async function POST(
       );
     }
 
-    const { league_id, number, home, away, prizes, status, start_time, end_time } = body ?? {};
+    const { league_id, number, home, away, home_goal, away_goal, prizes, status, start_time, end_time } = body ?? {};
 
     if (!league_id || number === undefined || !home || !away) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -109,6 +109,8 @@ export async function POST(
           number,
           home,
           away,
+          home_goal: home_goal !== undefined ? home_goal : (game.type === "sports_draw" ? 1 : null),
+          away_goal: away_goal !== undefined ? away_goal : (game.type === "sports_draw" ? 0 : null),
           prizes: prizesArray,
           status: normalizedStatus,
           start_time,

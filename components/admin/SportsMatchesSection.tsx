@@ -332,6 +332,8 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
           ...sportsForm,
           prizes: sportsForm.prizes,
           status: sportsForm.status || "void",
+          home_goal: drawMode ? 1 : undefined,
+          away_goal: drawMode ? 0 : undefined,
           start_time: startIso,
           end_time: endIso,
         }),

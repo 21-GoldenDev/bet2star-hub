@@ -82,6 +82,10 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
     return firstInvalid >= 0 ? getPrizeLabel(firstInvalid) : null;
   };
 
+  const homeGoal = Number(match.home_goal);
+  const awayGoal = Number(match.away_goal);
+  const isDrawResult = Number.isFinite(homeGoal) && Number.isFinite(awayGoal) && homeGoal === awayGoal;
+
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [editCountryId, setEditCountryId] = useState("");
@@ -92,8 +96,8 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
     number: match.number,
     home: match.home,
     away: match.away,
-    home_goal: match.home_goal ?? 0,
-    away_goal: match.away_goal ?? 0,
+    home_goal: Number.isFinite(Number(match.home_goal)) ? Number(match.home_goal) : (drawMode ? 1 : 0),
+    away_goal: Number.isFinite(Number(match.away_goal)) ? Number(match.away_goal) : 0,
     prizes: Array.isArray(match.prizes) && match.prizes.length === PRIZE_LABELS.length
       ? [...match.prizes]
       : [...EMPTY_PRIZES],
@@ -142,8 +146,8 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
       number: match.number,
       home: match.home,
       away: match.away,
-      home_goal: match.home_goal ?? 0,
-      away_goal: match.away_goal ?? 0,
+      home_goal: Number.isFinite(Number(match.home_goal)) ? Number(match.home_goal) : (drawMode ? 1 : 0),
+      away_goal: Number.isFinite(Number(match.away_goal)) ? Number(match.away_goal) : 0,
       prizes: Array.isArray(match.prizes) && match.prizes.length === PRIZE_LABELS.length
         ? [...match.prizes]
         : [...EMPTY_PRIZES],
@@ -262,6 +266,43 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
     }
   };
 
+  const quickToggleDrawResult = async () => {
+    if (!drawMode) return;
+    if (submitting || (match as any).status === "void") return;
+
+    const nextIsResult = !isDrawResult;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/admin/games/${gameId}/sports/${match.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          home_goal: 1,
+          away_goal: nextIsResult ? 1 : 0,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update draw result");
+
+      toast({
+        title: "Success",
+        description: nextIsResult ? "Result set to A = B" : "Result set to A != B",
+      });
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to update draw result",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Card className="p-4">
       {isEditing ? (
@@ -371,32 +412,34 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
               />
             </div>
           </div>
-          <div>
-            <Label className="text-xs">Score</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                min="0"
-                className="h-9"
-                placeholder="Home"
-                value={editRowForm.home_goal}
-                onChange={(e) =>
-                  setEditRowForm({ ...editRowForm, home_goal: Math.max(0, Number(e.target.value)) })
-                }
-              />
-              <span>-</span>
-              <Input
-                type="number"
-                min="0"
-                className="h-9"
-                placeholder="Away"
-                value={editRowForm.away_goal}
-                onChange={(e) =>
-                  setEditRowForm({ ...editRowForm, away_goal: Math.max(0, Number(e.target.value)) })
-                }
-              />
+          {!drawMode && (
+            <div>
+              <Label className="text-xs">Score</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  className="h-9"
+                  placeholder="Home"
+                  value={editRowForm.home_goal}
+                  onChange={(e) =>
+                    setEditRowForm({ ...editRowForm, home_goal: Math.max(0, Number(e.target.value)) })
+                  }
+                />
+                <span>-</span>
+                <Input
+                  type="number"
+                  min="0"
+                  className="h-9"
+                  placeholder="Away"
+                  value={editRowForm.away_goal}
+                  onChange={(e) =>
+                    setEditRowForm({ ...editRowForm, away_goal: Math.max(0, Number(e.target.value)) })
+                  }
+                />
+              </div>
             </div>
-          </div>
+          )}
           {drawMode ? (
             <div>
               <Label className="text-xs mb-2 block">Prize</Label>
@@ -482,6 +525,14 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 <span className="text-xs font-medium text-gray-500 truncate">
                   {selectedLeague?.country?.name || leagues.find((league) => league.name === match.league)?.country?.name || "Unknown Country"}
                 </span>
+                {isDrawResult && (
+                  <Badge
+                    variant="default"
+                    className="text-xs font-semibold px-2 py-0.5 select-none"
+                  >
+                    Draw
+                  </Badge>
+                )}
               </div>
               <div className="bg-linear-to-r from-primary/5 to-transparent rounded px-2 py-1.5 mb-1.5">
                 <p className="font-bold text-sm truncate">
@@ -489,12 +540,33 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="font-semibold text-nowrap">
-                  Score:{" "}
-                  <span className="text-primary font-bold">
-                    {match.home_goal ?? 0} - {match.away_goal ?? 0}
+                {drawMode ? (
+                  <div className="flex items-center gap-1.5">
+                    <Badge
+                      variant={isDrawResult ? "outline" : "default"}
+                      className={clsx(
+                        "text-xs font-semibold px-2 py-0.5 cursor-pointer select-none",
+                        { "bg-green-600 hover:bg-green-700 text-white": !isDrawResult }
+                      )}
+                      onClick={quickToggleDrawResult}
+                    >
+                      {isDrawResult ? "Not Draw" : "Set Draw"}
+                    </Badge>
+                    <span className="font-semibold text-nowrap">
+                      Score:{" "}
+                      <span className="text-primary font-bold">
+                        {match.home_goal ?? 0} - {match.away_goal ?? 0}
+                      </span>
+                    </span>
+                  </div>
+                ) : (
+                  <span className="font-semibold text-nowrap">
+                    Score:{" "}
+                    <span className="text-primary font-bold">
+                      {match.home_goal ?? 0} - {match.away_goal ?? 0}
+                    </span>
                   </span>
-                </span>
+                )}
                 <span>
                   Start:{" "}
                   {match.start_time

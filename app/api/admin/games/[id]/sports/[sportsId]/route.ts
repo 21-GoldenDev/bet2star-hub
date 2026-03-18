@@ -51,7 +51,8 @@ function applySportsDrawOdds(matches: any[], oddsMap: Record<number, number>): a
     const drawOdd = oddsMap[matchNumber];
     if (!Number.isFinite(drawOdd) || drawOdd < 0) return match;
 
-    const prizes = Array.isArray(match?.prizes) ? [...match.prizes] : [1, 1, 1, 1, 1, 1, 1, 1, 1];
+    const prizes = Array.isArray(match?.prizes) ? [...match.prizes] : [1];
+    prizes[0] = drawOdd;
     prizes[1] = drawOdd;
     return { ...match, prizes };
   });
@@ -224,7 +225,7 @@ export async function PUT(
         if (betsError) {
           console.error(`Error fetching ${betTable} for award recompute:`, betsError.message);
         } else if (betsData && betsData.length > 0) {
-          // For sports_draw, apply odds from prize_ids
+          // For sports_draw, keep match prizes as-is and evaluate using drawMode=true.
           const finalMatches = game.type === "sports_draw"
             ? applySportsDrawOdds(matches, extractSportsDrawOddsMap(game.prize_ids))
             : matches;
@@ -234,7 +235,7 @@ export async function PUT(
             if (bet.status === "void") {
               award = bet.staked || 0;
             } else {
-              award = calculateBetReward(bet, finalMatches) || 0;
+              award = calculateBetReward(bet, finalMatches, game.type === "sports_draw") || 0;
             }
 
             const { error: updateBetError } = await supabase
