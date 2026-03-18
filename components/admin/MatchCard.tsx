@@ -572,16 +572,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                {drawMode ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-nowrap">
-                      Score:{" "}
-                      <span className="text-primary font-bold">
-                        {match.home_goal ?? 0} - {match.away_goal ?? 0}
-                      </span>
-                    </span>
-                  </div>
-                ) : (
+                {!drawMode && (
                   <span className="font-semibold text-nowrap">
                     Score:{" "}
                     <span className="text-primary font-bold">
