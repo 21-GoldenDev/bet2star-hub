@@ -113,6 +113,7 @@ export async function POST(
           away_goal: away_goal !== undefined ? away_goal : (game.type === "sports_draw" ? 0 : null),
           prizes: prizesArray,
           status: normalizedStatus,
+          processed: false,
           start_time,
           end_time,
         },

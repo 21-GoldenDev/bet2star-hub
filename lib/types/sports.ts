@@ -10,6 +10,7 @@ export interface SportsMatch {
   away_goal: number;
   prizes: number[]; // length 9: [1, X, 2, 1X, 12, X2, Over2.5, Under2.5, GG]
   status?: "active" | "void";
+  processed?: boolean;
   start_time?: string;
   end_time?: string;
   created_at?: string;
@@ -52,6 +53,7 @@ export interface UpdateSportsMatchInput {
   away_goal?: number;
   prizes?: number[];
   status?: "active" | "void";
+  processed?: boolean;
   start_time?: string;
   end_time?: string;
 }

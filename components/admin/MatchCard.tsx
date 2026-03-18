@@ -38,11 +38,12 @@ interface Props {
   gameId: string;
   maxPrize: Record<string, number>;
   drawMode?: boolean;
+  showFinishButton?: boolean;
   onDelete: (match: SportsMatch) => void;
   onRefresh: () => void;
 }
 
-export default function MatchCard({ match, countries, leagues, gameId, maxPrize, drawMode = false, onDelete, onRefresh }: Props) {
+export default function MatchCard({ match, countries, leagues, gameId, maxPrize, drawMode = false, showFinishButton = false, onDelete, onRefresh }: Props) {
   const PRIZE_LABELS = drawMode ? ["X"] : ["1", "X", "2", "1X", "12", "X2", "Over 2.5", "Under 2.5", "GG"];
   const EMPTY_PRIZES = drawMode ? [1] : [1, 1, 1, 1, 1, 1, 1, 1, 1];
   const MAX_PRIZE_KEYS = ["1", "X", "2", "1X", "12", "X2", "OV 2.5", "UN 2.5", "GG"] as const;
@@ -85,6 +86,8 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
   const homeGoal = Number(match.home_goal);
   const awayGoal = Number(match.away_goal);
   const isDrawResult = Number.isFinite(homeGoal) && Number.isFinite(awayGoal) && homeGoal === awayGoal;
+  const isExpired = match.start_time ? new Date(match.start_time).getTime() <= Date.now() : false;
+  const isProcessed = Boolean((match as any).processed);
 
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -268,7 +271,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
 
   const quickToggleDrawResult = async () => {
     if (!drawMode) return;
-    if (submitting || (match as any).status === "void") return;
+    if (submitting) return;
 
     const nextIsResult = !isDrawResult;
 
@@ -296,6 +299,33 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
       toast({
         title: "Error",
         description: e instanceof Error ? e.message : "Failed to update draw result",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const finishMatch = async () => {
+    if (submitting) return;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/admin/games/${gameId}/sports/${match.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ processed: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to finish match");
+
+      toast({ title: "Success", description: "Match moved to Processed Matches" });
+      onRefresh();
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to finish match",
         variant: "destructive",
       });
     } finally {
@@ -507,20 +537,22 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 <Badge variant="outline" className="text-sm font-bold px-2.5 py-0.5 bg-primary/10 border-primary/30">
                   #{match.number}
                 </Badge>
-                <Badge
-                  variant={(match as any).status === "void" ? "destructive" : "default"}
-                  className={clsx(
-                    "text-xs font-semibold px-2.5 py-0.5 capitalize",
-                    { "bg-green-600 hover:bg-green-700": (match as any).status !== "void" }
-                  )}
-                >
-                  {(() => {
-                    const status = (match as any).status ?? "active";
-                    if (status === "void") return "Inactive";
-                    if (status === "active") return "Active";
-                    return status;
-                  })()}
-                </Badge>
+                {!isExpired && !isProcessed && (
+                  <Badge
+                    variant={(match as any).status === "void" ? "destructive" : "default"}
+                    className={clsx(
+                      "text-xs font-semibold px-2.5 py-0.5 capitalize",
+                      { "bg-green-600 hover:bg-green-700": (match as any).status !== "void" }
+                    )}
+                  >
+                    {(() => {
+                      const status = (match as any).status ?? "active";
+                      if (status === "void") return "Inactive";
+                      if (status === "active") return "Active";
+                      return status;
+                    })()}
+                  </Badge>
+                )}
                 <span className="text-xs font-medium text-primary/80 truncate">{currentLeagueName}</span>
                 <span className="text-xs font-medium text-gray-500 truncate">
                   {selectedLeague?.country?.name || leagues.find((league) => league.name === match.league)?.country?.name || "Unknown Country"}
@@ -582,6 +614,17 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
               </div>
             </div>
             <div className="flex gap-1.5">
+              {showFinishButton && !drawMode && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={finishMatch}
+                  className="h-8 px-2 text-xs"
+                  disabled={submitting}
+                >
+                  Finish
+                </Button>
+              )}
               {drawMode && (
                 <Button
                   variant={isDrawResult ? "outline" : "default"}
@@ -591,20 +634,22 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                     "text-xs font-semibold px-2 h-8",
                     { "bg-green-600 hover:bg-green-700 text-white": !isDrawResult }
                   )}
-                  disabled={submitting || (match as any).status === "void"}
+                  disabled={submitting}
                 >
                   {isDrawResult ? "Not Draw" : "Set Draw"}
                 </Button>
               )}
-              <Button
-                variant={(match as any).status === "void" ? "default" : "destructive"}
-                size="sm"
-                onClick={quickToggleStatus}
-                className="h-8 px-2 text-xs"
-                disabled={submitting}
-              >
-                {(match as any).status === "void" ? "Set Active" : "Set Inactive"}
-              </Button>
+              {!isExpired && !isProcessed && (
+                <Button
+                  variant={(match as any).status === "void" ? "default" : "destructive"}
+                  size="sm"
+                  onClick={quickToggleStatus}
+                  className="h-8 px-2 text-xs"
+                  disabled={submitting}
+                >
+                  {(match as any).status === "void" ? "Set Active" : "Set Inactive"}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

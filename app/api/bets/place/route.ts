@@ -182,6 +182,8 @@ async function placeSportsBet(
     throw new Error('For direct mode, "under" must be an array with a single value');
   }
 
+  await validateSportsSelectionsAvailability(supabase, gameId, selections);
+
   const { data: existingBets, error: countError } = await supabase
     .from('bets_sport')
     .select('number')
@@ -259,6 +261,8 @@ async function placeSportsDrawBet(
     throw new Error('Sports draw selections must contain only draw (D) options');
   }
 
+  await validateSportsSelectionsAvailability(supabase, gameId, selections);
+
   const { data: existingBets, error: countError } = await supabase
     .from('bets_sports_draw')
     .select('number')
@@ -301,6 +305,54 @@ async function placeSportsDrawBet(
   }
 
   return { betId: data.id, betNumber: nextNumber, award };
+}
+
+async function validateSportsSelectionsAvailability(
+  supabase: any,
+  gameId: string,
+  selections: Record<string, string[]>,
+) {
+  if (!selections || typeof selections !== 'object') {
+    throw new Error('Invalid selections');
+  }
+
+  const selectedNumbers = Object.keys(selections)
+    .map((key) => Number(key))
+    .filter((value) => Number.isFinite(value));
+
+  if (selectedNumbers.length === 0) {
+    throw new Error('No matches selected');
+  }
+
+  const { data: selectedMatches, error: selectedMatchesError } = await supabase
+    .from('sports')
+    .select('number, status, start_time, processed')
+    .eq('game_id', gameId)
+    .in('number', selectedNumbers);
+
+  if (selectedMatchesError) throw selectedMatchesError;
+
+  if (!selectedMatches || selectedMatches.length !== selectedNumbers.length) {
+    throw new Error('One or more selected matches are unavailable');
+  }
+
+  const now = Date.now();
+  for (const match of selectedMatches) {
+    if (match.status === 'void') {
+      throw new Error(`Match ${match.number} is inactive`);
+    }
+
+    if (Boolean(match.processed)) {
+      throw new Error(`Match ${match.number} has been processed`);
+    }
+
+    if (match.start_time) {
+      const start = new Date(match.start_time).getTime();
+      if (Number.isFinite(start) && start <= now) {
+        throw new Error(`Match ${match.number} has expired and can no longer be played`);
+      }
+    }
+  }
 }
 
 async function placeLottoBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {

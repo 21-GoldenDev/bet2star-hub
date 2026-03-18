@@ -83,7 +83,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { league_id, number, home, away, home_goal, away_goal, prizes, status, start_time, end_time } = body ?? {};
+    const { league_id, number, home, away, home_goal, away_goal, prizes, status, processed, start_time, end_time } = body ?? {};
 
     const activatingMatch = status !== undefined && status !== "void";
 
@@ -182,6 +182,9 @@ export async function PUT(
 
     if (status !== undefined) {
       updateData.status = status === "void" ? "void" : "active";
+    }
+    if (processed !== undefined) {
+      updateData.processed = Boolean(processed);
     }
     if (start_time !== undefined) updateData.start_time = start_time;
     if (end_time !== undefined) updateData.end_time = end_time;

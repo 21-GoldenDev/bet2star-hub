@@ -66,8 +66,10 @@ interface Props {
 }
 
 export default function SportsMatchesSection({ gameId, sports, maxPrize, loading, drawMode, onRefresh }: Props) {
+  type MatchTabKey = "active" | "expired" | "processed";
   const [isAddSportsOpen, setIsAddSportsOpen] = useState(false);
   const [isManageMetaOpen, setIsManageMetaOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<MatchTabKey>("active");
   const [submitting, setSubmitting] = useState(false);
   const [addSportsCountryId, setAddSportsCountryId] = useState("");
   const [sportsForm, setSportsForm] = useState<MatchInfo>({ ...DEFAULT_MATCH, prizes: drawMode ? [0] : [0, 0, 0, 0, 0, 0, 0, 0, 0] });
@@ -384,6 +386,26 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
     }
   };
 
+  const now = new Date();
+  const hasStarted = (match: SportsMatch) => {
+    if (!match.start_time) return false;
+    const start = new Date(match.start_time);
+    if (isNaN(start.getTime())) return false;
+    return start <= now;
+  };
+
+  const activeMatches = sports.filter((match) => !(match as any).processed && !hasStarted(match));
+  const expiredMatches = sports.filter((match) => !(match as any).processed && hasStarted(match));
+  const processedMatches = sports.filter((match) => Boolean((match as any).processed));
+
+  const tabMatches = drawMode
+    ? sports
+    : activeTab === "active"
+      ? activeMatches
+      : activeTab === "expired"
+        ? expiredMatches
+        : processedMatches;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -680,21 +702,55 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
         </div>
       </div>
 
+      {!drawMode && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <Button
+            variant={activeTab === "active" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("active")}
+          >
+            Actives ({activeMatches.length})
+          </Button>
+          <Button
+            variant={activeTab === "expired" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("expired")}
+          >
+            Expired ({expiredMatches.length})
+          </Button>
+          <Button
+            variant={activeTab === "processed" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("processed")}
+          >
+            Processed Matches ({processedMatches.length})
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
-      ) : sports.length === 0 ? (
+      ) : tabMatches.length === 0 ? (
         <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No matches added yet</p>
-          <Button className="mt-4" onClick={handleOpenAddSports}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add First Match
-          </Button>
+          {!drawMode ? (
+            <p className="text-muted-foreground">
+              {activeTab === "active" ? "No active matches" : activeTab === "expired" ? "No expired matches" : "No processed matches"}
+            </p>
+          ) : (
+            <p className="text-muted-foreground">No matches added yet</p>
+          )}
+          {(drawMode || activeTab === "active") && (
+            <Button className="mt-4" onClick={handleOpenAddSports}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add First Match
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="space-y-4">
-          {sports.map((match) => (
+          {tabMatches.map((match) => (
             <MatchCard
               key={match.id}
               match={match}
@@ -703,6 +759,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
               gameId={gameId}
               maxPrize={maxPrize}
               drawMode={drawMode}
+              showFinishButton={!drawMode && activeTab === "expired"}
               onDelete={openMatchDeleteDialog}
               onRefresh={onRefresh}
             />

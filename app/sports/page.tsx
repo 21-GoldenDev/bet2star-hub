@@ -26,6 +26,7 @@ interface Match {
   isLive?: boolean;
   prizes: number[]; // [H, D, A, 1X, 12, O25, U25, GG]
   status?: "active" | "void";
+  processed?: boolean;
   start_time?: string;
   end_time?: string;
 }
@@ -89,7 +90,13 @@ const Football = () => {
 
         if (error) throw error;
 
-        const formattedMatches: Match[] = (data || []).map((m: SportsMatch) => ({
+        const now = Date.now();
+        const available = (data || []).filter((m: any) => {
+          const started = m.start_time ? new Date(m.start_time).getTime() <= now : false;
+          return !started && !Boolean(m.processed);
+        });
+
+        const formattedMatches: Match[] = available.map((m: SportsMatch) => ({
           id: m.id,
           number: m.number,
           league: m.league,
@@ -97,6 +104,7 @@ const Football = () => {
           awayTeam: m.away,
           prizes: m.prizes,
           status: m.status,
+          processed: m.processed,
           start_time: m.start_time,
           end_time: m.end_time,
         }));
