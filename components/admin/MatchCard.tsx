@@ -525,7 +525,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                 <span className="text-xs font-medium text-gray-500 truncate">
                   {selectedLeague?.country?.name || leagues.find((league) => league.name === match.league)?.country?.name || "Unknown Country"}
                 </span>
-                {isDrawResult && (
+                {isDrawResult && drawMode && (
                   <Badge
                     variant="default"
                     className="text-xs font-semibold px-2 py-0.5 select-none"
@@ -542,16 +542,6 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 {drawMode ? (
                   <div className="flex items-center gap-1.5">
-                    <Badge
-                      variant={isDrawResult ? "outline" : "default"}
-                      className={clsx(
-                        "text-xs font-semibold px-2 py-0.5 cursor-pointer select-none",
-                        { "bg-green-600 hover:bg-green-700 text-white": !isDrawResult }
-                      )}
-                      onClick={quickToggleDrawResult}
-                    >
-                      {isDrawResult ? "Not Draw" : "Set Draw"}
-                    </Badge>
                     <span className="font-semibold text-nowrap">
                       Score:{" "}
                       <span className="text-primary font-bold">
@@ -592,6 +582,20 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
               </div>
             </div>
             <div className="flex gap-1.5">
+              {drawMode && (
+                <Button
+                  variant={isDrawResult ? "outline" : "default"}
+                  size="sm"
+                  onClick={quickToggleDrawResult}
+                  className={clsx(
+                    "text-xs font-semibold px-2 h-8",
+                    { "bg-green-600 hover:bg-green-700 text-white": !isDrawResult }
+                  )}
+                  disabled={submitting || (match as any).status === "void"}
+                >
+                  {isDrawResult ? "Not Draw" : "Set Draw"}
+                </Button>
+              )}
               <Button
                 variant={(match as any).status === "void" ? "default" : "destructive"}
                 size="sm"
