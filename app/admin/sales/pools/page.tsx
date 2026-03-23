@@ -434,6 +434,13 @@ export default function PoolsSalesPage() {
     return rows;
   }, [agentFilteredResults]);
 
+  const agentStaffTotalWinMap = useMemo(() => {
+    return agentRows.reduce((acc, row) => {
+      acc[row.staff] = (acc[row.staff] || 0) + row.win;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [agentRows]);
+
   const terminalRows = useMemo(() => {
     return [...terminalFilteredResults]
       .sort((a, b) => {
@@ -461,6 +468,14 @@ export default function PoolsSalesPage() {
         })),
       }));
   }, [terminalFilteredResults]);
+
+  const terminalStaffTotalWinMap = useMemo(() => {
+    return terminalRows.reduce((acc, row) => {
+      const rowWin = row.winLines.reduce((sum, win) => sum + win.value, 0);
+      acc[row.staff] = (acc[row.staff] || 0) + rowWin;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [terminalRows]);
 
   const staffTotalPages = Math.max(1, Math.ceil(staffRows.length / ITEMS_PER_PAGE));
   const agentTotalPages = Math.max(1, Math.ceil(agentRows.length / ITEMS_PER_PAGE));
@@ -922,7 +937,11 @@ export default function PoolsSalesPage() {
                               <div key={i} className="text-nowrap">{win.label} = {win.value.toLocaleString()}</div>
                             ))}
                           </TableCell>
-                          <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                          {idx === 0 && (
+                            <TableCell className="border" rowSpan={agents.length}>
+                              {(agentStaffTotalWinMap[staff] || 0).toLocaleString()}
+                            </TableCell>
+                          )}
                           <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
                           <TableCell className="border">
                             {row.sales - row.win > 0 ? (
@@ -1060,9 +1079,11 @@ export default function PoolsSalesPage() {
                                 <div key={i} className="text-nowrap">{win.label} = {win.value.toLocaleString()}</div>
                               ))}
                             </TableCell>
-                            <TableCell className="border">
-                              {row.winLines.reduce((sum, win) => sum + win.value, 0).toLocaleString()}
-                            </TableCell>
+                            {agentIdx === 0 && terminalIdx === 0 && (
+                              <TableCell className="border" rowSpan={staffRowSpan}>
+                                {(terminalStaffTotalWinMap[staff] || 0).toLocaleString()}
+                              </TableCell>
+                            )}
                             <TableCell className="border">
                               {(row.salesLines.reduce((sum, sale) => sum + sale.value, 0) - row.winLines.reduce((sum, win) => sum + win.value, 0)).toLocaleString()}
                             </TableCell>

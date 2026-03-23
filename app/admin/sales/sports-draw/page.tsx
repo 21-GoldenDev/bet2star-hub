@@ -326,6 +326,13 @@ export default function SportsDrawSalesPage() {
     return rows;
   }, [agentFilteredResults]);
 
+  const agentStaffTotalWinMap = useMemo(() => {
+    return agentRows.reduce((acc, row) => {
+      acc[row.staff] = (acc[row.staff] || 0) + row.win;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [agentRows]);
+
   const terminalRows = useMemo(() => {
     return [...terminalFilteredResults]
       .sort((a, b) => {
@@ -344,6 +351,13 @@ export default function SportsDrawSalesPage() {
         win: result.win.reduce((s, w) => s + w.amount, 0),
       }));
   }, [terminalFilteredResults]);
+
+  const terminalStaffTotalWinMap = useMemo(() => {
+    return terminalRows.reduce((acc, row) => {
+      acc[row.staff] = (acc[row.staff] || 0) + row.win;
+      return acc;
+    }, {} as Record<string, number>);
+  }, [terminalRows]);
 
   const staffTotalPages = Math.max(1, Math.ceil(staffRows.length / ITEMS_PER_PAGE));
   const agentTotalPages = Math.max(1, Math.ceil(agentRows.length / ITEMS_PER_PAGE));
@@ -681,7 +695,11 @@ export default function SportsDrawSalesPage() {
                           <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
                           <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
                           <TableCell className="border">{row.win.toLocaleString()}</TableCell>
-                          <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                          {idx === 0 && (
+                            <TableCell className="border" rowSpan={agents.length}>
+                              {(agentStaffTotalWinMap[staff] || 0).toLocaleString()}
+                            </TableCell>
+                          )}
                           <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
                           <TableCell className="border">
                             {row.sales - row.win > 0 ? (
@@ -766,7 +784,11 @@ export default function SportsDrawSalesPage() {
                             <TableCell className="border">{row.sales.toLocaleString()}</TableCell>
                             <TableCell className="border">{row.payable.toLocaleString()}</TableCell>
                             <TableCell className="border">{row.win.toLocaleString()}</TableCell>
-                            <TableCell className="border">{row.win.toLocaleString()}</TableCell>
+                            {agentIdx === 0 && terminalIdx === 0 && (
+                              <TableCell className="border" rowSpan={staffRowSpan}>
+                                {(terminalStaffTotalWinMap[staff] || 0).toLocaleString()}
+                              </TableCell>
+                            )}
                             <TableCell className="border">{(row.sales - row.win).toLocaleString()}</TableCell>
                             <TableCell className="border">
                               {row.sales - row.win > 0 ? (
