@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import DataTable from "@/components/admin/DataTable";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -23,9 +25,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Trash2, Eye } from "lucide-react";
+import { Trash2, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface MatchInfo {
   league: string;
@@ -323,36 +326,74 @@ export default function SportsDrawPage() {
 
             <div>
               <Label>Agent</Label>
-              <Select value={agentFilter} onValueChange={setAgentFilter}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All agents" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All agents</SelectItem>
-                  {agentOptions.map((agent) => (
-                    <SelectItem key={agent} value={agent}>
-                      {agent}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="mt-1 w-full justify-between font-normal"
+                  >
+                    {agentFilter === "all" ? "All agents" : agentFilter}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search agent..." />
+                    <CommandList>
+                      <CommandEmpty>No agent found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="all" onSelect={() => setAgentFilter("all")}>
+                          <Check className={cn("mr-2 h-4 w-4", agentFilter === "all" ? "opacity-100" : "opacity-0")} />
+                          All agents
+                        </CommandItem>
+                        {agentOptions.map((agent) => (
+                          <CommandItem key={agent} value={agent} onSelect={() => setAgentFilter(agent)}>
+                            <Check className={cn("mr-2 h-4 w-4", agentFilter === agent ? "opacity-100" : "opacity-0")} />
+                            {agent}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div>
               <Label>Terminal</Label>
-              <Select value={terminalFilter} onValueChange={setTerminalFilter}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="All terminals" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All terminals</SelectItem>
-                  {terminalOptions.map((terminal) => (
-                    <SelectItem key={terminal} value={terminal}>
-                      {terminal}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    className="mt-1 w-full justify-between font-normal"
+                  >
+                    {terminalFilter === "all" ? "All terminals" : terminalFilter}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search terminal..." />
+                    <CommandList>
+                      <CommandEmpty>No terminal found.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="all" onSelect={() => setTerminalFilter("all")}>
+                          <Check className={cn("mr-2 h-4 w-4", terminalFilter === "all" ? "opacity-100" : "opacity-0")} />
+                          All terminals
+                        </CommandItem>
+                        {terminalOptions.map((terminal) => (
+                          <CommandItem key={terminal} value={terminal} onSelect={() => setTerminalFilter(terminal)}>
+                            <Check className={cn("mr-2 h-4 w-4", terminalFilter === terminal ? "opacity-100" : "opacity-0")} />
+                            {terminal}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="md:col-span-4 flex items-center justify-between">
