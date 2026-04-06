@@ -16,7 +16,7 @@ export default function AdminLayout({
       <AdminThemeWrapper>
         <div className="flex h-screen bg-background">
           <AdminSidebar />
-          <main className="flex-1 overflow-auto lg:ml-64 pt-16">
+          <main className="flex-1 overflow-auto admin-main pt-16">
             <div className="p-4 md:p-8">{children}</div>
           </main>
         </div>

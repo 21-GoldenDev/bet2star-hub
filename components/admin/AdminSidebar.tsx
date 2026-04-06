@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +9,8 @@ import {
   Gamepad2,
   Settings,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Menu,
   X,
   LogOut,
@@ -34,11 +36,30 @@ const adminMenuItems = [
 
 export default function AdminSidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [betsOpen, setBetsOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [salesOpen, setSalesOpen] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
   const pathname = usePathname();
+
+  const setHoverPopup = (item: string, event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setHoveredItem(item);
+    setPopupPosition({
+      left: 4,
+      top: Math.floor(rect.top),
+    });
+  };
   const router = useRouter();
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--admin-sidebar-width",
+      isCollapsed ? "4rem" : "16rem"
+    );
+  }, [isCollapsed]);
 
   const handleLogout = async () => {
     await signOut();
@@ -64,10 +85,26 @@ export default function AdminSidebar() {
         </Button>
       </div>
 
+      {/* Desktop collapse toggle */}
+      <div
+        className="dark hidden lg:block fixed top-17 z-50 transition-all duration-300"
+        style={{ left: isCollapsed ? "4.15rem" : "16.15rem" }}
+      >
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="bg-background text-foreground"
+        >
+          {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+        </Button>
+      </div>
+
       {/* Sidebar */}
       <aside
         className={clsx(
-          "dark fixed left-0 top-0 h-screen w-64 bg-sidebar-background border-r border-sidebar-border shadow-lg transition-transform duration-300 z-40",
+          "dark fixed left-0 top-0 h-screen bg-sidebar-background border-r border-sidebar-border shadow-lg transition-all duration-300 z-40",
+          isCollapsed ? "w-16" : "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
@@ -75,7 +112,11 @@ export default function AdminSidebar() {
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-2">
             {/* Bets expandable item */}
-            <div>
+            <div
+              className="relative group"
+              onMouseEnter={(event) => setHoverPopup('bets', event)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
               {(() => {
                 const isParentActive = pathname?.startsWith("/admin/bets");
                 return (
@@ -84,20 +125,24 @@ export default function AdminSidebar() {
                       role="button"
                       onClick={() => setBetsOpen(!betsOpen)}
                       className={clsx(
-                        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer",
+                        "flex items-center justify-between gap-3 rounded-lg transition-colors cursor-pointer",
+                        isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
                         isParentActive
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       )}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className={clsx("flex items-center gap-3", isCollapsed && "justify-center")}
+                      >
                         <BarChart3 className="w-5 h-5" />
-                        <span className="font-medium">Bets</span>
+                        {!isCollapsed && <span className="font-medium">Bets</span>}
                       </div>
-                      <ChevronDown className={clsx("w-4 h-4 transition-transform", betsOpen && "rotate-180")} />
+                      {!isCollapsed && (
+                        <ChevronDown className={clsx("w-4 h-4 transition-transform", betsOpen && "rotate-180")} />
+                      )}
                     </div>
 
-                    {betsOpen && (
+                    {betsOpen && !isCollapsed && (
                       <div className="mt-2 space-y-1">
                         <Link href="/admin/bets/lotto" onClick={() => setIsOpen(false)}>
                           <div
@@ -171,7 +216,11 @@ export default function AdminSidebar() {
             </div>
 
             {/* Sales expandable item */}
-            <div>
+            <div
+              className="relative group"
+              onMouseEnter={(event) => setHoverPopup('sales', event)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
               {(() => {
                 const isParentActive = pathname?.startsWith("/admin/sales");
                 return (
@@ -180,25 +229,29 @@ export default function AdminSidebar() {
                       role="button"
                       onClick={() => setSalesOpen(!salesOpen)}
                       className={clsx(
-                        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer",
+                        "flex items-center justify-between gap-3 rounded-lg transition-colors cursor-pointer",
+                        isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
                         isParentActive
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       )}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className={clsx("flex items-center gap-3", isCollapsed && "justify-center")}
+                      >
                         <BarChart3 className="w-5 h-5" />
-                        <span className="font-medium">Sales</span>
+                        {!isCollapsed && <span className="font-medium">Sales</span>}
                       </div>
-                      <ChevronDown
-                        className={clsx(
-                          "w-4 h-4 transition-transform",
-                          salesOpen && "rotate-180"
-                        )}
-                      />
+                      {!isCollapsed && (
+                        <ChevronDown
+                          className={clsx(
+                            "w-4 h-4 transition-transform",
+                            salesOpen && "rotate-180"
+                          )}
+                        />
+                      )}
                     </div>
 
-                    {salesOpen && (
+                    {salesOpen && !isCollapsed && (
                       <div className="mt-2 space-y-1">
                         <Link href="/admin/sales/lotto" onClick={() => setIsOpen(false)}>
                           <div
@@ -212,7 +265,6 @@ export default function AdminSidebar() {
                             <span>Lotto</span>
                           </div>
                         </Link>
-
                         <Link href="/admin/sales/pools" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -225,7 +277,6 @@ export default function AdminSidebar() {
                             <span>Pools</span>
                           </div>
                         </Link>
-
                         <Link href="/admin/sales/sports" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -238,7 +289,6 @@ export default function AdminSidebar() {
                             <span>Sports</span>
                           </div>
                         </Link>
-
                         <Link href="/admin/sales/sports-draw" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -259,7 +309,11 @@ export default function AdminSidebar() {
             </div>
 
             {/* Users expandable item */}
-            <div>
+            <div
+              className="relative group"
+              onMouseEnter={(event) => setHoverPopup('users', event)}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
               {(() => {
                 const isParentActive =
                   pathname === "/admin/users" ||
@@ -273,25 +327,29 @@ export default function AdminSidebar() {
                       role="button"
                       onClick={() => setUsersOpen(!usersOpen)}
                       className={clsx(
-                        "flex items-center justify-between gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer",
+                        "flex items-center justify-between gap-3 rounded-lg transition-colors cursor-pointer",
+                        isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
                         isParentActive
                           ? "bg-sidebar-primary text-sidebar-primary-foreground"
                           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       )}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className={clsx("flex items-center gap-3", isCollapsed && "justify-center")}
+                      >
                         <Users className="w-5 h-5" />
-                        <span className="font-medium">Users</span>
+                        {!isCollapsed && <span className="font-medium">Users</span>}
                       </div>
-                      <ChevronDown
-                        className={clsx(
-                          "w-4 h-4 transition-transform",
-                          usersOpen && "rotate-180"
-                        )}
-                      />
+                      {!isCollapsed && (
+                        <ChevronDown
+                          className={clsx(
+                            "w-4 h-4 transition-transform",
+                            usersOpen && "rotate-180"
+                          )}
+                        />
+                      )}
                     </div>
 
-                    {usersOpen && (
+                    {usersOpen && !isCollapsed && (
                       <div className="mt-2 space-y-1">
                         <Link href="/admin/users" onClick={() => setIsOpen(false)}>
                           <div
@@ -305,7 +363,6 @@ export default function AdminSidebar() {
                             <span>Online Players</span>
                           </div>
                         </Link>
-
                         <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -318,7 +375,6 @@ export default function AdminSidebar() {
                             <span>Staff</span>
                           </div>
                         </Link>
-
                         <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -331,7 +387,6 @@ export default function AdminSidebar() {
                             <span>Agents</span>
                           </div>
                         </Link>
-
                         <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -355,19 +410,28 @@ export default function AdminSidebar() {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href} onClick={() => setIsOpen(false)}>
-                  <div
-                    className={clsx(
-                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                      isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                    )}
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="font-medium">{item.label}</span>
-                  </div>
-                </Link>
+                <div
+                  key={item.href}
+                  className="relative group"
+                  onMouseEnter={(event) => setHoverPopup(item.href, event)}
+                  onMouseLeave={() => setHoveredItem(null)}
+                >
+                  <Link href={item.href} onClick={() => setIsOpen(false)}>
+                    <div
+                      className={clsx(
+                        "flex items-center gap-3 rounded-lg transition-colors",
+                        isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                    </div>
+                  </Link>
+
+                </div>
               );
             })}
           </nav>
@@ -375,23 +439,286 @@ export default function AdminSidebar() {
           {/* Footer */}
           <div className="p-4 border-t border-sidebar-border">
             <Link href="/">
-              <Button variant="outline" className="w-full justify-start text-white" size="sm">
-                <Home className="w-4 h-4 mr-2" />
-                Back to App
+              <Button
+                variant="outline"
+                className={clsx(
+                  "w-full text-white",
+                  isCollapsed ? "justify-center" : "justify-start"
+                )}
+                size="sm"
+              >
+                <Home className={clsx("w-4 h-4", !isCollapsed && "mr-2")} />
+                {!isCollapsed && "Back to App"}
               </Button>
             </Link>
             <Button
               variant="outline"
-              className="w-full justify-start text-destructive hover:text-destructive mt-2"
+              className={clsx(
+                "w-full text-destructive hover:text-destructive mt-2",
+                isCollapsed ? "justify-center" : "justify-start"
+              )}
               size="sm"
               onClick={handleLogout}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
+              <LogOut className={clsx("w-4 h-4", !isCollapsed && "mr-2")} />
+              {!isCollapsed && "Logout"}
             </Button>
           </div>
         </div>
       </aside>
+
+      {/* Global popups for collapsed sidebar */}
+      <div className="dark">
+        {hoveredItem === 'bets' && isCollapsed && (
+          <div
+            className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+            style={{ left: `${popupPosition.left}px`, top: `${popupPosition.top}px` }}
+            onMouseEnter={() => setHoveredItem('bets')}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3",
+                pathname?.startsWith("/admin/bets") ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground"
+              )}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="font-medium">Bets</span>
+            </div>
+            <div className="space-y-1 p-2 pl-10">
+              <Link href="/admin/bets/lotto" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/lotto"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Lotto
+                </div>
+              </Link>
+              <Link href="/admin/bets/pools" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/pools"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Pools
+                </div>
+              </Link>
+              <Link href="/admin/bets/sports" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/sports"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Sports
+                </div>
+              </Link>
+              <Link href="/admin/bets/sports-draw" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/sports-draw"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Football Pool
+                </div>
+              </Link>
+              <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/void"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Deleted Bets
+                </div>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {hoveredItem === 'sales' && isCollapsed && (
+          <div
+            className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+            style={{ left: `${popupPosition.left}px`, top: `${popupPosition.top}px` }}
+            onMouseEnter={() => setHoveredItem('sales')}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3",
+                pathname?.startsWith("/admin/sales") ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground"
+              )}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="font-medium">Sales</span>
+            </div>
+            <div className="space-y-1 p-2 pl-10">
+              <Link href="/admin/sales/lotto" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/sales/lotto"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Lotto
+                </div>
+              </Link>
+              <Link href="/admin/sales/pools" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/sales/pools"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Pools
+                </div>
+              </Link>
+              <Link href="/admin/sales/sports" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/sales/sports"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Sports
+                </div>
+              </Link>
+              <Link href="/admin/sales/sports-draw" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/sales/sports-draw"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Football Pool
+                </div>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {hoveredItem === 'users' && isCollapsed && (
+          <div
+            className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+            style={{ left: `${popupPosition.left}px`, top: `${popupPosition.top}px` }}
+            onMouseEnter={() => setHoveredItem('users')}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3",
+                (pathname === "/admin/users" ||
+                  pathname?.startsWith("/admin/staff") ||
+                  pathname?.startsWith("/admin/agents") ||
+                  pathname?.startsWith("/admin/terminals"))
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground"
+              )}
+            >
+              <Users className="w-5 h-5" />
+              <span className="font-medium">Users</span>
+            </div>
+            <div className="space-y-1 p-2 pl-10">
+              <Link href="/admin/users" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/users"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Online Players
+                </div>
+              </Link>
+              <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname?.startsWith("/admin/staff")
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Staff
+                </div>
+              </Link>
+              <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname?.startsWith("/admin/agents")
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Agents
+                </div>
+              </Link>
+              <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname?.startsWith("/admin/terminals")
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Terminals
+                </div>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {adminMenuItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = pathname === item.href;
+          return hoveredItem === item.href && isCollapsed ? (
+            <Link
+              href={item.href}
+              key={item.href}
+              className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+              style={{ left: popupPosition.left, top: popupPosition.top }}
+              onMouseEnter={() => setHoveredItem(item.href)}
+              onMouseLeave={() => setHoveredItem(null)}
+              onClick={() => setIsOpen(false)}
+            >
+              <div
+                className={clsx(
+                  "flex items-center gap-3 px-4 py-3",
+                  isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground"
+                )}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </div>
+            </Link>
+          ) : null;
+        })}
+      </div>
 
       {/* Mobile Overlay */}
       {isOpen && (
