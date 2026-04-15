@@ -41,7 +41,33 @@ export async function signUpWithEmail(email: string, password: string, metadata?
 
 export async function signInWithEmail(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  return { data, error };
+
+  if (!error) {
+    return { data, error };
+  }
+
+  try {
+    const fallbackResponse = await fetch("/api/auth/legacy-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (fallbackResponse.ok) {
+      return await supabase.auth.signInWithPassword({ email, password });
+    }
+
+    const fallbackData = await fallbackResponse.json().catch(() => null);
+    return {
+      data: null,
+      error: new Error(fallbackData?.error || error.message || "Login failed"),
+    };
+  } catch (fallbackError: any) {
+    return {
+      data: null,
+      error: new Error(fallbackError?.message || error.message || "Login failed"),
+    };
+  }
 }
 
 export async function signInWithGoogle() {

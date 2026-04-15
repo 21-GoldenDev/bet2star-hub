@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
 
 // Removed resolveSportsSourceGameId function - sports_draw now manages its own matches
 
@@ -31,12 +32,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ bets: [], matches: {} });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("bets_sports_draw")
       .select("*, games:game_id (week, id), terminal:terminal(serial_number, agent:agent_id(username))")
       .in("game_id", drawGameIds)
       .eq("status", "active")
       .order("bet_time", { ascending: false });
+
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (roleInfo.role !== "admin") {
+      const terminalIds = await getManagedTerminalIds(roleInfo);
+      if (!terminalIds?.length) {
+        return NextResponse.json({ bets: [], matches: {} });
+      }
+      query = query.in("terminal", terminalIds);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

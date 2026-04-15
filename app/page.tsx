@@ -1,12 +1,28 @@
 "use client";
 
+import { useEffect } from "react";
 import { Hash, Type, Trophy, Sparkles, TrendingUp, Shield } from "lucide-react";
 import GameCard from "@/components/GameCard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import useAdminRole from "@/hooks/use-admin-role";
 
 const Home = () => {
+  const router = useRouter();
+  const { roleInfo, loadingRole } = useAdminRole();
+
+  useEffect(() => {
+    if (!loadingRole && roleInfo?.role) {
+      if (roleInfo.role === "staff") {
+        router.replace("/admin/agents");
+      } else if (roleInfo.role === "agent") {
+        router.replace("/admin/terminals");
+      }
+    }
+  }, [loadingRole, roleInfo, router]);
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}

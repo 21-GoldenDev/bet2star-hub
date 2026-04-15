@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2, Edit, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function AgentsPage() {
+  const { toast } = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,11 +110,20 @@ export default function AgentsPage() {
 
     try {
       const res = await fetch(`/api/agents/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete agent");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete agent");
+      }
 
       await fetchData();
       setDeleteId(null);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete agent";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
       console.error("Error deleting agent:", error);
     }
   };

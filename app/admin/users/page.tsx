@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
+import useAdminRole from "@/hooks/use-admin-role";
 
 interface OnlineUser {
   id: string;
@@ -50,11 +51,12 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<OnlineUser | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [agents, setAgents] = useState<Array<{ id: string; username: string; email: string }>>([]);
   const [formData, setFormData] = useState({
     username: "",
     full_name: "",
@@ -62,15 +64,38 @@ export default function UsersPage() {
     phone: "",
     address: "",
   });
+  const { roleInfo, loadingRole } = useAdminRole();
+  const canModify = roleInfo?.role === "admin";
+  const canAdd = roleInfo?.role === "admin" || roleInfo?.role === "staff" || roleInfo?.role === "agent";
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [roleInfo]);
+
+  useEffect(() => {
+    const fetchAgents = async () => {
+      if (roleInfo?.role !== "staff" || !roleInfo.id) {
+        return;
+      }
+      try {
+        const res = await fetch(`/api/agents?staff_id=${roleInfo.id}`);
+        if (!res.ok) {
+          throw new Error("Failed to fetch agents");
+        }
+        const data = await res.json();
+        setAgents(data || []);
+      } catch (error) {
+        console.error("Error fetching agents:", error);
+      }
+    };
+
+    fetchAgents();
+  }, [roleInfo]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/users");
+      const res = await fetch("/api/admin/users");
       if (!res.ok) throw new Error("Failed to fetch users");
       const data = await res.json();
       setUsers(data);
@@ -96,24 +121,29 @@ export default function UsersPage() {
       phone: user.phone || "",
       address: user.address || "",
     });
-    setIsEditDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!selectedUser) return;
+    const isCreate = !selectedUser;
 
     setIsSaving(true);
     try {
-      const res = await fetch(`/api/users/${selectedUser.id}`, {
-        method: "PUT",
+      const url = isCreate ? "/api/admin/users" : `/api/users/${selectedUser.id}`;
+      const method = isCreate ? "POST" : "PUT";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error("Failed to update user");
+      if (!res.ok) {
+        throw new Error(isCreate ? "Failed to add user" : "Failed to update user");
+      }
 
       await fetchUsers();
-      setIsEditDialogOpen(false);
+      setIsDialogOpen(false);
+      setSelectedUser(null);
     } catch (error) {
       console.error("Error saving user:", error);
     } finally {
@@ -149,13 +179,22 @@ export default function UsersPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Online Users Management</h1>
           <p className="text-muted-foreground mt-2">
             Manage online player accounts and information
           </p>
         </div>
+        {canAdd && (
+          <Button className="w-full md:w-auto" onClick={() => {
+            setSelectedUser(null);
+            setFormData({ username: "", full_name: "", email: "", phone: "", address: "" });
+            setIsDialogOpen(true);
+          }}>
+            <Plus className="w-4 h-4 mr-2" /> Add User
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -170,6 +209,20 @@ export default function UsersPage() {
             ₦{users.reduce((sum, u) => sum + u.balance, 0).toLocaleString()}
           </p>
         </Card>
+        {roleInfo?.role === "staff" && (
+          <Card className="p-4">
+            <p className="text-sm text-muted-foreground">Agents Under You</p>
+            <p className="text-2xl font-bold">{agents.length}</p>
+            <div className="mt-3 space-y-1 text-sm text-muted-foreground">
+              {agents.slice(0, 3).map((agent) => (
+                <div key={agent.id} className="truncate">
+                  {agent.username}
+                </div>
+              ))}
+              {agents.length > 3 && <div>+{agents.length - 3} more</div>}
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Search Bar */}
@@ -226,6 +279,8 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        {canModify ? (
+                      <>
                         <Button
                           variant="outline"
                           size="sm"
@@ -242,6 +297,10 @@ export default function UsersPage() {
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Read only</span>
+                    )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -253,10 +312,15 @@ export default function UsersPage() {
       </Card>
 
       {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setSelectedUser(null);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
+            <DialogTitle>{selectedUser ? "Edit User" : "Add User"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -310,12 +374,15 @@ export default function UsersPage() {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => setIsEditDialogOpen(false)}
+                onClick={() => {
+                  setIsDialogOpen(false);
+                  setSelectedUser(null);
+                }}
               >
                 Cancel
               </Button>
               <Button className="flex-1" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save Changes"}
+                {isSaving ? "Saving..." : selectedUser ? "Save Changes" : "Create User"}
               </Button>
             </div>
           </div>

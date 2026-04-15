@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getAdminRoleFromRequest } from "@/lib/admin/role";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -9,12 +10,35 @@ const supabase = createClient(
 // GET - Fetch all terminals
 export async function GET(req: NextRequest) {
   try {
+    const roleInfo = await getAdminRoleFromRequest(req);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const agentId = searchParams.get("agent_id");
 
     let query = supabase.from("terminal").select("*");
 
-    if (agentId) {
+    if (roleInfo.role === "staff") {
+      const { data: agents, error: agentsError } = await supabase
+        .from("agent")
+        .select("id")
+        .eq("staff_id", roleInfo.id);
+
+      if (agentsError) {
+        throw agentsError;
+      }
+
+      const agentIds = (agents || []).map((agent: any) => agent.id).filter((id: string) => !!id);
+      if (agentIds.length === 0) {
+        return NextResponse.json([]);
+      }
+
+      query = query.in("agent_id", agentIds);
+    } else if (roleInfo.role === "agent") {
+      query = query.eq("agent_id", roleInfo.id);
+    } else if (agentId) {
       query = query.eq("agent_id", agentId);
     }
 

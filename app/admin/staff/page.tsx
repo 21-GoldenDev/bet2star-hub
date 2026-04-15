@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2, Edit, Search } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export default function StaffPage() {
+  const { toast } = useToast();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -93,11 +95,20 @@ export default function StaffPage() {
 
     try {
       const res = await fetch(`/api/staff/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete staff");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete staff");
+      }
 
       await fetchStaff();
       setDeleteId(null);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete staff";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
       console.error("Error deleting staff:", error);
     }
   };

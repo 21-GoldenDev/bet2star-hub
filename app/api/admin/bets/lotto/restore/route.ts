@@ -1,10 +1,16 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAdminRoleFromRequest } from "@/lib/admin/role";
 import { computeLottoAward, TurboPrize } from "@/lib/helpers";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo || roleInfo.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const supabase = await createSupabaseServer();
     const { id } = await request.json();
 

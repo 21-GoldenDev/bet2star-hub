@@ -1,4 +1,5 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -13,11 +14,26 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("bets_lotto")
       .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
       .eq("status", "void")
       .order("updated_at", { ascending: false });
+
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (roleInfo.role !== "admin") {
+      const terminalIds = await getManagedTerminalIds(roleInfo);
+      if (!terminalIds?.length) {
+        return NextResponse.json({ data: [] }, { status: 200 });
+      }
+      query = query.in("terminal", terminalIds);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Supabase error:", error);
@@ -96,6 +112,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo || roleInfo.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const supabase = await createSupabaseServer();
     const body = await request.json();
     const { id } = body;

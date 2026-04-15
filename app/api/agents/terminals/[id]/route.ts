@@ -68,6 +68,32 @@ export async function PUT(
   }
 }
 
+async function hasBetsForTerminalIds(terminalIds: string[]) {
+  if (!terminalIds.length) {
+    return false;
+  }
+
+  const betTables = ["bets_lotto", "bets_pools", "bets_sport", "bets_sports_draw"];
+
+  for (const table of betTables) {
+    const { error, count } = await supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .in("terminal", terminalIds)
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if ((count ?? 0) > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // DELETE - Remove terminal
 export async function DELETE(
   req: NextRequest,
@@ -75,6 +101,14 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    if (await hasBetsForTerminalIds([id])) {
+      return NextResponse.json(
+        { error: "Cannot delete terminal: this terminal has existing bets. Remove or archive associated bets first." },
+        { status: 400 }
+      );
+    }
+
     const { error } = await supabase
       .from("terminal")
       .delete()

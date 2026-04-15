@@ -19,6 +19,7 @@ import { toast } from "@/components/ui/use-toast";
 import supabase from "@/lib/supabase/client";
 import { isUserAdminByEmail } from "@/lib/admin/auth";
 import { getUserProfile } from "@/lib/auth";
+import useAdminRole from "@/hooks/use-admin-role";
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -27,6 +28,7 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const { roleInfo } = useAdminRole();
 
   useEffect(() => {
     let mounted = true;
@@ -101,6 +103,8 @@ const Navbar = () => {
 
   const isActive = (path: string) => pathname === path;
   const isAdminPage = pathname.startsWith("/admin");
+  const isAdminUser = isAdmin || roleInfo?.role === "admin";
+  const isStaffOrAgent = roleInfo?.role === "staff" || roleInfo?.role === "agent";
 
   const navLinks = [{ path: "/", label: "Home" }];
   const gameLinks = [
@@ -112,10 +116,8 @@ const Navbar = () => {
 
   if (isAdminPage) {
     navLinks.push({ path: "/admin", label: "Admin Dashboard" });
-  } else {
-    if (isAdmin) {
-      navLinks.push({ path: "/admin", label: "Admin Dashboard" });
-    }
+  } else if (isAdminUser || isStaffOrAgent) {
+    navLinks.push({ path: "/admin", label: "Admin Dashboard" });
   }
 
   return (
@@ -161,11 +163,12 @@ const Navbar = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
-                  {gameLinks.map((link) => (
-                    <DropdownMenuItem key={link.path} asChild>
-                      <Link href={link.path}>{link.label}</Link>
-                    </DropdownMenuItem>
-                  ))}
+                  {!isStaffOrAgent &&
+                    gameLinks.map((link) => (
+                      <DropdownMenuItem key={link.path} asChild>
+                        <Link href={link.path}>{link.label}</Link>
+                      </DropdownMenuItem>
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -254,7 +257,7 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              {!isAdminPage && gameLinks.map((link) => (
+              {!isAdminPage && !isStaffOrAgent && gameLinks.map((link) => (
                 <Link
                   key={link.path}
                   href={link.path}

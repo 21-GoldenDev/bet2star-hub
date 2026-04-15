@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2, Edit, Search, Power } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +56,7 @@ type TerminalFormState = {
 type PrizeRow = { prize_id: string; commission: number };
 
 export default function TerminalsPage() {
+  const { toast } = useToast();
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -165,11 +167,20 @@ export default function TerminalsPage() {
       const res = await fetch(`/api/agents/terminals/${deleteId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete terminal");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to delete terminal");
+      }
 
       await fetchData();
       setDeleteId(null);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete terminal";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
       console.error("Error deleting terminal:", error);
     }
   };

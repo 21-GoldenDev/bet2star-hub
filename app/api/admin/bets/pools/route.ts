@@ -1,4 +1,5 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
@@ -30,6 +31,19 @@ export async function GET(request: NextRequest) {
       .order("bet_time", { ascending: false })
       .eq("game_id", game_id)
       .eq("status", "active");
+
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (roleInfo.role !== "admin") {
+      const terminalIds = await getManagedTerminalIds(roleInfo);
+      if (!terminalIds?.length) {
+        return NextResponse.json({ data: [] }, { status: 200 });
+      }
+      query = query.in("terminal", terminalIds);
+    }
 
     if (gameType && gameType !== "all") {
       query = query.eq("gameType", gameType);

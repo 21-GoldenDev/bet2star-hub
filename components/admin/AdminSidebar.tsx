@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import clsx from "clsx";
 import { signOut } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import useAdminRole from "@/hooks/use-admin-role";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -43,6 +44,10 @@ export default function AdminSidebar() {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
   const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
   const pathname = usePathname();
+  const { roleInfo } = useAdminRole();
+  const isAdmin = roleInfo?.role === "admin";
+  const isStaff = roleInfo?.role === "staff";
+  const isAgent = roleInfo?.role === "agent";
 
   const setHoverPopup = (item: string, event: MouseEvent<HTMLDivElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -196,18 +201,20 @@ export default function AdminSidebar() {
                           </div>
                         </Link>
 
-                        <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
-                          <div
-                            className={clsx(
-                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
-                              pathname === "/admin/bets/void"
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                            )}
-                          >
-                            <span>Deleted Bets</span>
-                          </div>
-                        </Link>
+                        {isAdmin && (
+                          <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
+                            <div
+                              className={clsx(
+                                "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                                pathname === "/admin/bets/void"
+                                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                              )}
+                            >
+                              <span>Deleted Bets</span>
+                            </div>
+                          </Link>
+                        )}
                       </div>
                     )}
                   </div>
@@ -351,42 +358,48 @@ export default function AdminSidebar() {
 
                     {usersOpen && !isCollapsed && (
                       <div className="mt-2 space-y-1">
-                        <Link href="/admin/users" onClick={() => setIsOpen(false)}>
-                          <div
-                            className={clsx(
-                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
-                              pathname === "/admin/users"
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                            )}
-                          >
-                            <span>Online Players</span>
-                          </div>
-                        </Link>
-                        <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
-                          <div
-                            className={clsx(
-                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
-                              pathname?.startsWith("/admin/staff")
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                            )}
-                          >
-                            <span>Staff</span>
-                          </div>
-                        </Link>
-                        <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
-                          <div
-                            className={clsx(
-                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
-                              pathname?.startsWith("/admin/agents")
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                            )}
-                          >
-                            <span>Agents</span>
-                          </div>
-                        </Link>
+                        {isAdmin && (
+                          <>
+                            <Link href="/admin/users" onClick={() => setIsOpen(false)}>
+                              <div
+                                className={clsx(
+                                  "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                                  pathname === "/admin/users"
+                                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                                )}
+                              >
+                                <span>Online Players</span>
+                              </div>
+                            </Link>
+                            <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
+                              <div
+                                className={clsx(
+                                  "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                                  pathname?.startsWith("/admin/staff")
+                                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                                )}
+                              >
+                                <span>Staff</span>
+                              </div>
+                            </Link>
+                          </>
+                        )}
+                        {(isStaff || isAdmin) && (
+                          <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
+                            <div
+                              className={clsx(
+                                "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                                pathname?.startsWith("/admin/agents")
+                                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                              )}
+                            >
+                              <span>Agents</span>
+                            </div>
+                          </Link>
+                        )}
                         <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -406,7 +419,7 @@ export default function AdminSidebar() {
               })()}
             </div>
 
-            {adminMenuItems.map((item) => {
+            {isAdmin && adminMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -534,18 +547,20 @@ export default function AdminSidebar() {
                   Football Pool
                 </div>
               </Link>
-              <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
-                <div
-                  className={clsx(
-                    "rounded-lg px-4 py-2 text-sm transition-colors",
-                    pathname === "/admin/bets/void"
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  )}
-                >
-                  Deleted Bets
-                </div>
-              </Link>
+              {isAdmin && (
+                <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "rounded-lg px-4 py-2 text-sm transition-colors",
+                      pathname === "/admin/bets/void"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    Deleted Bets
+                  </div>
+                </Link>
+              )}
             </div>
           </div>
         )}
@@ -653,47 +668,51 @@ export default function AdminSidebar() {
                   Online Players
                 </div>
               </Link>
-              <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
-                <div
-                  className={clsx(
-                    "rounded-lg px-4 py-2 text-sm transition-colors",
-                    pathname?.startsWith("/admin/staff")
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  )}
-                >
-                  Staff
-                </div>
-              </Link>
-              <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
-                <div
-                  className={clsx(
-                    "rounded-lg px-4 py-2 text-sm transition-colors",
-                    pathname?.startsWith("/admin/agents")
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  )}
-                >
-                  Agents
-                </div>
-              </Link>
-              <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
-                <div
-                  className={clsx(
-                    "rounded-lg px-4 py-2 text-sm transition-colors",
-                    pathname?.startsWith("/admin/terminals")
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  )}
-                >
-                  Terminals
-                </div>
-              </Link>
+              {isAdmin && (
+                <>
+                  <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
+                    <div
+                      className={clsx(
+                        "rounded-lg px-4 py-2 text-sm transition-colors",
+                        pathname?.startsWith("/admin/staff")
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      Staff
+                    </div>
+                  </Link>
+                  <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
+                    <div
+                      className={clsx(
+                        "rounded-lg px-4 py-2 text-sm transition-colors",
+                        pathname?.startsWith("/admin/agents")
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      Agents
+                    </div>
+                  </Link>
+                  <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
+                    <div
+                      className={clsx(
+                        "rounded-lg px-4 py-2 text-sm transition-colors",
+                        pathname?.startsWith("/admin/terminals")
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      )}
+                    >
+                      Terminals
+                    </div>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         )}
 
-        {adminMenuItems.map((item) => {
+        {isAdmin && adminMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
           return hoveredItem === item.href && isCollapsed ? (

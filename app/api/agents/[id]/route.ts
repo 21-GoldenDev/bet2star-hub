@@ -66,6 +66,32 @@ export async function PUT(
   }
 }
 
+async function hasBetsForTerminals(terminalIds: string[]) {
+  if (!terminalIds.length) {
+    return false;
+  }
+
+  const betTables = ["bets_lotto", "bets_pools", "bets_sport", "bets_sports_draw"];
+
+  for (const table of betTables) {
+    const { error, count } = await supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .in("terminal", terminalIds)
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if ((count ?? 0) > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // DELETE - Remove agent
 export async function DELETE(
   req: NextRequest,
@@ -73,6 +99,23 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    const { data: terminals, error: terminalsError } = await supabase
+      .from("terminal")
+      .select("id")
+      .eq("agent_id", id);
+
+    if (terminalsError) throw terminalsError;
+
+    const terminalIds = (terminals || []).map((terminal: any) => terminal.id).filter(Boolean);
+
+    if (await hasBetsForTerminals(terminalIds)) {
+      return NextResponse.json(
+        { error: "Cannot delete agent: related terminals have existing bets. Remove or archive associated bets/terminals first." },
+        { status: 400 }
+      );
+    }
+
     const { error } = await supabase
       .from("agent")
       .delete()

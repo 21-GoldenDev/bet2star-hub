@@ -31,6 +31,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 import type { PoolsBet, Player } from "@/lib/types/pools";
 import { useToast } from "@/hooks/use-toast";
+import useAdminRole from "@/hooks/use-admin-role";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
 import { cn } from "@/lib/utils";
@@ -74,6 +75,8 @@ export default function PoolsPage() {
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [terminalFilter, setTerminalFilter] = useState<string>("all");
   const [optionFilter, setOptionFilter] = useState<string>("all");
+  const { roleInfo } = useAdminRole();
+  const canModify = roleInfo?.role === "admin";
 
   useEffect(() => {
     const fetchWeeks = async () => {
@@ -655,9 +658,11 @@ export default function PoolsPage() {
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                {canModify && (
+                  <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
             )}
           />

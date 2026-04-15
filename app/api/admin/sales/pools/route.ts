@@ -1,4 +1,5 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
 import { NextRequest, NextResponse } from "next/server";
 
 interface TotalResult {
@@ -59,10 +60,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "game_id parameter is required" }, { status: 400 });
     }
 
-    const { data: bets, error: betsError } = await supabase
+    let query = supabase
       .from("bets_pools")
       .select("*, prize_id, prize:prize_id(name, commission)")
       .eq("game_id", game_id);
+
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (roleInfo.role !== "admin") {
+      const terminalIds = await getManagedTerminalIds(roleInfo);
+      if (!terminalIds?.length) {
+        return NextResponse.json({
+          totalResult: {
+            sales: { ...defaultSales },
+            agentPayable: 0,
+            onlinePayable: 0,
+            win: { ...defaultSales },
+            agentWin: 0,
+            onlineWin: 0,
+          },
+          onlineResult: {
+            sales: { ...defaultSales },
+            win: { ...defaultSales },
+          },
+          terminalResults: [],
+        });
+      }
+      query = query.in("terminal", terminalIds);
+    }
+
+    const { data: bets, error: betsError } = await query;
 
     if (betsError) {
       console.error("Error fetching bets:", betsError);

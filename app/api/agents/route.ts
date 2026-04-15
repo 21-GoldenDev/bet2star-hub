@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getAdminRoleFromRequest } from "@/lib/admin/role";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -9,12 +10,21 @@ const supabase = createClient(
 // GET - Fetch all agents
 export async function GET(req: NextRequest) {
   try {
+    const roleInfo = await getAdminRoleFromRequest(req);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
     const staffId = searchParams.get("staff_id");
 
     let query = supabase.from("agent").select("*");
 
-    if (staffId) {
+    if (roleInfo.role === "staff") {
+      query = query.eq("staff_id", roleInfo.id);
+    } else if (roleInfo.role === "agent") {
+      query = query.eq("id", roleInfo.id);
+    } else if (staffId) {
       query = query.eq("staff_id", staffId);
     }
 

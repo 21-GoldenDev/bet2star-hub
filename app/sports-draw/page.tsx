@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { Game } from "@/lib/types/game";
 import { SportsMatch } from "@/lib/types/sports";
+import BettingAccessGate from "@/components/BettingAccessGate";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
 
@@ -313,211 +314,214 @@ const SportsDrawPage = () => {
   }, [matches]);
 
   return (
-    <div className="min-h-screen pt-24 pb-8 px-4">
-      <div className="container mx-auto max-w-7xl">
-        <div className="text-center mb-10 animate-slide-up">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Today's Football Pool Matches</h1>
-          <p className="text-muted-foreground">Choose draw (X) outcomes from the same Sports fixtures.</p>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              <p className="mt-4 text-muted-foreground">Loading game...</p>
-            </div>
+    <>
+      <BettingAccessGate />
+      <div className="min-h-screen pt-24 pb-8 px-4">
+        <div className="container mx-auto max-w-7xl">
+          <div className="text-center mb-10 animate-slide-up">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Today's Football Pool Matches</h1>
+            <p className="text-muted-foreground">Choose draw (X) outcomes from the same Sports fixtures.</p>
           </div>
-        ) : !activeGame ? (
-          <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <div className="max-w-md mx-auto">
-              <h2 className="text-2xl font-bold text-foreground mb-2">No Active Game</h2>
-              <p className="text-muted-foreground mb-4">There is currently no active Football Pool game available. Please check back later.</p>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                <p className="mt-4 text-muted-foreground">Loading game...</p>
+              </div>
             </div>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-2">
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <RadioGroup value={mode} onValueChange={(val) => setMode(val as "direct" | "permutation")}>
-                    <label className="cursor-pointer flex items-center gap-2">
-                      <RadioGroupItem id="mode-direct" value="direct" />
-                      <span className="text-sm">Direct</span>
-                    </label>
-                    <label className="cursor-pointer flex items-center gap-2">
-                      <RadioGroupItem id="mode-permutation" value="permutation" />
-                      <span className="text-sm">Permutation</span>
-                    </label>
-                  </RadioGroup>
-                </div>
-
-                {mode === "permutation" && (
-                  <div className="p-4 rounded-xl bg-card border border-border mt-3">
-                    <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
-                    <div className="flex flex-col gap-2">
-                      {Array.from({ length: Math.max(0, selectedBets.length - 1) }, (_, i) => i + 1).map((u) => (
-                        <label key={u} onClick={() => toggleMatch(u)} className="cursor-pointer flex items-center gap-2">
-                          <div className="size-4 rounded-full bg-transparent border border-primary flex items-center justify-center">
-                            {matchAtLeast.includes(u) && <div className="bg-primary size-2 rounded-full" />}
-                          </div>
-                          <span className="text-sm font-medium">{u}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
+          ) : !activeGame ? (
+            <div className="bg-card border border-border rounded-xl p-12 text-center">
+              <div className="max-w-md mx-auto">
+                <h2 className="text-2xl font-bold text-foreground mb-2">No Active Game</h2>
+                <p className="text-muted-foreground mb-4">There is currently no active Football Pool game available. Please check back later.</p>
               </div>
-
-              <div className="lg:col-span-7">
-                <div className="p-4 pr-2 rounded-xl bg-card border border-border">
-                  <div className="space-y-2 pr-2 max-h-150 lg:max-h-[calc(100vh-18rem)] overflow-auto scrollbar">
-                    {sortedMatches.map((match) => {
-                      const matchNumber = matchNumberMap.get(match.id) ?? 0;
-                      const drawOdds = drawOddsMap[matchNumber] ?? match.prizes[0] ?? 0;
-                      const selected = isSelected(match.id);
-                      return (
-                        <div
-                          key={match.id}
-                          onClick={() => toggleBet(match.id, matchNumber, drawOdds)}
-                          className={clsx(
-                            "flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer",
-                            selected
-                              ? "border-primary bg-primary/10"
-                              : "border-border bg-muted/30 hover:bg-muted/50"
-                          )}
-                        >
-                          <div className="shrink-0 w-8 text-center">
-                            <span className="text-sm font-bold text-muted-foreground">{matchNumber}</span>
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-xs font-semibold text-foreground truncate">{match.homeTeam}</span>
-                              <span className="text-xs text-muted-foreground truncate">{match.awayTeam}</span>
-                            </div>
-                          </div>
-
-                          <div
-                            className={clsx(
-                              "shrink-0 px-3 py-2 rounded-lg font-semibold text-sm transition-all",
-                              selected
-                                ? "bg-primary text-primary-foreground shadow-lg"
-                                : "bg-muted text-foreground"
-                            )}
-                          >
-                            {drawOdds.toFixed(2)}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-3 flex flex-col gap-4">
-                <div className="p-5 rounded-2xl bg-card border border-border animate-slide-up" style={{ animationDelay: "200ms" }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-foreground">Selected Draw Bets</h3>
-                    {selectedBets.length > 0 && (
-                      <button onClick={clearBets} className="text-xs text-muted-foreground hover:text-foreground">
-                        Clear All
-                      </button>
-                    )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-2">
+                  <div className="p-4 rounded-xl bg-card border border-border">
+                    <RadioGroup value={mode} onValueChange={(val) => setMode(val as "direct" | "permutation")}>
+                      <label className="cursor-pointer flex items-center gap-2">
+                        <RadioGroupItem id="mode-direct" value="direct" />
+                        <span className="text-sm">Direct</span>
+                      </label>
+                      <label className="cursor-pointer flex items-center gap-2">
+                        <RadioGroupItem id="mode-permutation" value="permutation" />
+                        <span className="text-sm">Permutation</span>
+                      </label>
+                    </RadioGroup>
                   </div>
 
-                  {selectedBets.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground text-sm">Select draw options to add to your slip</div>
-                  ) : (
-                    <div className="max-h-70 overflow-y-auto mb-4 scrollbar">
-                      <div className="space-y-4 pr-1">
-                        {Array.from(groupedSelections.entries()).map(([matchId, selections]) => {
-                          const match = matches.find((m) => m.id === matchId)!;
-                          const matchNumber = matchNumberMap.get(matchId) ?? 0;
-                          return (
-                            <div key={matchId} className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                              <div className="text-sm font-medium text-foreground mb-2">
-                                {matchNumber}. {match.homeTeam} vs {match.awayTeam}
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {selections.map((sel) => (
-                                  <div key={`${sel.matchId}-${sel.option}`} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-card border border-border text-sm">
-                                    <span className="text-muted-foreground">X</span>
-                                    <span className="font-semibold">{sel.odds.toFixed(2)}</span>
-                                    <button
-                                      onClick={() => toggleBet(sel.matchId, sel.matchNumber, sel.odds)}
-                                      className="text-muted-foreground hover:text-destructive text-xs"
-                                      aria-label="Remove selection"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
+                  {mode === "permutation" && (
+                    <div className="p-4 rounded-xl bg-card border border-border mt-3">
+                      <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
+                      <div className="flex flex-col gap-2">
+                        {Array.from({ length: Math.max(0, selectedBets.length - 1) }, (_, i) => i + 1).map((u) => (
+                          <label key={u} onClick={() => toggleMatch(u)} className="cursor-pointer flex items-center gap-2">
+                            <div className="size-4 rounded-full bg-transparent border border-primary flex items-center justify-center">
+                              {matchAtLeast.includes(u) && <div className="bg-primary size-2 rounded-full" />}
                             </div>
-                          );
-                        })}
+                            <span className="text-sm font-medium">{u}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
                   )}
+                </div>
 
-                  <div className="border-t border-border pt-4 space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm text-muted-foreground" htmlFor="bet-amount">Bet Amount</label>
-                        {activeGame?.max_stake?.amount && (
-                          <div className="text-xs text-muted-foreground">Max: ₦{activeGame.max_stake.amount.toLocaleString()}</div>
-                        )}
-                      </div>
-                      <Input
-                        id="bet-amount"
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        max={activeGame?.max_stake?.amount}
-                        step={1}
-                        placeholder="Enter amount"
-                        value={betAmount}
-                        onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
-                      />
+                <div className="lg:col-span-7">
+                  <div className="p-4 pr-2 rounded-xl bg-card border border-border">
+                    <div className="space-y-2 pr-2 max-h-150 lg:max-h-[calc(100vh-18rem)] overflow-auto scrollbar">
+                      {sortedMatches.map((match) => {
+                        const matchNumber = matchNumberMap.get(match.id) ?? 0;
+                        const drawOdds = drawOddsMap[matchNumber] ?? match.prizes[0] ?? 0;
+                        const selected = isSelected(match.id);
+                        return (
+                          <div
+                            key={match.id}
+                            onClick={() => toggleBet(match.id, matchNumber, drawOdds)}
+                            className={clsx(
+                              "flex items-center gap-3 p-3 rounded-lg border-2 transition-all cursor-pointer",
+                              selected
+                                ? "border-primary bg-primary/10"
+                                : "border-border bg-muted/30 hover:bg-muted/50"
+                            )}
+                          >
+                            <div className="shrink-0 w-8 text-center">
+                              <span className="text-sm font-bold text-muted-foreground">{matchNumber}</span>
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs font-semibold text-foreground truncate">{match.homeTeam}</span>
+                                <span className="text-xs text-muted-foreground truncate">{match.awayTeam}</span>
+                              </div>
+                            </div>
+
+                            <div
+                              className={clsx(
+                                "shrink-0 px-3 py-2 rounded-lg font-semibold text-sm transition-all",
+                                selected
+                                  ? "bg-primary text-primary-foreground shadow-lg"
+                                  : "bg-muted text-foreground"
+                              )}
+                            >
+                              {drawOdds.toFixed(2)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-3 flex flex-col gap-4">
+                  <div className="p-5 rounded-2xl bg-card border border-border animate-slide-up" style={{ animationDelay: "200ms" }}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-foreground">Selected Draw Bets</h3>
+                      {selectedBets.length > 0 && (
+                        <button onClick={clearBets} className="text-xs text-muted-foreground hover:text-foreground">
+                          Clear All
+                        </button>
+                      )}
                     </div>
 
-                    {mode === "direct" && selectedBets.length > 0 && betAmount > 0 && (
-                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-sm font-medium text-foreground">Possible Winning:</span>
-                          <span className="font-bold text-lg text-primary">₦{(betAmount * totalOdds).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    {selectedBets.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground text-sm">Select draw options to add to your slip</div>
+                    ) : (
+                      <div className="max-h-70 overflow-y-auto mb-4 scrollbar">
+                        <div className="space-y-4 pr-1">
+                          {Array.from(groupedSelections.entries()).map(([matchId, selections]) => {
+                            const match = matches.find((m) => m.id === matchId)!;
+                            const matchNumber = matchNumberMap.get(matchId) ?? 0;
+                            return (
+                              <div key={matchId} className="p-3 rounded-lg bg-muted/50 border border-border/50">
+                                <div className="text-sm font-medium text-foreground mb-2">
+                                  {matchNumber}. {match.homeTeam} vs {match.awayTeam}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {selections.map((sel) => (
+                                    <div key={`${sel.matchId}-${sel.option}`} className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-card border border-border text-sm">
+                                      <span className="text-muted-foreground">X</span>
+                                      <span className="font-semibold">{sel.odds.toFixed(2)}</span>
+                                      <button
+                                        onClick={() => toggleBet(sel.matchId, sel.matchNumber, sel.odds)}
+                                        className="text-muted-foreground hover:text-destructive text-xs"
+                                        aria-label="Remove selection"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
-                    {mode === "permutation" && permutationWinnings && betAmount > 0 && (
-                      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">APL:</span>
-                          <span className="font-semibold text-foreground">₦{permutationWinnings.apl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="border-t border-border pt-4 space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm text-muted-foreground" htmlFor="bet-amount">Bet Amount</label>
+                          {activeGame?.max_stake?.amount && (
+                            <div className="text-xs text-muted-foreground">Max: ₦{activeGame.max_stake.amount.toLocaleString()}</div>
+                          )}
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Min Winning:</span>
-                          <span className="font-semibold text-foreground">₦{permutationWinnings.min.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-foreground">Max Winning:</span>
-                          <span className="font-bold text-lg text-primary">₦{permutationWinnings.max.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
+                        <Input
+                          id="bet-amount"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={activeGame?.max_stake?.amount}
+                          step={1}
+                          placeholder="Enter amount"
+                          value={betAmount}
+                          onChange={(e) => setBetAmount(Math.max(0, Number(e.target.value)))}
+                        />
                       </div>
-                    )}
 
-                    <Button variant="gold" className="w-full" size="lg" onClick={placeBet} disabled={isPlacingBet || selectedBets.length === 0}>
-                      {isPlacingBet ? "Placing Bet..." : "Place Bet"}
-                    </Button>
+                      {mode === "direct" && selectedBets.length > 0 && betAmount > 0 && (
+                        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                          <div className="flex justify-between items-center mt-2">
+                            <span className="text-sm font-medium text-foreground">Possible Winning:</span>
+                            <span className="font-bold text-lg text-primary">₦{(betAmount * totalOdds).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {mode === "permutation" && permutationWinnings && betAmount > 0 && (
+                        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">APL:</span>
+                            <span className="font-semibold text-foreground">₦{permutationWinnings.apl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Min Winning:</span>
+                            <span className="font-semibold text-foreground">₦{permutationWinnings.min.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-foreground">Max Winning:</span>
+                            <span className="font-bold text-lg text-primary">₦{permutationWinnings.max.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <Button variant="gold" className="w-full" size="lg" onClick={placeBet} disabled={isPlacingBet || selectedBets.length === 0}>
+                        {isPlacingBet ? "Placing Bet..." : "Place Bet"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

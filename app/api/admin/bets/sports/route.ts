@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,12 +27,27 @@ export async function GET(request: NextRequest) {
 
     const gameIds = (games || []).map((g) => g.id);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("bets_sport")
       .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
       .in("game_id", gameIds)
       .eq("status", "active")
       .order("bet_time", { ascending: false });
+
+    const roleInfo = await getAdminRoleFromRequest(request);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (roleInfo.role !== "admin") {
+      const terminalIds = await getManagedTerminalIds(roleInfo);
+      if (!terminalIds?.length) {
+        return NextResponse.json({ bets: [], matches: {} });
+      }
+      query = query.in("terminal", terminalIds);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
 

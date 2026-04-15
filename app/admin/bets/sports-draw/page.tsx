@@ -28,6 +28,7 @@ import {
 import { Trash2, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
 import { useToast } from "@/hooks/use-toast";
+import useAdminRole from "@/hooks/use-admin-role";
 import { cn } from "@/lib/utils";
 
 interface MatchInfo {
@@ -89,6 +90,8 @@ export default function SportsDrawPage() {
   const [betToDelete, setBetToDelete] = useState<SportsBet | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<SportsBet | null>(null);
+  const { roleInfo } = useAdminRole();
+  const canModify = roleInfo?.role === "admin";
 
   useEffect(() => {
     async function fetchWeeks() {
@@ -463,9 +466,11 @@ export default function SportsDrawPage() {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {canModify && (
+                <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           )}
         />
