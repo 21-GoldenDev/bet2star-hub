@@ -39,7 +39,47 @@ export async function signUpWithEmail(email: string, password: string, metadata?
   return { data, error };
 }
 
-export async function signInWithEmail(email: string, password: string) {
+function isEmail(value: string) {
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value);
+}
+
+async function resolveIdentifierToEmail(identifier: string) {
+  if (isEmail(identifier)) {
+    return identifier.trim().toLowerCase();
+  }
+
+  const response = await fetch("/api/auth/resolve-login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(data?.error || "Unable to resolve username to email");
+  }
+
+  const data = await response.json();
+  if (!data?.email) {
+    throw new Error("Unable to resolve username to email");
+  }
+
+  return data.email;
+}
+
+export async function signInWithEmail(identifier: string, password: string) {
+  const normalizedIdentifier = identifier.trim();
+  if (!normalizedIdentifier) {
+    return { data: null, error: new Error("Username or email is required") };
+  }
+
+  let email = normalizedIdentifier;
+  try {
+    email = await resolveIdentifierToEmail(normalizedIdentifier);
+  } catch (resolveError: any) {
+    return { data: null, error: new Error(resolveError?.message || "Login failed") };
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (!error) {

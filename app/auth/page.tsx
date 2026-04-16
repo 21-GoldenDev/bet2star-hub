@@ -14,6 +14,7 @@ const AuthForm = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
+    identifier: "",
     email: "",
     password: "",
     username: "",
@@ -48,10 +49,10 @@ const AuthForm = () => {
           if (error) throw error;
           toast({ title: "Check your email", description: "Confirmation link sent" });
         } else {
-          const { error } = await signInWithEmail(formData.email, formData.password);
+          const identifier = formData.identifier.trim();
+          const { error } = await signInWithEmail(identifier, formData.password);
           if (error) throw error;
 
-          // Redirect to the intended page or home
           const redirectTo = searchParams.get('redirectTo') || '/';
           router.push(redirectTo);
         }
@@ -155,12 +156,17 @@ const AuthForm = () => {
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                type="email"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                type={isSignUp ? "email" : "text"}
+                placeholder={isSignUp ? "Email address" : "Username or email"}
+                value={isSignUp ? formData.email : formData.identifier}
+                onChange={(e) => {
+                  setFormData({
+                    ...formData,
+                    ...(isSignUp
+                      ? { email: e.target.value }
+                      : { identifier: e.target.value }),
+                  });
+                }}
                 className="pl-11 h-12 bg-muted border-border"
               />
             </div>
