@@ -400,18 +400,20 @@ export default function AdminSidebar() {
                             </div>
                           </Link>
                         )}
-                        <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
-                          <div
-                            className={clsx(
-                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
-                              pathname?.startsWith("/admin/terminals")
-                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                            )}
-                          >
-                            <span>Terminals</span>
-                          </div>
-                        </Link>
+                        {isAdmin && (
+                          <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
+                            <div
+                              className={clsx(
+                                "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                                pathname?.startsWith("/admin/terminals")
+                                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                              )}
+                            >
+                              <span>Terminals</span>
+                            </div>
+                          </Link>
+                        )}
                       </div>
                     )}
                   </div>
