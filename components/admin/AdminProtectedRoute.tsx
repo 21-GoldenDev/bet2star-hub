@@ -34,11 +34,11 @@ export default function AdminProtectedRoute({ children }: { children: React.Reac
 
         if (pathname === "/admin" || pathname === "/admin/") {
           if (data.role === "staff") {
-            router.replace("/admin/agents");
+            router.replace("/admin/bets/lotto");
             return;
           }
           if (data.role === "agent") {
-            router.replace("/admin/terminals");
+            router.replace("/admin/bets/lotto");
             return;
           }
         }
