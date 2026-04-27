@@ -553,15 +553,6 @@ export default function GamesPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Week</Label>
-              <Input
-                type="number"
-                value={formData.week}
-                onChange={(e) => setFormData({ ...formData, week: Number(e.target.value) })}
-                disabled={submitting}
-              />
-            </div>
-            <div>
               <Label>Game Type</Label>
               <Select
                 value={formData.type}
