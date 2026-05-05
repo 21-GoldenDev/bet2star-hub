@@ -30,7 +30,7 @@ const adminMenuItems = [
   { href: "/admin/games", label: "Games", icon: Gamepad2 },
   // { href: "/admin/transactions", label: "Transactions", icon: DollarSign },
   // { href: "/admin/reports", label: "Reports", icon: FileText },
-  { href: "/admin/matches", label: "Matches", icon: Goal },
+  // { href: "/admin/matches", label: "Matches", icon: Goal },
   { href: "/admin/prize", label: "Prize Config", icon: Trophy },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

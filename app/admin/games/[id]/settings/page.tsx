@@ -17,6 +17,7 @@ import LottoNumbersSection from "@/components/admin/LottoNumbersSection";
 import MaxStakeSection from "@/components/admin/MaxStakeSection";
 import TerminalCommissionsSection from "@/components/admin/TerminalCommissionsSection";
 import MaxPrizeSection from "@/components/admin/MaxPrizeSection";
+import PoolsMatchesSection from "@/components/admin/PoolsMatchesSection";
 
 interface GamePrizeWithInfo {
   id: string;
@@ -216,6 +217,9 @@ export default function GameSettingsPage() {
           submitting={submitting}
           onUpdateResult={updateWeekResult}
         />
+      )}
+      {game?.type === "pools" && (
+        <PoolsMatchesSection gameId={gameId} gameWeek={game.week} />
       )}
       {game?.type === "lotto" && (
         <LottoNumbersSection gameId={gameId} loading={loading} />

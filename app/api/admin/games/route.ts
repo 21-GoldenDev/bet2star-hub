@@ -148,6 +148,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    if (type === "pools") {
+      const { error: matchEnableError } = await supabase
+        .from("matches")
+        .update({ status: "enable" })
+        .eq("week", week);
+
+      if (matchEnableError) {
+        console.error("Error enabling matches for new pools game:", matchEnableError);
+      }
+    }
+
     return NextResponse.json({ game: data }, { status: 201 });
   } catch (error) {
     console.error("Error creating game:", error);
