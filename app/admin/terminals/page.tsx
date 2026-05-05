@@ -202,6 +202,51 @@ export default function TerminalsPage() {
     }
   };
 
+  const handleSetAllStatus = async (status: "active" | "inactive") => {
+    try {
+      const terminalsToUpdate = terminals.filter((terminal) => terminal.status !== status);
+      if (terminalsToUpdate.length === 0) {
+        toast({
+          title: status === "active" ? "Nothing to enable" : "Nothing to disable",
+          description: `All terminals are already ${status === "active" ? "enabled" : "disabled"}.`,
+          variant: "default",
+        });
+        return;
+      }
+
+      const results = await Promise.all(
+        terminalsToUpdate.map((terminal) =>
+          fetch(`/api/agents/terminals/${terminal.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          })
+        )
+      );
+
+      const failed = results.find((res) => !res.ok);
+      if (failed) {
+        const errorText = await failed.text().catch(() => "Failed to update terminal status.");
+        throw new Error(errorText || "Failed to update terminal status.");
+      }
+
+      await fetchData();
+      toast({
+        title: status === "active" ? "Enabled all terminals" : "Disabled all terminals",
+        description: `All terminals are now ${status === "active" ? "active" : "inactive"}.`,
+        variant: "default",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update all terminals.";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+      console.error("Error updating all terminal statuses:", error);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       serial_number: "",
@@ -360,245 +405,264 @@ export default function TerminalsPage() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Terminals Management</h1>
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogTrigger asChild>
-            <Button
-              onClick={() => {
-                resetForm();
-                setOpenDialog(true);
-              }}
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> Add Terminal
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editingId ? "Edit Terminal" : "Add New Terminal"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="serial_number">Serial Number (SN)</Label>
-                  <Input
-                    id="serial_number"
-                    name="serial_number"
-                    value={formData.serial_number}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="agent_id">Assign to Agent</Label>
-                  <Select
-                    value={formData.agent_id}
-                    onValueChange={handleAgentChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an agent" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.username}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    required={!editingId}
-                    placeholder={editingId ? "Leave empty to keep current" : ""}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="credit_limit">Credit Limit</Label>
-                  <Input
-                    id="credit_limit"
-                    name="credit_limit"
-                    type="number"
-                    value={formData.credit_limit}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="max_stake">Max Stake</Label>
-                  <Input
-                    id="max_stake"
-                    name="max_stake"
-                    type="number"
-                    min="0"
-                    value={formData.max_stake}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Game Types (Play Styles)</Label>
-                <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
-                  {gameTypeOptions.map(([value, label]) => (
-                    <div key={value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`game_type_${value}`}
-                        checked={formData.game_types.includes(value)}
-                        onCheckedChange={() => toggleGameType(value)}
-                      />
-                      <Label
-                        htmlFor={`game_type_${value}`}
-                        className="text-sm font-normal"
-                      >
-                        {label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Game Modes (Products)</Label>
-                <div className="grid grid-cols-3 gap-3 rounded-md border p-3">
-                  {gameModeOptions.map((mode) => (
-                    <div key={mode.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`game_mode_${mode.value}`}
-                        checked={formData.game_modes.includes(mode.value)}
-                        onCheckedChange={() => toggleGameMode(mode.value)}
-                      />
-                      <Label
-                        htmlFor={`game_mode_${mode.value}`}
-                        className="text-sm font-normal"
-                      >
-                        {mode.label}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Prizes with Commissions</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addPrizeRow}>
-                    <Plus className="h-4 w-4 mr-1" /> Add Prize
-                  </Button>
-                </div>
-                <div className="space-y-3 rounded-md border p-3">
-                  {prizeRows.map((row, index) => (
-                    <div key={`${row.prize_id}-${index}`} className="grid grid-cols-12 gap-3 items-center">
-                      <div className="col-span-7">
-                        <Label htmlFor={`prize_select_${index}`} className="sr-only">
-                          Prize
-                        </Label>
-                        <Select
-                          value={row.prize_id}
-                          onValueChange={(value) =>
-                            updatePrizeRow(index, "prize_id", value)
-                          }
-                        >
-                          <SelectTrigger id={`prize_select_${index}`}>
-                            <SelectValue placeholder="Select prize" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getAvailablePrizes(index).map((prize) => (
-                              <SelectItem key={prize.id} value={prize.id}>
-                                {prize.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-4">
-                        <Label htmlFor={`prize_commission_${index}`} className="sr-only">
-                          Commission
-                        </Label>
-                        <Input
-                          id={`prize_commission_${index}`}
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="1"
-                          value={row.commission}
-                          onChange={(e) =>
-                            updatePrizeRow(index, "commission", e.target.value)
-                          }
-                          placeholder="Commission %"
-                        />
-                      </div>
-                      <div className="col-span-1 flex justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removePrizeRow(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Button type="submit" className="w-full">
-                {editingId ? "Update" : "Create"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            type="text"
-            placeholder="Search by serial number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Terminals Management</h1>
         </div>
-        <Select value={filterAgentId} onValueChange={setFilterAgentId}>
-          <SelectTrigger className="w-50">
-            <SelectValue placeholder="Filter by agent" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Agents</SelectItem>
-            {agents.map((agent) => (
-              <SelectItem key={agent.id} value={agent.id}>
-                {agent.first_name} {agent.last_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-37.5">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleSetAllStatus("active")}
+          >
+            Enable All
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => handleSetAllStatus("inactive")}
+          >
+            Disable All
+          </Button>
+          <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setOpenDialog(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add Terminal
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingId ? "Edit Terminal" : "Add New Terminal"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="serial_number">Serial Number (SN)</Label>
+                    <Input
+                      id="serial_number"
+                      name="serial_number"
+                      value={formData.serial_number}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="agent_id">Assign to Agent</Label>
+                    <Select
+                      value={formData.agent_id}
+                      onValueChange={handleAgentChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an agent" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {agents.map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            {agent.username}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      name="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      required={!editingId}
+                      placeholder={editingId ? "Leave empty to keep current" : ""}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="credit_limit">Credit Limit</Label>
+                    <Input
+                      id="credit_limit"
+                      name="credit_limit"
+                      type="number"
+                      value={formData.credit_limit}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="max_stake">Max Stake</Label>
+                    <Input
+                      id="max_stake"
+                      name="max_stake"
+                      type="number"
+                      min="0"
+                      value={formData.max_stake}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Game Types (Play Styles)</Label>
+                  <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
+                    {gameTypeOptions.map(([value, label]) => (
+                      <div key={value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`game_type_${value}`}
+                          checked={formData.game_types.includes(value)}
+                          onCheckedChange={() => toggleGameType(value)}
+                        />
+                        <Label
+                          htmlFor={`game_type_${value}`}
+                          className="text-sm font-normal"
+                        >
+                          {label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Game Modes (Products)</Label>
+                  <div className="grid grid-cols-3 gap-3 rounded-md border p-3">
+                    {gameModeOptions.map((mode) => (
+                      <div key={mode.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`game_mode_${mode.value}`}
+                          checked={formData.game_modes.includes(mode.value)}
+                          onCheckedChange={() => toggleGameMode(mode.value)}
+                        />
+                        <Label
+                          htmlFor={`game_mode_${mode.value}`}
+                          className="text-sm font-normal"
+                        >
+                          {mode.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Prizes with Commissions</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addPrizeRow}>
+                      <Plus className="h-4 w-4 mr-1" /> Add Prize
+                    </Button>
+                  </div>
+                  <div className="space-y-3 rounded-md border p-3">
+                    {prizeRows.map((row, index) => (
+                      <div key={`${row.prize_id}-${index}`} className="grid grid-cols-12 gap-3 items-center">
+                        <div className="col-span-7">
+                          <Label htmlFor={`prize_select_${index}`} className="sr-only">
+                            Prize
+                          </Label>
+                          <Select
+                            value={row.prize_id}
+                            onValueChange={(value) =>
+                              updatePrizeRow(index, "prize_id", value)
+                            }
+                          >
+                            <SelectTrigger id={`prize_select_${index}`}>
+                              <SelectValue placeholder="Select prize" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAvailablePrizes(index).map((prize) => (
+                                <SelectItem key={prize.id} value={prize.id}>
+                                  {prize.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="col-span-4">
+                          <Label htmlFor={`prize_commission_${index}`} className="sr-only">
+                            Commission
+                          </Label>
+                          <Input
+                            id={`prize_commission_${index}`}
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value={row.commission}
+                            onChange={(e) =>
+                              updatePrizeRow(index, "commission", e.target.value)
+                            }
+                            placeholder="Commission %"
+                          />
+                        </div>
+                        <div className="col-span-1 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removePrizeRow(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Button type="submit" className="w-full">
+                  {editingId ? "Update" : "Create"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              type="text"
+              placeholder="Search by serial number..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={filterAgentId} onValueChange={setFilterAgentId}>
+            <SelectTrigger className="w-50">
+              <SelectValue placeholder="Filter by agent" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Agents</SelectItem>
+              {agents.map((agent) => (
+                <SelectItem key={agent.id} value={agent.id}>
+                  {agent.first_name} {agent.last_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-37.5">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {loading ? (

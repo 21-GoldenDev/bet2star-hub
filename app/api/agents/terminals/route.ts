@@ -57,6 +57,55 @@ export async function GET(req: NextRequest) {
   }
 }
 
+// PATCH - Update all accessible terminals status
+export async function PATCH(req: NextRequest) {
+  try {
+    const roleInfo = await getAdminRoleFromRequest(req);
+    if (!roleInfo) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const status = body.status;
+
+    if (status !== "active" && status !== "inactive") {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    let query = supabase.from("terminal").update({ status }).neq("status", status);
+
+    if (roleInfo.role === "staff") {
+      const { data: agents, error: agentsError } = await supabase
+        .from("agent")
+        .select("id")
+        .eq("staff_id", roleInfo.id);
+
+      if (agentsError) {
+        throw agentsError;
+      }
+
+      const agentIds = (agents || []).map((agent: any) => agent.id).filter((id: string) => !!id);
+      if (agentIds.length === 0) {
+        return NextResponse.json({ updated: 0 });
+      }
+
+      query = query.in("agent_id", agentIds);
+    } else if (roleInfo.role === "agent") {
+      query = query.eq("agent_id", roleInfo.id);
+    }
+
+    const { data, error } = await query.select();
+    if (error) throw error;
+
+    return NextResponse.json({ updated: data?.length ?? 0 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 // POST - Create new terminal
 export async function POST(req: NextRequest) {
   try {
