@@ -101,10 +101,11 @@ export default function GamesPage() {
     }
   };
 
-  const getActiveGameForType = (type: GameType) => {
+  const getActiveGameForType = (type: GameType, week?: number) => {
     const now = new Date();
     return games.find((g) => {
       if (g.type !== type) return false;
+      if (week !== undefined && g.week !== week) return false;
       const start = new Date(g.startTime || g.start_time || "");
       const end = new Date(g.endTime || g.end_time || "");
       if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
@@ -208,7 +209,7 @@ export default function GamesPage() {
   };
 
   const handleCreate = async () => {
-    const activeGame = getActiveGameForType(formData.type);
+    const activeGame = getActiveGameForType(formData.type, formData.week);
     if (activeGame) {
       toast({
         title: "Cannot create game",
@@ -385,7 +386,7 @@ export default function GamesPage() {
                   </SelectContent>
                 </Select>
                 {(() => {
-                  const activeGame = getActiveGameForType(formData.type);
+                  const activeGame = getActiveGameForType(formData.type, formData.week);
                   if (!activeGame) return null;
                   return (
                     <p className="text-xs text-muted-foreground mt-1">
@@ -424,7 +425,7 @@ export default function GamesPage() {
                 <Button
                   className="flex-1"
                   onClick={handleCreate}
-                  disabled={submitting || Boolean(getActiveGameForType(formData.type))}
+                  disabled={submitting || Boolean(getActiveGameForType(formData.type, formData.week))}
                 >
                   {submitting ? (
                     <>
