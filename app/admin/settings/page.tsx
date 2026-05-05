@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import { AlertCircle, Save, Mail } from "lucide-react";
 
 export default function SettingsPage() {
@@ -23,12 +24,11 @@ export default function SettingsPage() {
     siteEmail: "support@bet2star.com",
     maintenanceMode: false,
     maintenanceMessage: "",
-    minBetAmount: 100,
     maxBetAmount: 100000,
+    maxWinAmount: 100,
     withdrawalFee: 2.5,
     depositFee: 1.0,
     transactionTimeout: 30,
-    maxWithdrawalPerDay: 500000,
   });
 
   const [emailSettings, setEmailSettings] = useState({
@@ -56,8 +56,87 @@ export default function SettingsPage() {
     ipList: "",
   });
 
+  const [terminalCreditAmount, setTerminalCreditAmount] = useState(0);
+  const [terminalCreditLoading, setTerminalCreditLoading] = useState(false);
+  const { toast } = useToast();
+
   const handleSave = (section: string) => {
     alert(`${section} settings saved successfully!`);
+  };
+
+  const handleAddTerminalCredit = async () => {
+    if (terminalCreditAmount <= 0 || Number.isNaN(terminalCreditAmount)) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a positive credit amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTerminalCreditLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/terminals/credit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: terminalCreditAmount }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to add credits.");
+      }
+
+      toast({
+        title: "Credits added",
+        description: `Added ${terminalCreditAmount} credits to ${result.updated ?? 0} terminals.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to add credits",
+        description: error?.message || "Failed to add credits.",
+        variant: "destructive",
+      });
+    } finally {
+      setTerminalCreditLoading(false);
+    }
+  };
+
+  const handleClearTerminalCredit = async () => {
+    const confirmClear = confirm(
+      "This will remove all credit from all terminals. Continue?"
+    );
+
+    if (!confirmClear) {
+      return;
+    }
+
+    setTerminalCreditLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/terminals/credit", {
+        method: "DELETE",
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to clear credits.");
+      }
+
+      toast({
+        title: "Credits cleared",
+        description: `Cleared credits from ${result.updated ?? 0} terminals.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to clear credits",
+        description: error?.message || "Failed to clear credits.",
+        variant: "destructive",
+      });
+    } finally {
+      setTerminalCreditLoading(false);
+    }
   };
 
   return (
@@ -150,19 +229,6 @@ export default function SettingsPage() {
                 <h4 className="font-bold mb-4">Betting Limits</h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <Label className="mb-2">Min Bet Amount (₦)</Label>
-                    <Input
-                      type="number"
-                      value={settings.minBetAmount}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          minBetAmount: parseFloat(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
                     <Label className="mb-2">Max Bet Amount (₦)</Label>
                     <Input
                       type="number"
@@ -176,14 +242,14 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <Label className="mb-2">Max Withdrawal/Day (₦)</Label>
+                    <Label className="mb-2">Max Winning Amount (₦)</Label>
                     <Input
                       type="number"
-                      value={settings.maxWithdrawalPerDay}
+                      value={settings.maxWinAmount}
                       onChange={(e) =>
                         setSettings({
                           ...settings,
-                          maxWithdrawalPerDay: parseFloat(e.target.value),
+                          maxWinAmount: parseFloat(e.target.value),
                         })
                       }
                     />
@@ -247,6 +313,50 @@ export default function SettingsPage() {
                 Save Settings
               </Button>
             </div>
+          </Card>
+
+          {/* Terminal Credit Limits */}
+          <Card className="p-6">
+            <h3 className="text-lg font-bold mb-6">Terminal Credit Limits</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div>
+                <Label className="mb-2">Add Credit to All Terminals</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={terminalCreditAmount}
+                  onChange={(e) =>
+                    setTerminalCreditAmount(
+                      parseInt(e.target.value, 10) || 0
+                    )
+                  }
+                />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Enter the number of credits to add across all terminal limits.
+                </p>
+              </div>
+              <div className="grid gap-3">
+                <Button
+                  onClick={handleAddTerminalCredit}
+                  className="w-full"
+                  disabled={terminalCreditLoading}
+                >
+                  {terminalCreditLoading ? "Working..." : "Add Credits"}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleClearTerminalCredit}
+                  className="w-full"
+                  disabled={terminalCreditLoading}
+                >
+                  {terminalCreditLoading ? "Working..." : "Remove All Credits"}
+                </Button>
+              </div>
+            </div>
+
+            <p className="mt-4 text-sm text-muted-foreground">
+              Deducting credit removes all credit from every terminal.
+            </p>
           </Card>
         </TabsContent>
 
