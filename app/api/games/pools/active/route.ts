@@ -36,7 +36,7 @@ export async function GET() {
     );
 
     const prizeIds = data.prize_ids || [];
-    const prizes = prizeIds.map((prizeEntry: any) => {
+    const prizes = prizeIds.filter((p: any) => p.status === "active").map((prizeEntry: any) => {
       const prizeId = typeof prizeEntry === "string" ? prizeEntry : prizeEntry.id;
       const prizeDetails = prizesMap.get(prizeId);
       return {
