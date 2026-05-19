@@ -13,6 +13,38 @@ const supabase = createClient(
   supabaseServiceKey ?? ""
 );
 
+const PRIZE_IN_USE_MESSAGE =
+  "Cannot delete this prize because it is used by existing lotto or pools bets. Edit the prize and set its status to inactive instead.";
+
+const PRIZE_BET_TABLES = ["bets_lotto", "bets_pools"] as const;
+
+async function hasBetsForPrize(prizeId: string) {
+  for (const table of PRIZE_BET_TABLES) {
+    const { error, count } = await supabase
+      .from(table)
+      .select("id", { count: "exact", head: true })
+      .eq("prize_id", prizeId)
+      .limit(1);
+
+    if (error) {
+      throw error;
+    }
+
+    if ((count ?? 0) > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isForeignKeyViolation(error: { code?: string; message?: string }) {
+  return (
+    error.code === "23503" ||
+    (error.message?.includes("foreign key constraint") ?? false)
+  );
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -130,9 +162,16 @@ export async function DELETE(
       );
     }
 
+    if (await hasBetsForPrize(id)) {
+      return NextResponse.json({ error: PRIZE_IN_USE_MESSAGE }, { status: 400 });
+    }
+
     const { error } = await supabase.from("prize").delete().eq("id", id);
 
     if (error) {
+      if (isForeignKeyViolation(error)) {
+        return NextResponse.json({ error: PRIZE_IN_USE_MESSAGE }, { status: 400 });
+      }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
