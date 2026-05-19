@@ -351,7 +351,9 @@ export default function TerminalsPage() {
 
   const removePrizeRow = (index: number) => {
     setPrizeRows((prev) =>
-      prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)
+      prev.length === 1
+        ? [{ prize_id: "", commission: 0 }]
+        : prev.filter((_, idx) => idx !== index)
     );
   };
 
