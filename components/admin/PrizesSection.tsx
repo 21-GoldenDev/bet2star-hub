@@ -269,7 +269,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold">Prizes Management</h2>
+          <h2 className="text-2xl font-bold">Online Users Prize Management</h2>
           <p className="text-muted-foreground mt-1">
             Add, update, or remove prizes for this game with commission settings
           </p>

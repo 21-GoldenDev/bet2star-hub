@@ -77,6 +77,7 @@ export default function PrizePage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [prizeToDelete, setPrizeToDelete] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
@@ -261,13 +262,31 @@ export default function PrizePage() {
     }
   };
 
+  const openDeleteDialog = (prizeId: string) => {
+    setPrizeToDelete(prizeId);
+    setDeletePassword("");
+    setIsDeleteAlertOpen(true);
+  };
+
   const handleDelete = async () => {
     if (!prizeToDelete) return;
+    if (!deletePassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Enter the delete password to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setSubmitting(true);
       const response = await fetch(`/api/admin/prize/${prizeToDelete}`, {
         method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: deletePassword }),
       });
 
       const data = await response.json();
@@ -296,6 +315,7 @@ export default function PrizePage() {
       setSubmitting(false);
       setIsDeleteAlertOpen(false);
       setPrizeToDelete(null);
+      setDeletePassword("");
     }
   };
 
@@ -609,10 +629,7 @@ export default function PrizePage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setPrizeToDelete(prize.id);
-                  setIsDeleteAlertOpen(true);
-                }}
+                onClick={() => openDeleteDialog(prize.id)}
               >
                 <Trash2 className="w-4 h-4 text-destructive" />
               </Button>
@@ -655,7 +672,15 @@ export default function PrizePage() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialog
+        open={isDeleteAlertOpen}
+        onOpenChange={(open) => {
+          setIsDeleteAlertOpen(open);
+          if (!open) {
+            setDeletePassword("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -664,11 +689,22 @@ export default function PrizePage() {
               table.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-prize-password">Password</Label>
+            <Input
+              id="delete-prize-password"
+              type="password"
+              placeholder="Enter password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={submitting}
+              disabled={submitting || !deletePassword.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

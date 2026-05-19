@@ -113,6 +113,22 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const { password } = await request.json();
+    const deletePassword = process.env.ADMIN_PRIZE_DELETE_PASSWORD;
+
+    if (!deletePassword) {
+      return NextResponse.json(
+        { error: "Password is not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (typeof password !== "string" || password !== deletePassword) {
+      return NextResponse.json(
+        { error: "Invalid password" },
+        { status: 401 }
+      );
+    }
 
     const { error } = await supabase.from("prize").delete().eq("id", id);
 
