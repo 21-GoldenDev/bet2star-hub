@@ -1,5 +1,6 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
+import { voidBetForRole } from "@/lib/admin/voidBet";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -113,7 +114,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const roleInfo = await getAdminRoleFromRequest(request);
-    if (!roleInfo || roleInfo.role !== "admin") {
+    if (!roleInfo) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -128,51 +129,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: existingBet, error: fetchError } = await supabase
-      .from("bets_lotto")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const result = await voidBetForRole(supabase, roleInfo, "bets_lotto", id);
 
-    if (fetchError) {
-      console.error("Error fetching bet:", fetchError);
-      return NextResponse.json(
-        { error: "Failed to fetch bet" },
-        { status: 500 }
-      );
-    }
-
-    if (!existingBet) {
-      return NextResponse.json(
-        { error: "Bet not found" },
-        { status: 404 }
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("bets_lotto")
-      .update({ status: "void", award: existingBet.staked })
-      .eq("id", id)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Error deleting bet:", error);
-      return NextResponse.json(
-        { error: "Failed to delete bet" },
-        { status: 500 }
-      );
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
     return NextResponse.json({
       success: true,
-      message: "Bet deleted successfully",
-      data: data,
+      message: "Bet voided successfully",
+      data: result.data,
     });
   } catch (error) {
-    console.error("Error deleting bet:", error);
+    console.error("Error voiding bet:", error);
     return NextResponse.json(
-      { error: "Failed to delete bet" },
+      { error: "Failed to void bet" },
       { status: 500 }
     );
   }

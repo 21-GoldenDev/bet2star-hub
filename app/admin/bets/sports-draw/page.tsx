@@ -30,6 +30,7 @@ import { SportsBet } from "@/lib/types/sports-bet";
 import { useToast } from "@/hooks/use-toast";
 import useAdminRole from "@/hooks/use-admin-role";
 import { cn } from "@/lib/utils";
+import { canVoidBetWithinWindow } from "@/lib/bets/voidWindow";
 
 interface MatchInfo {
   league: string;
@@ -91,7 +92,10 @@ export default function SportsDrawPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<SportsBet | null>(null);
   const { roleInfo } = useAdminRole();
-  const canModify = roleInfo?.role === "admin";
+  const canVoidRole =
+    roleInfo?.role === "admin" ||
+    roleInfo?.role === "staff" ||
+    roleInfo?.role === "agent";
 
   useEffect(() => {
     async function fetchWeeks() {
@@ -152,17 +156,18 @@ export default function SportsDrawPage() {
         body: JSON.stringify({ id: betToDelete.id }),
       });
 
-      if (!response.ok) throw new Error("Failed to delete");
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error || "Failed to void bet");
       setDataSports((d) => d.filter((b) => b.id !== betToDelete.id));
       toast({
         title: "Success",
-        description: "Football Pool bet deleted successfully.",
+        description: "Bet voided successfully.",
       });
     } catch (error) {
-      console.error("Error deleting sports draw bet:", error);
+      console.error("Error voiding sports draw bet:", error);
       toast({
         title: "Error",
-        description: "Failed to delete bet. Please try again.",
+        description: error instanceof Error ? error.message : "Failed to void bet. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -466,8 +471,9 @@ export default function SportsDrawPage() {
               >
                 <Eye className="w-4 h-4" />
               </Button>
-              {canModify && (
-                <Button variant="outline" title="Delete bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
+              {canVoidRole &&
+                canVoidBetWithinWindow(row.bet_time, row.voidWindowMinutes) && (
+                <Button variant="outline" title="Void bet" size="sm" onClick={() => openDeleteDialog(row as SportsBet)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               )}

@@ -24,6 +24,7 @@ export interface SportsBet {
   same?: number;
   tsn?: string;
   agent?: string;
+  voidWindowMinutes?: number | null;
 }
 
 export interface CreateSportsBetInput {

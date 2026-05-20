@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("bets_pools")
-      .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
+      .select("*, games:game_id (week, void_window_minutes), terminal:terminal(serial_number, agent:agent_id(username))")
       .order("bet_time", { ascending: false })
       .eq("game_id", game_id)
       .eq("status", "active");
@@ -129,6 +129,7 @@ export async function GET(request: NextRequest) {
       status: bet.status,
       same: 0,
       agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
+      voidWindowMinutes: bet.games?.void_window_minutes ?? null,
     }));
 
     return NextResponse.json({ data: transformedData }, { status: 200 });

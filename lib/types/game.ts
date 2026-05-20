@@ -12,4 +12,5 @@ export interface Game {
   prizes?: Prize[];
   results?: number[] | string[] | object[] | null;
   max_stake?: any; // JSONB field
+  void_window_minutes?: number | null;
 }

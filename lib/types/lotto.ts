@@ -18,6 +18,7 @@ export type BaseBet = {
   same?: number;
   tsn?: string;
   agent?: string;
+  voidWindowMinutes?: number | null;
 };
 
 export type NapPermBet = BaseBet & {

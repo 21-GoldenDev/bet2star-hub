@@ -18,6 +18,7 @@ import MaxStakeSection from "@/components/admin/MaxStakeSection";
 import TerminalCommissionsSection from "@/components/admin/TerminalCommissionsSection";
 import MaxPrizeSection from "@/components/admin/MaxPrizeSection";
 import PoolsMatchesSection from "@/components/admin/PoolsMatchesSection";
+import VoidWindowSection from "@/components/admin/VoidWindowSection";
 
 interface GamePrizeWithInfo {
   id: string;
@@ -33,6 +34,7 @@ interface GameInfo {
   end_time: string;
   prize_ids?: GamePrizeWithInfo[];
   results?: string[] | number[] | null;
+  void_window_minutes?: number | null;
 }
 
 export default function GameSettingsPage() {
@@ -206,6 +208,14 @@ export default function GameSettingsPage() {
           gameId={gameId}
           gameType={game.type as "lotto" | "pools" | "sports" | "sports_draw"}
           maxStakes={maxStakes}
+          loading={loading}
+          onRefresh={fetchData}
+        />
+      )}
+      {game && (
+        <VoidWindowSection
+          gameId={gameId}
+          voidWindowMinutes={game.void_window_minutes ?? null}
           loading={loading}
           onRefresh={fetchData}
         />

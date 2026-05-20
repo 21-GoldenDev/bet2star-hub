@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("bets_sport")
-      .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
+      .select("*, games:game_id (week, void_window_minutes), terminal:terminal(serial_number, agent:agent_id(username))")
       .in("game_id", gameIds)
       .eq("status", "active")
       .order("bet_time", { ascending: false });
@@ -105,6 +105,7 @@ export async function GET(request: NextRequest) {
         tsn: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
         same: 0,
         agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
+        voidWindowMinutes: bet.games?.void_window_minutes ?? null,
       };
     });
 

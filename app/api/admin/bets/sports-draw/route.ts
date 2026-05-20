@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("bets_sports_draw")
-      .select("*, games:game_id (week, id), terminal:terminal(serial_number, agent:agent_id(username))")
+      .select("*, games:game_id (week, id, void_window_minutes), terminal:terminal(serial_number, agent:agent_id(username))")
       .in("game_id", drawGameIds)
       .eq("status", "active")
       .order("bet_time", { ascending: false });
@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
       tsn: bet.terminal?.serial_number ? bet.terminal.serial_number : undefined,
       same: 0,
       agent: bet.terminal?.agent ? bet.terminal.agent.username : undefined,
+      voidWindowMinutes: bet.games?.void_window_minutes ?? null,
     }));
 
     // Fetch matches directly from the sports_draw games
