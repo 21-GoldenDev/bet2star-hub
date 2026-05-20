@@ -39,17 +39,31 @@ interface GamePrizeWithInfo {
   id: string;
   name: string;
   status: "active" | "inactive";
+  commission?: number;
+}
+
+interface PrizeWithCommission extends PrizeInfo {
+  commission?: number;
 }
 
 interface Props {
   gameId: string;
   gamePrizes: GamePrizeWithInfo[];
-  allPrizes: PrizeInfo[];
+  allPrizes: PrizeWithCommission[];
   loading: boolean;
   onRefresh: () => void;
+  /** When true (Pools games), show commission fields and sync to all terminals on save. */
+  manageCommission?: boolean;
 }
 
-export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, onRefresh }: Props) {
+export default function PrizesSection({
+  gameId,
+  gamePrizes,
+  allPrizes,
+  loading,
+  onRefresh,
+  manageCommission = false,
+}: Props) {
   const [selectedGamePrize, setSelectedGamePrize] = useState<GamePrizeWithInfo | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -62,16 +76,25 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
   const [formData, setFormData] = useState<{
     prize_id: string;
     status: "active" | "inactive";
+    commission: number;
   }>({
     prize_id: "",
     status: "active",
+    commission: 100,
   });
+
+  const resolveDefaultCommission = (prizeId: string) => {
+    const master = allPrizes.find((p) => p.id === prizeId);
+    const value = Number(master?.commission);
+    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : 100;
+  };
 
   const handleAdd = () => {
     setSelectedGamePrize(null);
     setFormData({
       prize_id: "",
       status: "active",
+      commission: 100,
     });
     setIsAddDialogOpen(true);
   };
@@ -81,6 +104,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
     setFormData({
       prize_id: gamePrize.id,
       status: gamePrize.status,
+      commission: gamePrize.commission ?? 100,
     });
     setIsEditDialogOpen(true);
   };
@@ -102,6 +126,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: formData.status,
+          ...(manageCommission ? { commission: formData.commission } : {}),
         }),
       });
 
@@ -157,6 +182,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         body: JSON.stringify({
           prize_id: formData.prize_id,
           status: formData.status,
+          ...(manageCommission ? { commission: formData.commission } : {}),
         }),
       });
 
@@ -168,6 +194,7 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         setFormData({
           prize_id: "",
           status: "active",
+          commission: 100,
         });
         onRefresh();
       } else {
@@ -271,7 +298,9 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
         <div>
           <h2 className="text-2xl font-bold">Online Users Prize Management</h2>
           <p className="text-muted-foreground mt-1">
-            Add, update, or remove prizes for this game with commission settings
+            {manageCommission
+              ? "Add, update, or remove prizes and commissions. Changes sync to all terminals."
+              : "Add, update, or remove prizes for this game"}
           </p>
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -290,7 +319,13 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
                 <Label>Prize</Label>
                 <Select
                   value={formData.prize_id}
-                  onValueChange={(value) => setFormData({ ...formData, prize_id: value })}
+                  onValueChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      prize_id: value,
+                      commission: manageCommission ? resolveDefaultCommission(value) : formData.commission,
+                    })
+                  }
                   disabled={submitting}
                 >
                   <SelectTrigger>
@@ -323,6 +358,25 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
                   </SelectContent>
                 </Select>
               </div>
+              {manageCommission && (
+                <div>
+                  <Label>Commission (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    value={formData.commission}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        commission: Number(e.target.value),
+                      })
+                    }
+                    disabled={submitting}
+                  />
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -374,6 +428,17 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
               ),
               sortable: true,
             },
+            ...(manageCommission
+              ? [
+                  {
+                    key: "commission" as const,
+                    label: "Commission",
+                    render: (commission: number | undefined) =>
+                      `${commission ?? 100}%`,
+                    sortable: true,
+                  },
+                ]
+              : []),
           ]}
           data={gamePrizes}
           searchKey="name"
@@ -435,6 +500,25 @@ export default function PrizesSection({ gameId, gamePrizes, allPrizes, loading, 
                 </SelectContent>
               </Select>
             </div>
+            {manageCommission && (
+              <div>
+                <Label>Commission (%)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  value={formData.commission}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      commission: Number(e.target.value),
+                    })
+                  }
+                  disabled={submitting}
+                />
+              </div>
+            )}
             <div className="flex gap-2">
               <Button
                 variant="outline"

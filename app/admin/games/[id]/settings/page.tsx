@@ -24,6 +24,7 @@ interface GamePrizeWithInfo {
   id: string;
   name: string;
   status: "active" | "inactive";
+  commission?: number;
 }
 
 interface GameInfo {
@@ -66,14 +67,27 @@ export default function GameSettingsPage() {
   useEffect(() => {
     if (game && game.type !== "sports" && game.type !== "sports_draw") {
       const gamePrizeIds = Array.isArray(game.prize_ids)
-        ? (game.prize_ids as GamePrizeWithInfo[])
+        ? (game.prize_ids as Array<{
+            id: string;
+            status: "active" | "inactive";
+            commission?: number;
+          }>)
         : [];
       const prizes = gamePrizeIds.map((gp) => {
-        const prizeInfo = allPrizes.find((p) => p.id === gp.id);
+        const prizeInfo = allPrizes.find((p) => p.id === gp.id) as
+          | (PrizeInfo & { commission?: number })
+          | undefined;
+        const masterCommission = Number(prizeInfo?.commission);
         return {
           id: gp.id,
           name: prizeInfo ? prizeInfo.name : "Unknown Prize",
           status: gp.status,
+          commission:
+            typeof gp.commission === "number"
+              ? gp.commission
+              : Number.isFinite(masterCommission)
+                ? masterCommission
+                : 100,
         };
       });
       setGamePrizes(prizes);
@@ -265,6 +279,7 @@ export default function GameSettingsPage() {
           allPrizes={allPrizes}
           loading={loading}
           onRefresh={fetchData}
+          manageCommission={game?.type === "pools"}
         />
       )}
     </div>
