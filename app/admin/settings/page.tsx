@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,76 @@ export default function SettingsPage() {
 
   const [terminalCreditAmount, setTerminalCreditAmount] = useState(0);
   const [terminalCreditLoading, setTerminalCreditLoading] = useState(false);
+  const [generalSaveLoading, setGeneralSaveLoading] = useState(false);
+  const [generalSettingsLoading, setGeneralSettingsLoading] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const loadGeneralSettings = async () => {
+      try {
+        const response = await fetch("/api/admin/settings/general");
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.error || "Failed to load settings.");
+        }
+
+        setSettings((prev) => ({
+          ...prev,
+          maxBetAmount: Number(result.maxBetAmount) || prev.maxBetAmount,
+        }));
+      } catch (error: any) {
+        toast({
+          title: "Failed to load settings",
+          description: error?.message || "Could not load max bet amount.",
+          variant: "destructive",
+        });
+      } finally {
+        setGeneralSettingsLoading(false);
+      }
+    };
+
+    loadGeneralSettings();
+  }, [toast]);
+
+  const handleSaveGeneral = async () => {
+    if (!Number.isFinite(settings.maxBetAmount) || settings.maxBetAmount <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Max bet amount must be a positive number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setGeneralSaveLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/settings/general", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ maxBetAmount: settings.maxBetAmount }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to save settings.");
+      }
+
+      toast({
+        title: "Settings saved",
+        description: `Max bet amount saved. Max stake set to ₦${settings.maxBetAmount.toLocaleString()} on ${result.terminalsUpdated ?? 0} terminals.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to save settings",
+        description: error?.message || "Failed to save settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneralSaveLoading(false);
+    }
+  };
 
   const handleSave = (section: string) => {
     alert(`${section} settings saved successfully!`);
@@ -306,11 +375,12 @@ export default function SettingsPage() {
               </div>
 
               <Button
-                onClick={() => handleSave("General")}
+                onClick={handleSaveGeneral}
                 className="w-full"
+                disabled={generalSaveLoading || generalSettingsLoading}
               >
                 <Save className="w-4 h-4 mr-2" />
-                Save Settings
+                {generalSaveLoading ? "Saving..." : "Save Settings"}
               </Button>
             </div>
           </Card>
