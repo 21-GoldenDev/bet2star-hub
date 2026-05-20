@@ -32,6 +32,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2, Edit, Search, Power } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  getActiveTerminalPrizeIds,
+  normalizeTerminalPrizeEntries,
+  serializeTerminalPrizesForDb,
+  type TerminalPrizeStatus,
+} from "@/lib/terminals/terminalPrize";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -53,7 +62,12 @@ type TerminalFormState = {
   game_modes: GameType[];
 };
 
-type PrizeRow = { prize_id: string; commission: number };
+type PrizeRow = {
+  prize_id: string;
+  commission: number;
+  status: TerminalPrizeStatus;
+  default: boolean;
+};
 
 export default function TerminalsPage() {
   const { toast } = useToast();
@@ -78,8 +92,25 @@ export default function TerminalsPage() {
     game_modes: [],
   });
   const [prizeRows, setPrizeRows] = useState<PrizeRow[]>([
-    { prize_id: "", commission: 0 },
+    { prize_id: "", commission: 0, status: "active", default: false },
   ]);
+
+  const rowsToPrizeRows = (
+    entries: ReturnType<typeof normalizeTerminalPrizeEntries>
+  ): PrizeRow[] =>
+    entries.map((row) => ({
+      prize_id: row.prize_id,
+      commission: Number(row.commission) || 0,
+      status: row.status,
+      default: row.default,
+    }));
+
+  const applySerializedRows = (rows: PrizeRow[]) => {
+    const serialized = serializeTerminalPrizesForDb(
+      rows.filter((row) => row.prize_id.length > 0)
+    );
+    return rowsToPrizeRows(serialized);
+  };
 
   const gameTypeOptions = [["under1", "Under 1"], ["under2", "Under 2"]] as const;
   const gameModeOptions: Array<{ value: GameType; label: string }> = [
@@ -121,12 +152,19 @@ export default function TerminalsPage() {
     e.preventDefault();
 
     try {
-      const sanitizedPrizes = prizeRows
-        .map((row) => ({
-          prize_id: row.prize_id,
-          commission: Number(row.commission),
-        }))
-        .filter((row) => row.prize_id.length > 0);
+      const sanitizedPrizes = serializeTerminalPrizesForDb(
+        prizeRows.filter((row) => row.prize_id.length > 0)
+      );
+      const activeIds = getActiveTerminalPrizeIds(sanitizedPrizes);
+      const hasDefault = sanitizedPrizes.some((p) => p.default && p.status === "active");
+      if (activeIds.length > 0 && !hasDefault) {
+        toast({
+          title: "Default prize required",
+          description: "Mark one active prize as default.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       const payload = {
         serial_number: formData.serial_number,
@@ -257,17 +295,15 @@ export default function TerminalsPage() {
       game_types: [],
       game_modes: [],
     });
-    setPrizeRows([{ prize_id: "", commission: 0 }]);
+    setPrizeRows([{ prize_id: "", commission: 0, status: "active", default: false }]);
     setEditingId(null);
   };
 
   const handleEdit = (terminal: Terminal) => {
-    const prizeData = terminal.prizes as PrizeRow[] | { prizes?: PrizeRow[] } | undefined;
-    const normalizedPrizes = Array.isArray(prizeData)
-      ? prizeData
-      : Array.isArray(prizeData?.prizes)
-        ? prizeData.prizes
-        : [];
+    const normalizedPrizes = normalizeTerminalPrizeEntries(
+      terminal.prizes,
+      terminal.default_prize_id
+    );
 
     setFormData({
       serial_number: terminal.serial_number,
@@ -280,20 +316,8 @@ export default function TerminalsPage() {
     });
     setPrizeRows(
       normalizedPrizes.length > 0
-        ? normalizedPrizes.map((row) => {
-          const legacyName = (row as unknown as { name?: string }).name;
-          const matchedId =
-            row.prize_id ||
-            (legacyName
-              ? prizes.find((prize) => prize.name === legacyName)?.id
-              : undefined);
-
-          return {
-            prize_id: matchedId ?? "",
-            commission: Number(row.commission) || 0,
-          };
-        })
-        : [{ prize_id: "", commission: 0 }]
+        ? rowsToPrizeRows(normalizedPrizes)
+        : [{ prize_id: "", commission: 0, status: "active", default: false }]
     );
     setEditingId(terminal.id);
     setOpenDialog(true);
@@ -333,29 +357,63 @@ export default function TerminalsPage() {
     field: "prize_id" | "commission",
     value: string
   ) => {
-    setPrizeRows((prev) =>
-      prev.map((row, idx) =>
+    setPrizeRows((prev) => {
+      const next = prev.map((row, idx) =>
         idx === index
           ? {
-            ...row,
-            [field]: field === "commission" ? Number(value) : value,
-          }
+              ...row,
+              [field]: field === "commission" ? Number(value) : value,
+            }
           : row
+      );
+      return applySerializedRows(next);
+    });
+  };
+
+  const setDefaultPrizeRow = (prizeId: string) => {
+    setPrizeRows((prev) =>
+      applySerializedRows(
+        prev.map((row) => ({
+          ...row,
+          default: row.prize_id === prizeId && row.status === "active",
+        }))
       )
     );
   };
 
+  const togglePrizeRowStatus = (index: number) => {
+    setPrizeRows((prev) => {
+      const next: PrizeRow[] = prev.map((row, idx) =>
+        idx === index
+          ? {
+              ...row,
+              status: (row.status === "active" ? "inactive" : "active") as TerminalPrizeStatus,
+              default: row.status === "active" ? false : row.default,
+            }
+          : row
+      );
+      return applySerializedRows(next);
+    });
+  };
+
   const addPrizeRow = () => {
-    setPrizeRows((prev) => [...prev, { prize_id: "", commission: 0 }]);
+    setPrizeRows((prev) => [
+      ...prev,
+      { prize_id: "", commission: 0, status: "active", default: false },
+    ]);
   };
 
   const removePrizeRow = (index: number) => {
-    setPrizeRows((prev) =>
-      prev.length === 1
-        ? [{ prize_id: "", commission: 0 }]
-        : prev.filter((_, idx) => idx !== index)
-    );
+    setPrizeRows((prev) => {
+      const next: PrizeRow[] =
+        prev.length === 1
+          ? [{ prize_id: "", commission: 0, status: "active", default: false }]
+          : prev.filter((_, idx) => idx !== index);
+      return applySerializedRows(next);
+    });
   };
+
+  const defaultPrizeId = prizeRows.find((r) => r.default && r.prize_id)?.prize_id ?? "";
 
   const formatGameType = (value: GameModeType) => gameModes[value] || value;
 
@@ -559,16 +617,26 @@ export default function TerminalsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Prizes with Commissions</Label>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <Label>Prizes with Commissions</Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Toggle active/inactive and select one default prize (active only).
+                      </p>
+                    </div>
                     <Button type="button" variant="outline" size="sm" onClick={addPrizeRow}>
                       <Plus className="h-4 w-4 mr-1" /> Add Prize
                     </Button>
                   </div>
                   <div className="space-y-3 rounded-md border p-3">
+                    <RadioGroup
+                      value={defaultPrizeId}
+                      onValueChange={setDefaultPrizeRow}
+                      className="space-y-3"
+                    >
                     {prizeRows.map((row, index) => (
                       <div key={`${row.prize_id}-${index}`} className="grid grid-cols-12 gap-3 items-center">
-                        <div className="col-span-7">
+                        <div className="col-span-4">
                           <Label htmlFor={`prize_select_${index}`} className="sr-only">
                             Prize
                           </Label>
@@ -590,7 +658,7 @@ export default function TerminalsPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="col-span-4">
+                        <div className="col-span-2">
                           <Label htmlFor={`prize_commission_${index}`} className="sr-only">
                             Commission
                           </Label>
@@ -607,6 +675,33 @@ export default function TerminalsPage() {
                             placeholder="Commission %"
                           />
                         </div>
+                        <div className="col-span-2 flex items-center gap-2">
+                          <Switch
+                            id={`prize_status_${index}`}
+                            checked={row.status === "active"}
+                            onCheckedChange={() => togglePrizeRowStatus(index)}
+                            disabled={!row.prize_id}
+                          />
+                          <Label
+                            htmlFor={`prize_status_${index}`}
+                            className="text-sm font-normal capitalize"
+                          >
+                            {row.status}
+                          </Label>
+                        </div>
+                        <div className="col-span-3 flex items-center gap-2">
+                          <RadioGroupItem
+                            value={row.prize_id}
+                            id={`prize_default_${index}`}
+                            disabled={!row.prize_id || row.status === "inactive"}
+                          />
+                          <Label
+                            htmlFor={`prize_default_${index}`}
+                            className="text-sm font-normal"
+                          >
+                            Default
+                          </Label>
+                        </div>
                         <div className="col-span-1 flex justify-end">
                           <Button
                             type="button"
@@ -619,6 +714,7 @@ export default function TerminalsPage() {
                         </div>
                       </div>
                     ))}
+                    </RadioGroup>
                   </div>
                 </div>
 
@@ -718,21 +814,32 @@ export default function TerminalsPage() {
                     </TableCell>
                     <TableCell>
                       {(() => {
-                        const prizeList = Array.isArray(terminal.prizes)
-                          ? terminal.prizes
-                          : Array.isArray(terminal.prizes?.prizes)
-                            ? terminal.prizes.prizes
-                            : [];
+                        const prizeList = normalizeTerminalPrizeEntries(terminal.prizes);
 
                         if (prizeList.length === 0) return "-";
 
                         return (
                           <div className="space-y-1">
                             {prizeList.map((prizeRow, idx) => {
-                              const prize = prizes.find(p => p.id === prizeRow.prize_id);
+                              const prize = prizes.find((p) => p.id === prizeRow.prize_id);
+                              const isActive = prizeRow.status !== "inactive";
+                              const isDefault = prizeRow.default === true;
                               return (
-                                <div key={idx} className="text-sm">
-                                  {prize?.name || "Unknown"} ({prizeRow.commission}%)
+                                <div key={idx} className="flex items-center gap-2 text-sm flex-wrap">
+                                  <span className={isActive ? "" : "text-muted-foreground"}>
+                                    {prize?.name || "Unknown"} ({prizeRow.commission}%)
+                                  </span>
+                                  {isDefault && (
+                                    <Badge variant="outline" className="text-xs">
+                                      default
+                                    </Badge>
+                                  )}
+                                  <Badge
+                                    variant={isActive ? "default" : "secondary"}
+                                    className="text-xs capitalize"
+                                  >
+                                    {isActive ? "active" : "inactive"}
+                                  </Badge>
                                 </div>
                               );
                             })}

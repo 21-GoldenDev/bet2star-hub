@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { buildTerminalPrizesPayload } from "@/lib/terminals/terminalPrize";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -48,7 +49,29 @@ export async function PUT(
     if (body.max_stake !== undefined) updateData.max_stake = body.max_stake;
     if (body.game_types !== undefined) updateData.game_types = body.game_types;
     if (body.game_modes !== undefined) updateData.game_modes = body.game_modes;
-    if (body.prizes !== undefined) updateData.prizes = body.prizes;
+    if (body.prizes !== undefined || body.default_prize_id !== undefined) {
+      let prizesInput = body.prizes;
+      let legacyDefault = body.default_prize_id;
+
+      if (prizesInput === undefined) {
+        const { data: current, error: currentError } = await supabase
+          .from("terminal")
+          .select("prizes, default_prize_id")
+          .eq("id", id)
+          .single();
+        if (currentError) throw currentError;
+        prizesInput = current?.prizes;
+        if (legacyDefault === undefined) {
+          legacyDefault = current?.default_prize_id;
+        }
+      }
+
+      const { prizes } = buildTerminalPrizesPayload({
+        prizes: prizesInput,
+        default_prize_id: legacyDefault,
+      });
+      updateData.prizes = prizes;
+    }
     if (body.status !== undefined) updateData.status = body.status;
 
     const { data, error } = await supabase

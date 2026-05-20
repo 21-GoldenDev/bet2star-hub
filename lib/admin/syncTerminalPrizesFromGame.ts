@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  mergeGamePrizesIntoTerminalPrizes,
+  normalizeTerminalPrizeEntries,
+  serializeTerminalPrizesForDb,
+} from "@/lib/terminals/terminalPrize";
 
 export type GamePrizeEntry = {
   id: string;
@@ -29,31 +34,32 @@ export function normalizeGamePrizeEntries(prizeIds: unknown): GamePrizeEntry[] {
   return entries;
 }
 
-export function gamePrizesToTerminalPrizes(
-  prizes: GamePrizeEntry[]
-): Array<{ prize_id: string; commission: number }> {
-  return prizes
-    .filter((p) => p.status !== "inactive")
-    .map((p) => ({
-      prize_id: p.id,
-      commission: Math.min(100, Math.max(0, Number(p.commission) || 100)),
-    }));
-}
-
-/** Push active game prizes (with commission) to every terminal. */
+/** Push game prizes to every terminal, preserving each terminal's per-prize active/inactive. */
 export async function syncAllTerminalsPrizesFromGame(
   supabase: SupabaseClient,
   gamePrizes: GamePrizeEntry[]
 ): Promise<{ error: Error | null }> {
-  const terminalPrizes = gamePrizesToTerminalPrizes(gamePrizes);
-
-  const { error } = await supabase
+  const { data: terminals, error: fetchError } = await supabase
     .from("terminal")
-    .update({ prizes: terminalPrizes })
-    .not("id", "is", null);
+    .select("id, prizes");
 
-  if (error) {
-    return { error: new Error(error.message) };
+  if (fetchError) {
+    return { error: new Error(fetchError.message) };
+  }
+
+  const updates = (terminals || []).map(async (terminal) => {
+    const merged = mergeGamePrizesIntoTerminalPrizes(
+      normalizeTerminalPrizeEntries(terminal.prizes),
+      gamePrizes
+    );
+    const prizes = serializeTerminalPrizesForDb(merged);
+    return supabase.from("terminal").update({ prizes }).eq("id", terminal.id);
+  });
+
+  const results = await Promise.all(updates);
+  const failed = results.find((r) => r.error);
+  if (failed?.error) {
+    return { error: new Error(failed.error.message) };
   }
   return { error: null };
 }

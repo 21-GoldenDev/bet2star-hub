@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminRoleFromRequest } from "@/lib/admin/role";
+import { buildTerminalPrizesPayload } from "@/lib/terminals/terminalPrize";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -110,6 +111,10 @@ export async function PATCH(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const { prizes } = buildTerminalPrizesPayload({
+      prizes: body.prizes,
+      default_prize_id: body.default_prize_id,
+    });
 
     const { data, error } = await supabase
       .from("terminal")
@@ -122,7 +127,7 @@ export async function POST(req: NextRequest) {
           max_stake: body.max_stake,
           game_types: body.game_types,
           game_modes: body.game_modes,
-          prizes: body.prizes,
+          prizes,
           status: "active",
         },
       ])

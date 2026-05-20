@@ -1,5 +1,6 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
+import { resolveTerminalPrizeCommission } from "@/lib/terminals/terminalPrize";
 import { NextRequest, NextResponse } from "next/server";
 
 interface TotalResult {
@@ -198,14 +199,15 @@ export async function GET(request: NextRequest) {
           const terminalName = terminalData.serial_number || "Unknown Terminal";
           const key = `${staffName}|${agentName}|${terminalName}`;
 
-          if (terminalData.prizes) {
-            const terminalPrize = terminalData.prizes.find((p: any) => p.prize_id === bet.prize_id);
-            if (terminalPrize) {
-              commission = terminalPrize.commission || 100;
-            }
-          } else if (bet.prize_id && prizeMap[bet.prize_id]) {
-            commission = prizeMap[bet.prize_id].commission || 100;
-          }
+          const masterCommission =
+            bet.prize_id && prizeMap[bet.prize_id]
+              ? prizeMap[bet.prize_id].commission || 100
+              : 100;
+          commission = resolveTerminalPrizeCommission(
+            terminalData.prizes,
+            bet.prize_id,
+            masterCommission
+          );
 
           if (!terminalMap[key]) {
             terminalMap[key] = {

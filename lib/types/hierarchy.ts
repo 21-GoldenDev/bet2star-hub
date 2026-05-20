@@ -38,7 +38,23 @@ export interface Terminal {
   max_stake?: number;
   game_types?: GameModeType[];
   game_modes?: GameType[];
-  prizes?: Array<{ prize_id: string; commission: number }> | { prizes?: Array<{ prize_id: string; commission: number }> };
+  prizes?:
+    | Array<{
+        prize_id: string;
+        commission: number;
+        status: "active" | "inactive";
+        default: boolean;
+      }>
+    | {
+        prizes?: Array<{
+          prize_id: string;
+          commission: number;
+          status: "active" | "inactive";
+          default: boolean;
+        }>;
+      };
+  /** @deprecated Use prizes[].default; kept for legacy rows before migration. */
+  default_prize_id?: string | null;
   status: "active" | "inactive";
   created_at: string;
   updated_at: string;
