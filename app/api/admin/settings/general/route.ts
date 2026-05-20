@@ -47,9 +47,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const maxBetAmount = Number(body.maxBetAmount);
 
-    if (!Number.isFinite(maxBetAmount) || maxBetAmount <= 0) {
+    if (!Number.isFinite(maxBetAmount) || maxBetAmount < 0) {
       return NextResponse.json(
-        { error: "Max bet amount must be a positive number." },
+        { error: "Max bet amount must be 0 or greater." },
         { status: 400 }
       );
     }

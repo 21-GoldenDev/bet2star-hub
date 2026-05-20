@@ -72,9 +72,12 @@ export default function SettingsPage() {
           throw new Error(result?.error || "Failed to load settings.");
         }
 
+        const loadedMaxBet = Number(result.maxBetAmount);
         setSettings((prev) => ({
           ...prev,
-          maxBetAmount: Number(result.maxBetAmount) || prev.maxBetAmount,
+          maxBetAmount: Number.isFinite(loadedMaxBet)
+            ? loadedMaxBet
+            : prev.maxBetAmount,
         }));
       } catch (error: any) {
         toast({
@@ -91,10 +94,13 @@ export default function SettingsPage() {
   }, [toast]);
 
   const handleSaveGeneral = async () => {
-    if (!Number.isFinite(settings.maxBetAmount) || settings.maxBetAmount <= 0) {
+    if (
+      !Number.isFinite(settings.maxBetAmount) ||
+      settings.maxBetAmount < 0
+    ) {
       toast({
         title: "Invalid amount",
-        description: "Max bet amount must be a positive number.",
+        description: "Max bet amount must be 0 or greater.",
         variant: "destructive",
       });
       return;
