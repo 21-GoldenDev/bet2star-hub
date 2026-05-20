@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Goal,
   Trophy,
+  Monitor,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
@@ -325,8 +326,7 @@ export default function AdminSidebar() {
                 const isParentActive =
                   pathname === "/admin/users" ||
                   pathname?.startsWith("/admin/staff") ||
-                  pathname?.startsWith("/admin/agents") ||
-                  pathname?.startsWith("/admin/terminals");
+                  pathname?.startsWith("/admin/agents");
 
                 return (
                   <div>
@@ -400,26 +400,35 @@ export default function AdminSidebar() {
                             </div>
                           </Link>
                         )}
-                        {isAdmin && (
-                          <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
-                            <div
-                              className={clsx(
-                                "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
-                                pathname?.startsWith("/admin/terminals")
-                                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                              )}
-                            >
-                              <span>Terminals</span>
-                            </div>
-                          </Link>
-                        )}
                       </div>
                     )}
                   </div>
                 );
               })()}
             </div>
+
+            {isAdmin && (
+              <div
+                className="relative group"
+                onMouseEnter={(event) => setHoverPopup("terminals", event)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "flex items-center gap-3 rounded-lg transition-colors",
+                      isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
+                      pathname?.startsWith("/admin/terminals")
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <Monitor className="w-5 h-5" />
+                    {!isCollapsed && <span className="font-medium">Terminals</span>}
+                  </div>
+                </Link>
+              </div>
+            )}
 
             {isAdmin && adminMenuItems.map((item) => {
               const Icon = item.icon;
@@ -648,8 +657,7 @@ export default function AdminSidebar() {
                 "flex items-center gap-3 px-4 py-3",
                 (pathname === "/admin/users" ||
                   pathname?.startsWith("/admin/staff") ||
-                  pathname?.startsWith("/admin/agents") ||
-                  pathname?.startsWith("/admin/terminals"))
+                  pathname?.startsWith("/admin/agents"))
                   ? "bg-sidebar-primary text-sidebar-primary-foreground"
                   : "text-sidebar-foreground"
               )}
@@ -696,22 +704,33 @@ export default function AdminSidebar() {
                       Agents
                     </div>
                   </Link>
-                  <Link href="/admin/terminals" onClick={() => setIsOpen(false)}>
-                    <div
-                      className={clsx(
-                        "rounded-lg px-4 py-2 text-sm transition-colors",
-                        pathname?.startsWith("/admin/terminals")
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}
-                    >
-                      Terminals
-                    </div>
-                  </Link>
                 </>
               )}
             </div>
           </div>
+        )}
+
+        {hoveredItem === "terminals" && isCollapsed && isAdmin && (
+          <Link
+            href="/admin/terminals"
+            className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+            style={{ left: popupPosition.left, top: popupPosition.top }}
+            onMouseEnter={() => setHoveredItem("terminals")}
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={() => setIsOpen(false)}
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3",
+                pathname?.startsWith("/admin/terminals")
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground"
+              )}
+            >
+              <Monitor className="w-5 h-5" />
+              <span className="font-medium">Terminals</span>
+            </div>
+          </Link>
         )}
 
         {isAdmin && adminMenuItems.map((item) => {
