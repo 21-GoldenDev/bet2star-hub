@@ -19,9 +19,8 @@ export default function WeekResultSection({ gameType, weekResult, submitting, on
       if (gameType === "lotto") {
         const num = Number(value);
         if (isNaN(num)) return;
-        const newSet = new Set(weekResult.map((v) => Number(v)));
-        newSet.add(num);
-        const updatedResult = Array.from(newSet).sort((a, b) => Number(a) - Number(b));
+        if (weekResult.some((v) => Number(v) === num)) return;
+        const updatedResult = [...weekResult.map((v) => Number(v)), num];
         onUpdateResult(updatedResult);
       } else {
         const newSet = new Set(weekResult.map((v) => String(v)));
