@@ -7,6 +7,8 @@ import { ArrowLeft } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { getUserProfile } from "@/lib/auth";
 import PaystackPayment from "@/components/payments/PaystackPayment";
+import ManualDepositForm from "@/components/payments/ManualDepositForm";
+import DepositBankDetailsCard from "@/components/payments/DepositBankDetailsCard";
 import { useToast } from "@/hooks/use-toast";
 import supabase from "@/lib/supabase/client";
 
@@ -139,12 +141,23 @@ const Deposit = () => {
         {/* Paystack Payment */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            Make a Deposit
+            Make a Deposit (Online)
           </h2>
           <PaystackPayment
             userEmail={user.email!}
             onSuccess={handlePaymentSuccess}
           />
+        </div>
+
+        {/* Manual Deposit */}
+        <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">
+            Manual Deposit
+          </h2>
+          <div className="space-y-6">
+            <DepositBankDetailsCard />
+            <ManualDepositForm onSuccess={loadUserBalance} />
+          </div>
         </div>
 
         {/* Payment Info */}

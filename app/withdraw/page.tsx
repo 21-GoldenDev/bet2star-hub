@@ -3,11 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { getUserProfile } from "@/lib/auth";
-import PaystackWithdrawal from "@/components/payments/PaystackWithdrawal";
-import { toast } from "@/components/ui/use-toast";
+import ManualWithdrawForm from "@/components/payments/ManualWithdrawForm";
 import supabase from "@/lib/supabase/client";
 
 const Withdraw = () => {
@@ -45,7 +44,7 @@ const Withdraw = () => {
         const formattedWithdrawals = (transactions || []).map((tx: any) => ({
           id: tx.id,
           amount: tx.amount,
-          method: tx.payment_method || 'Bank Transfer',
+          method: tx.payment_method === "manual" ? "Manual Request" : (tx.payment_method || "Bank Transfer"),
           status: tx.status,
           date: new Date(tx.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -64,15 +63,9 @@ const Withdraw = () => {
     }
   };
 
-  const handleWithdrawalSuccess = async (data: any) => {
-    // Reload user balance after successful withdrawal
+  const handleWithdrawalSuccess = async () => {
     await loadUserData();
-    toast({
-      title: "Withdrawal Initiated!",
-      description: `₦${data.amount} will be transferred to your account`,
-    });
   };
-
   if (!user) {
     return (
       <div className="min-h-screen pt-20 pb-8 px-4">
@@ -110,7 +103,7 @@ const Withdraw = () => {
             Withdraw Funds
           </h1>
           <p className="text-muted-foreground">
-            Transfer your winnings to your bank account
+            Submit a withdrawal request with your bank details for admin processing
           </p>
         </div>
 
@@ -122,16 +115,11 @@ const Withdraw = () => {
           </p>
         </div>
 
-        {/* Paystack Withdrawal */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">
-            Withdraw to Bank Account
+            Request Withdrawal
           </h2>
-          <PaystackWithdrawal
-            userId={user.id}
-            userBalance={balance}
-            onSuccess={handleWithdrawalSuccess}
-          />
+          <ManualWithdrawForm userBalance={balance} onSuccess={handleWithdrawalSuccess} />
         </div>
 
         {/* Recent Withdrawals */}
@@ -140,7 +128,10 @@ const Withdraw = () => {
             Recent Withdrawals
           </h2>
           <div className="space-y-3">
-            {recentWithdrawals.map((withdrawal) => (
+            {recentWithdrawals.length === 0 ? (
+              <p className="text-center text-muted-foreground py-6">No withdrawals yet</p>
+            ) : (
+              recentWithdrawals.map((withdrawal) => (
               <div
                 key={withdrawal.id}
                 className="flex items-center justify-between p-3 rounded-lg bg-muted"
@@ -168,7 +159,8 @@ const Withdraw = () => {
                   {withdrawal.status}
                 </span>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </div>

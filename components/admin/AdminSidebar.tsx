@@ -19,6 +19,7 @@ import {
   Goal,
   Trophy,
   Monitor,
+  HandCoins,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import clsx from "clsx";
@@ -430,6 +431,29 @@ export default function AdminSidebar() {
               </div>
             )}
 
+            {isAdmin && (
+              <div
+                className="relative group"
+                onMouseEnter={(event) => setHoverPopup("manual-funding", event)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <Link href="/admin/manual-funding" onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "flex items-center gap-3 rounded-lg transition-colors",
+                      isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
+                      pathname?.startsWith("/admin/manual-funding")
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <HandCoins className="w-5 h-5" />
+                    {!isCollapsed && <span className="font-medium">Online Manual Funding</span>}
+                  </div>
+                </Link>
+              </div>
+            )}
+
             {isAdmin && adminMenuItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
@@ -729,6 +753,29 @@ export default function AdminSidebar() {
             >
               <Monitor className="w-5 h-5" />
               <span className="font-medium">Terminals</span>
+            </div>
+          </Link>
+        )}
+
+        {hoveredItem === "manual-funding" && isCollapsed && isAdmin && (
+          <Link
+            href="/admin/manual-funding"
+            className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+            style={{ left: popupPosition.left, top: popupPosition.top }}
+            onMouseEnter={() => setHoveredItem("manual-funding")}
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={() => setIsOpen(false)}
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3",
+                pathname?.startsWith("/admin/manual-funding")
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground"
+              )}
+            >
+              <HandCoins className="w-5 h-5" />
+              <span className="font-medium">Online Manual Funding</span>
             </div>
           </Link>
         )}

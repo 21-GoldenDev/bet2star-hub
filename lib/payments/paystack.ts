@@ -276,11 +276,7 @@ export function verifyWebhookSignature(
 /**
  * Generate unique payment reference
  */
-export function generatePaymentReference(prefix: string = 'PAY'): string {
-  const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 1000000);
-  return `${prefix}_${timestamp}_${random}`;
-}
+export { generatePaymentReference } from "@/lib/payments/reference";
 
 /**
  * Convert amount to kobo (smallest currency unit)
