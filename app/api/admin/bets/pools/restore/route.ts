@@ -1,6 +1,7 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAdminRoleFromRequest } from "@/lib/admin/role";
 import { computePoolsAward, TurboPrize } from "@/lib/helpers";
+import { getGamePrizeException } from "@/lib/admin/syncTerminalPrizesFromGame";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Fetch game results
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .select("results")
+      .select("results, prize_ids")
       .eq("id", bet.game_id)
       .single();
 
@@ -65,7 +66,16 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Recalculate award
-    const award = computePoolsAward({ ...bet, status: "active" }, prize, weekResult, turboPrizeData as TurboPrize | null);
+    const resultException = bet.prize_id
+      ? getGamePrizeException(game.prize_ids, bet.prize_id)
+      : undefined;
+    const award = computePoolsAward(
+      { ...bet, status: "active" },
+      prize,
+      weekResult,
+      turboPrizeData as TurboPrize | null,
+      resultException,
+    );
 
     // Update bet: restore status and recalculated award
     const { error } = await supabase

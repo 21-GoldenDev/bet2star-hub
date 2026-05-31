@@ -4,7 +4,7 @@ import {
   defaultCommissionForPrize,
   syncTerminalsIfPoolsGame,
 } from "@/lib/admin/gamePrizeMutations";
-import { normalizeGamePrizeEntries, validateCommission } from "@/lib/admin/syncTerminalPrizesFromGame";
+import { normalizeGamePrizeEntries, validateCommission, normalizeException } from "@/lib/admin/syncTerminalPrizesFromGame";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -56,6 +56,7 @@ export async function GET(
         name: prizeDetails?.name || "Unknown Prize",
         status: prizeEntry.status,
         commission: prizeEntry.commission ?? prizeDetails?.commission ?? 100,
+        exception: prizeEntry.exception,
       };
     });
 
@@ -76,7 +77,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { prize_id, status, commission: commissionInput } = body;
+    const { prize_id, status, commission: commissionInput, exception: exceptionInput } = body;
 
     // Validate required fields
     if (!prize_id) {
@@ -103,6 +104,13 @@ export async function POST(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
+    if (exceptionInput !== undefined && game?.type !== "pools") {
+      return NextResponse.json(
+        { error: "Exception is only supported for pools games" },
+        { status: 400 }
+      );
+    }
+
     const currentPrizes = normalizeGamePrizeEntries(game?.prize_ids);
 
     const prizeExists = currentPrizes.some((p: any) => 
@@ -126,7 +134,13 @@ export async function POST(
       id: prize_id,
       status: status ?? "active",
       commission,
+      ...(game?.type === "pools" && exceptionInput !== undefined
+        ? { exception: normalizeException(exceptionInput) }
+        : {}),
     };
+    if (newPrize.exception === undefined) {
+      delete (newPrize as { exception?: string }).exception;
+    }
 
     const updatedPrizes = [...currentPrizes, newPrize];
 

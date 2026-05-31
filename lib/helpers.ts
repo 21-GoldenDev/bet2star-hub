@@ -246,14 +246,27 @@ export function computeLottoAward(
   return award;
 }
 
+/** Remove a pools result exception number before matching (draw count uses the original result). */
+export function applyResultException(
+  weekResult: Array<string | number>,
+  exception?: string | null,
+): string[] {
+  if (!exception) return weekResult.map(String);
+  const exclude = String(exception);
+  return weekResult.map(String).filter((n) => n !== exclude);
+}
+
 export function computePoolsAward(
   bet: any,
   prize: Prize | null,
   weekResult: string[],
   turboPrizeData?: TurboPrize | null,
+  resultException?: string | null,
 ): number {
   if (!bet) return 0;
   if (bet.status === "void") return bet.staked || 0;
+
+  const matchResult = applyResultException(weekResult, resultException);
 
   if (bet.gameType === "turbo") {
     let turboPrize: number[];
@@ -265,7 +278,7 @@ export function computePoolsAward(
     const betMatches = bet.matches || [];
     if (!Array.isArray(betMatches) || betMatches.length === 0) return 0;
 
-    if (weekResult.join(",").includes(betMatches.join(","))) {
+    if (matchResult.join(",").includes(betMatches.join(","))) {
       const matchCount = betMatches.length;
       if (matchCount < 2) return 0;
       const prizeIndex = Math.min(matchCount - 2, turboPrize.length - 1);
@@ -280,7 +293,9 @@ export function computePoolsAward(
     const betMatches = bet.matches || [];
     if (!Array.isArray(betMatches) || betMatches.length === 0) return 0;
 
-    const win = betMatches.every((match: string) => weekResult.toString().includes(match.toString()));
+    const win = betMatches.every((match: string) =>
+      matchResult.toString().includes(match.toString()),
+    );
     if (!win) return 0;
 
     let award = 0;
@@ -317,14 +332,14 @@ export function computePoolsAward(
         const columnIndex = prize.data?.columns?.findIndex((col: string) => col.toUpperCase() === `U${uStr}`) ?? -1;
         if (columnIndex !== -1) {
           const colVal = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
-          multiplier += colVal * calcAwardLine(bet.matches || [], weekResult, Number(u));
+          multiplier += colVal * calcAwardLine(bet.matches || [], matchResult, Number(u));
         }
       });
     } else {
       const awardLine = Object.keys(bet.matches || {}).reduce((acc: number, gid: string) => {
         const ms = (bet.matches as any)?.[gid] || [];
         const u = Number(gid.split("-")[0]);
-        return acc * calcAwardLine(ms, weekResult, u);
+        return acc * calcAwardLine(ms, matchResult, u);
       }, 1);
 
       (bet.under || []).forEach((u: any) => {

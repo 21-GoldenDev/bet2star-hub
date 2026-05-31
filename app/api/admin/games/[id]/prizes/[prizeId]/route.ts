@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { syncTerminalsIfPoolsGame } from "@/lib/admin/gamePrizeMutations";
+import { recomputePoolsAwardsForGame } from "@/lib/admin/recomputePoolsAwards";
 import {
   normalizeGamePrizeEntries,
   validateCommission,
+  normalizeException,
 } from "@/lib/admin/syncTerminalPrizesFromGame";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,11 +27,11 @@ export async function PUT(
   try {
     const { id, prizeId } = await params;
     const body = await request.json();
-    const { status, commission } = body;
+    const { status, commission, exception } = body;
 
-    if (status === undefined && commission === undefined) {
+    if (status === undefined && commission === undefined && exception === undefined) {
       return NextResponse.json(
-        { error: "Missing required fields (status or commission)" },
+        { error: "Missing required fields (status, commission, or exception)" },
         { status: 400 }
       );
     }
@@ -56,6 +58,13 @@ export async function PUT(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
+    if (exception !== undefined && game?.type !== "pools") {
+      return NextResponse.json(
+        { error: "Exception is only supported for pools games" },
+        { status: 400 }
+      );
+    }
+
     const currentPrizes = normalizeGamePrizeEntries(game?.prize_ids);
     const prizeIndex = currentPrizes.findIndex((p) => p.id === prizeId);
 
@@ -67,11 +76,20 @@ export async function PUT(
     }
 
     const updatedPrizes = [...currentPrizes];
-    updatedPrizes[prizeIndex] = {
+    const nextEntry = {
       ...updatedPrizes[prizeIndex],
       ...(status !== undefined ? { status } : {}),
       ...(commission !== undefined ? { commission } : {}),
     };
+    if (exception !== undefined) {
+      const normalized = normalizeException(exception);
+      if (normalized) {
+        nextEntry.exception = normalized;
+      } else {
+        delete nextEntry.exception;
+      }
+    }
+    updatedPrizes[prizeIndex] = nextEntry;
 
     const { error: updateError } = await supabase
       .from("games")
@@ -89,6 +107,13 @@ export async function PUT(
     );
     if (syncError.error) {
       return NextResponse.json({ error: syncError.error }, { status: 500 });
+    }
+
+    if (exception !== undefined && game?.type === "pools") {
+      const recompute = await recomputePoolsAwardsForGame(supabase, id);
+      if (recompute.error) {
+        return NextResponse.json({ error: recompute.error }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ game_prize: updatedPrizes[prizeIndex] }, { status: 200 });

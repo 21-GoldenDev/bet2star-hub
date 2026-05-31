@@ -40,6 +40,7 @@ interface GamePrizeWithInfo {
   name: string;
   status: "active" | "inactive";
   commission?: number;
+  exception?: string;
 }
 
 interface PrizeWithCommission extends PrizeInfo {
@@ -77,10 +78,12 @@ export default function PrizesSection({
     prize_id: string;
     status: "active" | "inactive";
     commission: number;
+    exception: string;
   }>({
     prize_id: "",
     status: "active",
     commission: 100,
+    exception: "",
   });
 
   const resolveDefaultCommission = (prizeId: string) => {
@@ -95,6 +98,7 @@ export default function PrizesSection({
       prize_id: "",
       status: "active",
       commission: 100,
+      exception: "",
     });
     setIsAddDialogOpen(true);
   };
@@ -105,6 +109,7 @@ export default function PrizesSection({
       prize_id: gamePrize.id,
       status: gamePrize.status,
       commission: gamePrize.commission ?? 100,
+      exception: gamePrize.exception ?? "",
     });
     setIsEditDialogOpen(true);
   };
@@ -127,6 +132,7 @@ export default function PrizesSection({
         body: JSON.stringify({
           status: formData.status,
           ...(manageCommission ? { commission: formData.commission } : {}),
+          ...(manageCommission ? { exception: formData.exception.trim() || null } : {}),
         }),
       });
 
@@ -183,6 +189,7 @@ export default function PrizesSection({
           prize_id: formData.prize_id,
           status: formData.status,
           ...(manageCommission ? { commission: formData.commission } : {}),
+          ...(manageCommission ? { exception: formData.exception.trim() || null } : {}),
         }),
       });
 
@@ -195,6 +202,7 @@ export default function PrizesSection({
           prize_id: "",
           status: "active",
           commission: 100,
+          exception: "",
         });
         onRefresh();
       } else {
@@ -299,7 +307,7 @@ export default function PrizesSection({
           <h2 className="text-2xl font-bold">Online Users Prize Management</h2>
           <p className="text-muted-foreground mt-1">
             {manageCommission
-              ? "Add, update, or remove prizes and commissions. Changes sync to all terminals."
+              ? "Add, update, or remove prizes, commissions, and result exceptions. Changes sync to all terminals."
               : "Add, update, or remove prizes for this game"}
           </p>
         </div>
@@ -359,23 +367,42 @@ export default function PrizesSection({
                 </Select>
               </div>
               {manageCommission && (
-                <div>
-                  <Label>Commission (%)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.01}
-                    value={formData.commission}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        commission: Number(e.target.value),
-                      })
-                    }
-                    disabled={submitting}
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label>Commission (%)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                      value={formData.commission}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          commission: Number(e.target.value),
+                        })
+                      }
+                      disabled={submitting}
+                    />
+                  </div>
+                  <div>
+                    <Label>Exception</Label>
+                    <Input
+                      value={formData.exception}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          exception: e.target.value,
+                        })
+                      }
+                      // placeholder="e.g. 67"
+                      disabled={submitting}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Result number ignored when calculating awards for this prize
+                    </p>
+                  </div>
+                </>
               )}
               <div className="flex gap-2">
                 <Button
@@ -435,6 +462,12 @@ export default function PrizesSection({
                     label: "Commission",
                     render: (commission: number | undefined) =>
                       `${commission ?? 100}%`,
+                    sortable: true,
+                  },
+                  {
+                    key: "exception" as const,
+                    label: "Exception",
+                    render: (exception: string | undefined) => exception || "—",
                     sortable: true,
                   },
                 ]
@@ -501,23 +534,42 @@ export default function PrizesSection({
               </Select>
             </div>
             {manageCommission && (
-              <div>
-                <Label>Commission (%)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.01}
-                  value={formData.commission}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      commission: Number(e.target.value),
-                    })
-                  }
-                  disabled={submitting}
-                />
-              </div>
+              <>
+                <div>
+                  <Label>Commission (%)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    value={formData.commission}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        commission: Number(e.target.value),
+                      })
+                    }
+                    disabled={submitting}
+                  />
+                </div>
+                <div>
+                  <Label>Exception</Label>
+                  <Input
+                    value={formData.exception}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        exception: e.target.value,
+                      })
+                    }
+                    placeholder="e.g. 67"
+                    disabled={submitting}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Result number ignored when calculating awards for this prize
+                  </p>
+                </div>
+              </>
             )}
             <div className="flex gap-2">
               <Button

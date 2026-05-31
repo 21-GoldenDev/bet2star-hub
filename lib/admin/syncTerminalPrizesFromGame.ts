@@ -9,7 +9,23 @@ export type GamePrizeEntry = {
   id: string;
   status?: "active" | "inactive";
   commission?: number;
+  /** Pools only: result number excluded from award matching for this prize. */
+  exception?: string;
 };
+
+export function normalizeException(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+  const str = String(value).trim();
+  return str.length > 0 ? str : undefined;
+}
+
+export function getGamePrizeException(
+  prizeIds: unknown,
+  prizeId: string,
+): string | undefined {
+  const entry = normalizeGamePrizeEntries(prizeIds).find((p) => p.id === prizeId);
+  return entry?.exception;
+}
 
 export function normalizeGamePrizeEntries(prizeIds: unknown): GamePrizeEntry[] {
   if (!Array.isArray(prizeIds)) return [];
@@ -20,7 +36,12 @@ export function normalizeGamePrizeEntries(prizeIds: unknown): GamePrizeEntry[] {
       continue;
     }
     if (entry && typeof entry === "object" && "id" in entry) {
-      const raw = entry as { id: string; status?: string; commission?: number };
+      const raw = entry as {
+        id: string;
+        status?: string;
+        commission?: number;
+        exception?: unknown;
+      };
       entries.push({
         id: String(raw.id),
         status: raw.status === "inactive" ? "inactive" : "active",
@@ -28,6 +49,7 @@ export function normalizeGamePrizeEntries(prizeIds: unknown): GamePrizeEntry[] {
           typeof raw.commission === "number" && !Number.isNaN(raw.commission)
             ? raw.commission
             : 100,
+        exception: normalizeException(raw.exception),
       });
     }
   }

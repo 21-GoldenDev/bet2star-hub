@@ -25,6 +25,7 @@ interface GamePrizeWithInfo {
   name: string;
   status: "active" | "inactive";
   commission?: number;
+  exception?: string;
 }
 
 interface GameInfo {
@@ -71,6 +72,7 @@ export default function GameSettingsPage() {
             id: string;
             status: "active" | "inactive";
             commission?: number;
+            exception?: string;
           }>)
         : [];
       const prizes = gamePrizeIds.map((gp) => {
@@ -88,6 +90,7 @@ export default function GameSettingsPage() {
               : Number.isFinite(masterCommission)
                 ? masterCommission
                 : 100,
+          exception: gp.exception,
         };
       });
       setGamePrizes(prizes);

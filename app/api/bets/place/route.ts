@@ -7,6 +7,7 @@ import {
   computeLottoAward,
   computePoolsAward,
 } from '@/lib/helpers';
+import { getGamePrizeException } from '@/lib/admin/syncTerminalPrizesFromGame';
 import { Prize } from '@/lib/types/prize';
 
 export async function OPTIONS(request: NextRequest) {
@@ -597,7 +598,7 @@ async function computePoolsAwardForBet(
 ): Promise<number> {
   try {
     const [resultResp, prizeResp, turboResp] = await Promise.all([
-      supabase.from('games').select('results').eq('id', gameId).single(),
+      supabase.from('games').select('results, prize_ids').eq('id', gameId).single(),
       loadPrize(supabase, prizeId),
       loadTurboPrize(supabase),
     ]);
@@ -610,7 +611,10 @@ async function computePoolsAwardForBet(
     const results = (resultResp.data?.results as string[]) || [];
     if (!Array.isArray(results) || results.length === 0) return 0;
 
-    const award = computePoolsAward(bet, prizeResp, results, turboResp);
+    const resultException = prizeId
+      ? getGamePrizeException(resultResp.data?.prize_ids, prizeId)
+      : undefined;
+    const award = computePoolsAward(bet, prizeResp, results, turboResp, resultException);
     return Number.isFinite(award) ? award : 0;
   } catch (err) {
     console.error('Pools award calc error:', err);

@@ -3,6 +3,7 @@ import {
   TurboPrize,
   computePoolsAward,
 } from "@/lib/helpers";
+import { getGamePrizeException } from "@/lib/admin/syncTerminalPrizesFromGame";
 import { NextRequest, NextResponse } from "next/server";
 import { Prize } from "@/lib/types/prize";
 
@@ -22,6 +23,17 @@ export async function POST(request: NextRequest) {
     }
 
     const validResult = result.filter((num) => typeof num === "string");
+
+    const { data: gameRow, error: gameFetchError } = await supabase
+      .from("games")
+      .select("prize_ids")
+      .eq("id", gameId)
+      .single();
+
+    if (gameFetchError) {
+      console.error("Error fetching game prize settings:", gameFetchError);
+      return NextResponse.json({ error: gameFetchError.message }, { status: 500 });
+    }
 
     const { error: updateError } = await supabase
       .from("games")
@@ -73,7 +85,16 @@ export async function POST(request: NextRequest) {
 
     const updates = (bets || []).map((bet: any) => {
       const prize = bet.prize_id ? prizeMap[bet.prize_id] ?? null : null;
-      const award = computePoolsAward(bet, prize, validResult, turboPrizeData as TurboPrize | null);
+      const resultException = bet.prize_id
+        ? getGamePrizeException(gameRow?.prize_ids, bet.prize_id)
+        : undefined;
+      const award = computePoolsAward(
+        bet,
+        prize,
+        validResult,
+        turboPrizeData as TurboPrize | null,
+        resultException,
+      );
       return { id: bet.id, award };
     });
 
