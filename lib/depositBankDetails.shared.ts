@@ -1,17 +1,35 @@
-export type DepositBankDetails = {
+export type DepositBankAccount = {
+  id: string;
   bankName: string;
   accountNumber: string;
   accountName: string;
   note: string;
 };
 
-export const emptyDepositBankDetails: DepositBankDetails = {
-  bankName: "",
-  accountNumber: "",
-  accountName: "",
-  note: "",
+export type DepositBankConfig = {
+  banks: DepositBankAccount[];
 };
 
-export function hasDepositBankDetails(details: DepositBankDetails) {
-  return Boolean(details.bankName && details.accountNumber && details.accountName);
+export function createEmptyBankAccount(): DepositBankAccount {
+  return {
+    id: crypto.randomUUID(),
+    bankName: "",
+    accountNumber: "",
+    accountName: "",
+    note: "",
+  };
+}
+
+export function isValidBankAccount(bank: DepositBankAccount) {
+  return Boolean(
+    bank.bankName.trim() && bank.accountNumber.trim() && bank.accountName.trim()
+  );
+}
+
+export function getValidBanks(banks: DepositBankAccount[]) {
+  return banks.filter(isValidBankAccount);
+}
+
+export function hasDepositBankDetails(banks: DepositBankAccount[]) {
+  return getValidBanks(banks).length > 0;
 }

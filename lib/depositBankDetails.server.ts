@@ -1,40 +1,81 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import {
-  emptyDepositBankDetails,
-  type DepositBankDetails,
+  createEmptyBankAccount,
+  type DepositBankAccount,
+  type DepositBankConfig,
 } from "@/lib/depositBankDetails.shared";
 
 export const DEPOSIT_BANK_BUCKET = "platform-config";
 export const DEPOSIT_BANK_CONFIG_PATH = "deposit-bank.json";
 export const DEPOSIT_SETTINGS_ID = "general";
 
-export type { DepositBankDetails };
+export type { DepositBankAccount, DepositBankConfig };
 
-function normalizeDepositBankDetailsJson(value: unknown): DepositBankDetails {
+function normalizeBankAccount(value: unknown, fallbackId?: string): DepositBankAccount | null {
   if (!value || typeof value !== "object") {
-    return { ...emptyDepositBankDetails };
+    return null;
   }
 
   const row = value as Record<string, unknown>;
-  return {
-    bankName: typeof row.bankName === "string" ? row.bankName.trim() : "",
-    accountNumber: typeof row.accountNumber === "string" ? row.accountNumber.trim() : "",
-    accountName: typeof row.accountName === "string" ? row.accountName.trim() : "",
-    note: typeof row.note === "string" ? row.note.trim() : "",
-  };
+  const bankName = typeof row.bankName === "string" ? row.bankName.trim() : "";
+  const accountNumber = typeof row.accountNumber === "string" ? row.accountNumber.trim() : "";
+  const accountName = typeof row.accountName === "string" ? row.accountName.trim() : "";
+  const note = typeof row.note === "string" ? row.note.trim() : "";
+  const id =
+    typeof row.id === "string" && row.id.trim()
+      ? row.id.trim()
+      : fallbackId || crypto.randomUUID();
+
+  if (!bankName && !accountNumber && !accountName && !note) {
+    return null;
+  }
+
+  return { id, bankName, accountNumber, accountName, note };
 }
 
-function normalizeDepositBankDetails(row?: {
+function normalizeDepositBankConfigJson(value: unknown): DepositBankConfig {
+  if (!value || typeof value !== "object") {
+    return { banks: [] };
+  }
+
+  const row = value as Record<string, unknown>;
+
+  if (Array.isArray(row.banks)) {
+    const banks = row.banks
+      .map((bank) => normalizeBankAccount(bank))
+      .filter((bank): bank is DepositBankAccount => bank !== null);
+    return { banks };
+  }
+
+  const legacy = normalizeBankAccount(row);
+  return { banks: legacy ? [legacy] : [] };
+}
+
+function normalizeDepositBankDetailsFromDb(row?: {
   deposit_bank_name?: string | null;
   deposit_account_number?: string | null;
   deposit_account_name?: string | null;
   deposit_note?: string | null;
-} | null): DepositBankDetails {
+} | null): DepositBankConfig {
+  const bankName = row?.deposit_bank_name?.trim() || "";
+  const accountNumber = row?.deposit_account_number?.trim() || "";
+  const accountName = row?.deposit_account_name?.trim() || "";
+  const note = row?.deposit_note?.trim() || "";
+
+  if (!bankName && !accountNumber && !accountName) {
+    return { banks: [] };
+  }
+
   return {
-    bankName: row?.deposit_bank_name?.trim() || "",
-    accountNumber: row?.deposit_account_number?.trim() || "",
-    accountName: row?.deposit_account_name?.trim() || "",
-    note: row?.deposit_note?.trim() || "",
+    banks: [
+      {
+        id: "legacy",
+        bankName,
+        accountNumber,
+        accountName,
+        note,
+      },
+    ],
   };
 }
 
@@ -72,7 +113,7 @@ async function ensureDepositBankBucket() {
   }
 }
 
-async function readDepositBankDetailsFromDb(): Promise<DepositBankDetails | null> {
+async function readDepositBankDetailsFromDb(): Promise<DepositBankConfig | null> {
   const service = getServiceClient();
   const { data, error } = await service
     .from("platform_settings")
@@ -87,18 +128,19 @@ async function readDepositBankDetailsFromDb(): Promise<DepositBankDetails | null
     throw error;
   }
 
-  return normalizeDepositBankDetails(data);
+  return normalizeDepositBankDetailsFromDb(data);
 }
 
-async function writeDepositBankDetailsToDb(details: DepositBankDetails) {
+async function writeDepositBankDetailsToDb(config: DepositBankConfig) {
+  const first = config.banks[0] || createEmptyBankAccount();
   const service = getServiceClient();
   const { data: updated, error: updateError } = await service
     .from("platform_settings")
     .update({
-      deposit_bank_name: details.bankName,
-      deposit_account_number: details.accountNumber,
-      deposit_account_name: details.accountName,
-      deposit_note: details.note,
+      deposit_bank_name: first.bankName,
+      deposit_account_number: first.accountNumber,
+      deposit_account_name: first.accountName,
+      deposit_note: first.note,
       updated_at: new Date().toISOString(),
     })
     .eq("id", DEPOSIT_SETTINGS_ID)
@@ -118,10 +160,10 @@ async function writeDepositBankDetailsToDb(details: DepositBankDetails) {
   const { error: insertError } = await service.from("platform_settings").insert({
     id: DEPOSIT_SETTINGS_ID,
     max_bet_amount: 100000,
-    deposit_bank_name: details.bankName,
-    deposit_account_number: details.accountNumber,
-    deposit_account_name: details.accountName,
-    deposit_note: details.note,
+    deposit_bank_name: first.bankName,
+    deposit_account_number: first.accountNumber,
+    deposit_account_name: first.accountName,
+    deposit_note: first.note,
   });
 
   if (insertError) {
@@ -134,7 +176,7 @@ async function writeDepositBankDetailsToDb(details: DepositBankDetails) {
   return true;
 }
 
-export async function readDepositBankDetails(): Promise<DepositBankDetails> {
+export async function readDepositBankDetails(): Promise<DepositBankConfig> {
   const service = getServiceClient();
 
   try {
@@ -150,9 +192,9 @@ export async function readDepositBankDetails(): Promise<DepositBankDetails> {
   if (!storageError && file) {
     try {
       const parsed = JSON.parse(await file.text());
-      return normalizeDepositBankDetailsJson(parsed);
+      return normalizeDepositBankConfigJson(parsed);
     } catch {
-      return { ...emptyDepositBankDetails };
+      return { banks: [] };
     }
   }
 
@@ -169,17 +211,14 @@ export async function readDepositBankDetails(): Promise<DepositBankDetails> {
     return fromDb;
   }
 
-  return { ...emptyDepositBankDetails };
+  return { banks: [] };
 }
 
-export async function writeDepositBankDetails(details: DepositBankDetails) {
+export async function writeDepositBankDetails(config: DepositBankConfig) {
   const service = getServiceClient();
   const payload = Buffer.from(
     JSON.stringify({
-      bankName: details.bankName,
-      accountNumber: details.accountNumber,
-      accountName: details.accountName,
-      note: details.note,
+      banks: config.banks,
       updatedAt: new Date().toISOString(),
     })
   );
@@ -194,12 +233,12 @@ export async function writeDepositBankDetails(details: DepositBankDetails) {
     });
 
   if (!storageError) {
-    return details;
+    return config;
   }
 
-  const savedToDb = await writeDepositBankDetailsToDb(details);
+  const savedToDb = await writeDepositBankDetailsToDb(config);
   if (savedToDb) {
-    return details;
+    return config;
   }
 
   throw new Error(

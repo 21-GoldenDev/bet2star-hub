@@ -1,62 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
-import type { DepositBankDetails } from "@/lib/depositBankDetails.shared";
-
-const emptyDetails: DepositBankDetails = {
-  bankName: "",
-  accountNumber: "",
-  accountName: "",
-  note: "",
-};
+import { Building2, Loader2, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import {
+  createEmptyBankAccount,
+  getValidBanks,
+  isValidBankAccount,
+  type DepositBankAccount,
+} from "@/lib/depositBankDetails.shared";
 
 export default function DepositBankDetailsEditor() {
   const { toast } = useToast();
-  const [details, setDetails] = useState<DepositBankDetails>(emptyDetails);
-  const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [banks, setBanks] = useState<DepositBankAccount[]>([createEmptyBankAccount()]);
+  const [savedCount, setSavedCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadDetails = async () => {
-      try {
-        const response = await fetch("/api/admin/settings/deposit-bank");
-        const result = await response.json();
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to load bank details");
-        }
-        if (!cancelled) {
-          setDetails(result);
-        }
-      } catch (error: unknown) {
-        if (!cancelled) {
-          toast({
-            title: "Failed to load bank details",
-            description: error instanceof Error ? error.message : "Please try again",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+  const loadDetails = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/settings/deposit-bank");
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to load bank details");
       }
-    };
 
-    loadDetails();
+      const loadedBanks =
+        Array.isArray(result.banks) && result.banks.length > 0
+          ? result.banks
+          : [createEmptyBankAccount()];
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      setBanks(loadedBanks);
+      setSavedCount(getValidBanks(loadedBanks).length);
+      setLoaded(true);
+    } catch (error: unknown) {
+      toast({
+        title: "Failed to load bank details",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    setIsOpen(true);
+    if (!loaded) {
+      await loadDetails();
+    }
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+  };
+
+  const updateBank = (id: string, field: keyof DepositBankAccount, value: string) => {
+    setBanks((prev) =>
+      prev.map((bank) => (bank.id === id ? { ...bank, [field]: value } : bank))
+    );
+  };
+
+  const addBank = () => {
+    setBanks((prev) => [...prev, createEmptyBankAccount()]);
+  };
+
+  const removeBank = (id: string) => {
+    setBanks((prev) => {
+      if (prev.length <= 1) {
+        return [createEmptyBankAccount()];
+      }
+      return prev.filter((bank) => bank.id !== id);
+    });
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -64,7 +87,7 @@ export default function DepositBankDetailsEditor() {
       const response = await fetch("/api/admin/settings/deposit-bank", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(details),
+        body: JSON.stringify({ banks }),
       });
       const result = await response.json();
 
@@ -72,10 +95,15 @@ export default function DepositBankDetailsEditor() {
         throw new Error(result.error || "Failed to save bank details");
       }
 
-      setDetails(result);
+      const savedBanks = result.banks?.length ? result.banks : [createEmptyBankAccount()];
+      setBanks(savedBanks);
+      setSavedCount(getValidBanks(savedBanks).length);
+      setLoaded(true);
+      setIsOpen(false);
+
       toast({
         title: "Bank details saved",
-        description: "Players will see these details on the deposit page.",
+        description: "Players will see these accounts on the deposit page.",
       });
     } catch (error: unknown) {
       toast({
@@ -88,76 +116,143 @@ export default function DepositBankDetailsEditor() {
     }
   };
 
+  if (!isOpen) {
+    return (
+      <Card className="p-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <Building2 className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+            <div>
+              <h2 className="text-base font-semibold">Deposit Bank Details</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {savedCount === null
+                  ? "Manage accounts shown to players on the deposit page."
+                  : savedCount === 0
+                    ? "No bank accounts configured yet."
+                    : `${savedCount} bank account${savedCount === 1 ? "" : "s"} configured.`}
+              </p>
+            </div>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={handleOpen}>
+            <Pencil className="w-4 h-4 mr-2" />
+            Edit Bank Details
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="p-6 space-y-4">
-      <div>
-        <h2 className="text-lg font-semibold">Deposit Bank Details</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          These details are shown to players on the manual deposit page.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Deposit Bank Details</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            These accounts are shown to players on the manual deposit page.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" onClick={addBank} disabled={loading || saving}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Bank
+          </Button>
+          <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
+            <X className="w-4 h-4 mr-2" />
+            Close
+          </Button>
+        </div>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading bank details...</p>
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading bank details...
+        </p>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="deposit-bank-name">Bank Name</Label>
-              <Input
-                id="deposit-bank-name"
-                value={details.bankName}
-                onChange={(event) => setDetails({ ...details, bankName: event.target.value })}
-                // placeholder="e.g. Zenith Bank"
-                disabled={saving}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="deposit-account-number">Account Number</Label>
-              <Input
-                id="deposit-account-number"
-                value={details.accountNumber}
-                onChange={(event) => setDetails({ ...details, accountNumber: event.target.value })}
-                // placeholder="Account number"
-                disabled={saving}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="deposit-account-name">Account Name</Label>
-              <Input
-                id="deposit-account-name"
-                value={details.accountName}
-                onChange={(event) => setDetails({ ...details, accountName: event.target.value })}
-                // placeholder="Name on bank account"
-                disabled={saving}
-              />
-            </div>
-            {/* <div className="space-y-2 md:col-span-4">
-              <Label htmlFor="deposit-note">Note to Players (optional)</Label>
-              <Textarea
-                id="deposit-note"
-                value={details.note}
-                onChange={(event) => setDetails({ ...details, note: event.target.value })}
-                // placeholder="Extra instructions for players after transfer..."
-                rows={1}
-                disabled={saving}
-              />
-            </div> */}
+          <div className="space-y-4">
+            {banks.map((bank, index) => (
+              <div
+                key={bank.id}
+                className="rounded-lg border border-border p-4 space-y-4 bg-muted/20"
+              >
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-sm">
+                    Bank {index + 1}
+                    {isValidBankAccount(bank) && (
+                      <span className="text-muted-foreground font-normal ml-2">
+                        {bank.bankName}
+                      </span>
+                    )}
+                  </p>
+                  {banks.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => removeBank(bank.id)}
+                      disabled={saving}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor={`deposit-bank-name-${bank.id}`}>Bank Name</Label>
+                    <Input
+                      id={`deposit-bank-name-${bank.id}`}
+                      value={bank.bankName}
+                      onChange={(event) => updateBank(bank.id, "bankName", event.target.value)}
+                      disabled={saving}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor={`deposit-account-number-${bank.id}`}>Account Number</Label>
+                    <Input
+                      id={`deposit-account-number-${bank.id}`}
+                      value={bank.accountNumber}
+                      onChange={(event) =>
+                        updateBank(bank.id, "accountNumber", event.target.value)
+                      }
+                      disabled={saving}
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor={`deposit-account-name-${bank.id}`}>Account Name</Label>
+                    <Input
+                      id={`deposit-account-name-${bank.id}`}
+                      value={bank.accountName}
+                      onChange={(event) => updateBank(bank.id, "accountName", event.target.value)}
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save Bank Details
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Bank Details
+                </>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={saving}>
+              Cancel
+            </Button>
+          </div>
         </>
       )}
     </Card>

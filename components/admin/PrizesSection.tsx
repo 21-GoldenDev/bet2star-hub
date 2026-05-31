@@ -304,7 +304,7 @@ export default function PrizesSection({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold">Online Users Prize Management</h2>
+          <h2 className="text-2xl font-bold">Prize Management</h2>
           <p className="text-muted-foreground mt-1">
             {manageCommission
               ? "Add, update, or remove prizes, commissions, and result exceptions. Changes sync to all terminals."
