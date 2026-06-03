@@ -78,6 +78,23 @@ export async function DELETE(
 ) {
   try {
     const { id, matchId } = await params;
+    const { password } = await request.json();
+    const deletePassword = process.env.ADMIN_GAME_DELETE_PASSWORD;
+
+    if (!deletePassword) {
+      return NextResponse.json(
+        { error: "Password is not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (typeof password !== "string" || password !== deletePassword) {
+      return NextResponse.json(
+        { error: "Invalid password" },
+        { status: 401 }
+      );
+    }
+
     await fetchPoolsGame(id);
 
     const { error } = await supabase.from("matches").delete().eq("id", matchId);

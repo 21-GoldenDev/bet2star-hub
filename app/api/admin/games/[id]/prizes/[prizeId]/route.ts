@@ -132,6 +132,7 @@ export async function DELETE(
 ) {
   try {
     const { id, prizeId } = await params;
+    const { password } = await request.json();
 
     const { data: game, error: fetchError } = await supabase
       .from("games")
@@ -141,6 +142,24 @@ export async function DELETE(
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    if (game?.type === "pools") {
+      const deletePassword = process.env.ADMIN_GAME_DELETE_PASSWORD;
+
+      if (!deletePassword) {
+        return NextResponse.json(
+          { error: "Password is not configured" },
+          { status: 500 }
+        );
+      }
+
+      if (typeof password !== "string" || password !== deletePassword) {
+        return NextResponse.json(
+          { error: "Invalid password" },
+          { status: 401 }
+        );
+      }
     }
 
     const currentPrizes = normalizeGamePrizeEntries(game?.prize_ids);

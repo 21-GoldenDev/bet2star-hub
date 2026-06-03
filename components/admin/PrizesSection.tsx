@@ -72,6 +72,7 @@ export default function PrizesSection({
   const [togglingStatus, setTogglingStatus] = useState<string | null>(null);
   const [isPrizeDeleteAlertOpen, setIsPrizeDeleteAlertOpen] = useState(false);
   const [prizeToDelete, setPrizeToDelete] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const { toast } = useToast();
 
   const [formData, setFormData] = useState<{
@@ -264,15 +265,29 @@ export default function PrizesSection({
 
   const openPrizeDeleteDialog = (gamePrizeId: string) => {
     setPrizeToDelete(gamePrizeId);
+    setDeletePassword("");
     setIsPrizeDeleteAlertOpen(true);
   };
 
   const handleDelete = async () => {
     if (!prizeToDelete) return;
+    if (manageCommission && !deletePassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Enter the delete password to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setSubmitting(true);
       const response = await fetch(`/api/admin/games/${gameId}/prizes/${prizeToDelete}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          manageCommission ? { password: deletePassword } : {}
+        ),
       });
 
       const data = await response.json();
@@ -295,8 +310,10 @@ export default function PrizesSection({
         variant: "destructive",
       });
     } finally {
+      setSubmitting(false);
       setIsPrizeDeleteAlertOpen(false);
       setPrizeToDelete(null);
+      setDeletePassword("");
     }
   };
 
@@ -596,7 +613,15 @@ export default function PrizesSection({
       </Dialog>
 
       {/* Prize Delete Confirmation Dialog */}
-      <AlertDialog open={isPrizeDeleteAlertOpen} onOpenChange={setIsPrizeDeleteAlertOpen}>
+      <AlertDialog
+        open={isPrizeDeleteAlertOpen}
+        onOpenChange={(open) => {
+          setIsPrizeDeleteAlertOpen(open);
+          if (!open) {
+            setDeletePassword("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -604,12 +629,27 @@ export default function PrizesSection({
               This action cannot be undone. This will permanently remove the prize from this game.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {manageCommission && (
+            <div className="space-y-2">
+              <Label htmlFor="delete-prize-password">Password</Label>
+              <Input
+                id="delete-prize-password"
+                type="password"
+                placeholder="Enter password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                disabled={submitting}
+              />
+            </div>
+          )}
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
+              disabled={submitting || (manageCommission && !deletePassword.trim())}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
+              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

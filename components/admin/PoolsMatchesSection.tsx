@@ -55,6 +55,7 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -199,16 +200,30 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
 
   const openDeleteDialog = (matchId: string) => {
     setMatchToDelete(matchId);
+    setDeletePassword("");
     setIsDeleteAlertOpen(true);
   };
 
   const handleDelete = async () => {
     if (!matchToDelete) return;
+    if (!deletePassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Enter the delete password to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setSubmitting(true);
       const response = await fetch(
         `/api/admin/games/${gameId}/pools/matches/${matchToDelete}`,
-        { method: "DELETE" }
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password: deletePassword }),
+        }
       );
       const data = await response.json();
 
@@ -233,8 +248,10 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
         variant: "destructive",
       });
     } finally {
+      setSubmitting(false);
       setIsDeleteAlertOpen(false);
       setMatchToDelete(null);
+      setDeletePassword("");
     }
   };
 
@@ -572,7 +589,15 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+      <AlertDialog
+        open={isDeleteAlertOpen}
+        onOpenChange={(open) => {
+          setIsDeleteAlertOpen(open);
+          if (!open) {
+            setDeletePassword("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -580,11 +605,22 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
               This action cannot be undone. This will permanently delete the match.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="delete-match-password">Password</Label>
+            <Input
+              id="delete-match-password"
+              type="password"
+              placeholder="Enter password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              disabled={submitting}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={submitting}
+              disabled={submitting || !deletePassword.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
