@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit, Search } from "lucide-react";
+import { Plus, Trash2, Edit, Search, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -35,6 +35,7 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
+  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
@@ -47,6 +48,8 @@ export default function AgentsPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStaffId, setFilterStaffId] = useState<string>("all");
   const [formData, setFormData] = useState({
@@ -105,11 +108,29 @@ export default function AgentsPage() {
     }
   };
 
+  const openDeleteDialog = (agentId: string) => {
+    setDeleteId(agentId);
+    setDeletePassword("");
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
+    if (!deletePassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Enter the delete password to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/agents/${deleteId}`, { method: "DELETE" });
+      setDeleting(true);
+      const res = await fetch(`/api/agents/${deleteId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         throw new Error(data?.error || "Failed to delete agent");
@@ -117,6 +138,7 @@ export default function AgentsPage() {
 
       await fetchData();
       setDeleteId(null);
+      setDeletePassword("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to delete agent";
       toast({
@@ -125,6 +147,8 @@ export default function AgentsPage() {
         variant: "destructive",
       });
       console.error("Error deleting agent:", error);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -380,7 +404,7 @@ export default function AgentsPage() {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => setDeleteId(agent.id)}
+                        onClick={() => openDeleteDialog(agent.id)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -393,7 +417,15 @@ export default function AgentsPage() {
         </div>
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteId(null);
+            setDeletePassword("");
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Agent</AlertDialogTitle>
@@ -401,10 +433,28 @@ export default function AgentsPage() {
               Are you sure you want to delete this agent? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} className="bg-destructive">
-            Delete
-          </AlertDialogAction>
+          <div className="space-y-2">
+            <Label htmlFor="delete-agent-password">Password</Label>
+            <Input
+              id="delete-agent-password"
+              type="password"
+              placeholder="Enter password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              disabled={deleting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting || !deletePassword.trim()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
