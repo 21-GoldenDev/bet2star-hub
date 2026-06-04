@@ -299,8 +299,11 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
   const filteredMatches = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return matches;
-    return matches.filter((m) =>
-      m.home.toLowerCase().includes(term) || m.away.toLowerCase().includes(term)
+    return matches.filter(
+      (m) =>
+        String(m.number).includes(term) ||
+        m.home.toLowerCase().includes(term) ||
+        m.away.toLowerCase().includes(term)
     );
   }, [matches, searchTerm]);
 
@@ -444,7 +447,7 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by home or away team..."
+                placeholder="Search by match #, home or away team..."
                 className="pl-9 pr-10"
               />
               {searchTerm && (
