@@ -83,7 +83,7 @@ const Profile = () => {
   ];
 
   const menuItems = [
-    { icon: CreditCard, label: "Payment Methods", path: "/deposit" },
+    { icon: CreditCard, label: "Deposit", path: "/deposit" },
     { icon: ReceiptText, label: "Transaction History", path: "/transactions" },
     { icon: Ticket, label: "Bet History", path: "/bet-history" },
     { icon: Bell, label: "Notifications", path: "#" },

@@ -187,6 +187,12 @@ const Navbar = () => {
                       </span>
                     </div>
 
+                    <Link href="/bet-history">
+                      <Button variant="outline" size="sm" className="hidden sm:flex">
+                        Bet History
+                      </Button>
+                    </Link>
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" size="sm" className="hidden sm:flex items-center gap-2">
@@ -282,6 +288,11 @@ const Navbar = () => {
                           {balance !== null ? `₦${balance.toLocaleString()}` : "--"}
                         </span>
                       </div>
+                      <Link href="/bet-history" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="outline" className="w-full mt-2">
+                          Bet History
+                        </Button>
+                      </Link>
                       <Link href="/deposit" onClick={() => setMobileMenuOpen(false)}>
                         <Button variant="gold" className="w-full mt-2">
                           Deposit
