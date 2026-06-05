@@ -24,12 +24,12 @@ export async function POST(request: NextRequest) {
 
     const validResult = result
       .map((num) => Number(num))
-      .filter((num) => Number.isInteger(num) && num >= 1 && num <= 99)
+      .filter((num) => Number.isInteger(num) && num >= 1 && num <= 49)
       .map((num) => String(num));
 
     if (result.length > 0 && validResult.length !== result.length) {
       return NextResponse.json(
-        { error: "Pools result numbers must be integers between 1 and 99" },
+        { error: "Pools result numbers must be integers between 1 and 49" },
         { status: 400 },
       );
     }

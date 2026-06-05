@@ -25,12 +25,12 @@ export async function POST(request: NextRequest) {
     }
 
     const validResult = result.filter(
-      (num) => typeof num === "number" && Number.isInteger(num) && num >= 1 && num <= 49,
+      (num) => typeof num === "number" && Number.isInteger(num) && num >= 1 && num <= 99,
     );
 
     if (result.length > 0 && validResult.length !== result.length) {
       return NextResponse.json(
-        { error: "Lotto result numbers must be integers between 1 and 49" },
+        { error: "Lotto result numbers must be integers between 1 and 99" },
         { status: 400 },
       );
     }

@@ -6,9 +6,9 @@ import { XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const LOTTO_RESULT_MIN = 1;
-const LOTTO_RESULT_MAX = 49;
+const LOTTO_RESULT_MAX = 99;
 const POOLS_RESULT_MIN = 1;
-const POOLS_RESULT_MAX = 99;
+const POOLS_RESULT_MAX = 49;
 
 function isValidLottoResultNumber(value: string): number | null {
   const num = Number(value);
@@ -96,8 +96,8 @@ export default function WeekResultSection({
       <h2 className="text-lg font-semibold mb-3">Week Result</h2>
       <Label className="text-sm text-muted-foreground">
         {gameType === "lotto"
-          ? "Enter numbers between 1 and 49, then press Enter to add"
-          : "Enter numbers between 1 and 99, then press Enter to add"}
+          ? "Enter numbers between 1 and 99, then press Enter to add"
+          : "Enter numbers between 1 and 49, then press Enter to add"}
       </Label>
       <div className="mt-2 flex items-center gap-2">
         <Input
@@ -106,7 +106,7 @@ export default function WeekResultSection({
           type="number"
           min={gameType === "lotto" ? LOTTO_RESULT_MIN : POOLS_RESULT_MIN}
           max={gameType === "lotto" ? LOTTO_RESULT_MAX : POOLS_RESULT_MAX}
-          placeholder={gameType === "lotto" ? "1-49" : "1-99"}
+          placeholder={gameType === "lotto" ? "1-99" : "1-49"}
           disabled={applying}
         />
         <div className="flex flex-wrap items-center gap-1">
