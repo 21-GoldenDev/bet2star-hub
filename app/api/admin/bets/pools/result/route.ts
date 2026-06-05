@@ -22,7 +22,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "result must be an array of strings" }, { status: 400 });
     }
 
-    const validResult = result.map((num) => String(num)).filter((num) => num.length > 0);
+    const validResult = result
+      .map((num) => Number(num))
+      .filter((num) => Number.isInteger(num) && num >= 1 && num <= 99)
+      .map((num) => String(num));
+
+    if (result.length > 0 && validResult.length !== result.length) {
+      return NextResponse.json(
+        { error: "Pools result numbers must be integers between 1 and 99" },
+        { status: 400 },
+      );
+    }
 
     const service = getServiceClient();
     const { error, balanceUpdates } = await applyPoolsResult(service, gameId, validResult);

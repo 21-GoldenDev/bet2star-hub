@@ -24,7 +24,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "result must be an array of numbers" }, { status: 400 });
     }
 
-    const validResult = result.filter((num) => typeof num === "number" && !isNaN(num));
+    const validResult = result.filter(
+      (num) => typeof num === "number" && Number.isInteger(num) && num >= 1 && num <= 49,
+    );
+
+    if (result.length > 0 && validResult.length !== result.length) {
+      return NextResponse.json(
+        { error: "Lotto result numbers must be integers between 1 and 49" },
+        { status: 400 },
+      );
+    }
 
     const service = getServiceClient();
     const { error, balanceUpdates } = await applyLottoResult(service, gameId, validResult);

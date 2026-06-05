@@ -3,6 +3,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+const LOTTO_RESULT_MIN = 1;
+const LOTTO_RESULT_MAX = 49;
+const POOLS_RESULT_MIN = 1;
+const POOLS_RESULT_MAX = 99;
+
+function isValidLottoResultNumber(value: string): number | null {
+  const num = Number(value);
+  if (!Number.isInteger(num) || num < LOTTO_RESULT_MIN || num > LOTTO_RESULT_MAX) {
+    return null;
+  }
+  return num;
+}
+
+function isValidPoolsResultNumber(value: string): number | null {
+  const num = Number(value);
+  if (!Number.isInteger(num) || num < POOLS_RESULT_MIN || num > POOLS_RESULT_MAX) {
+    return null;
+  }
+  return num;
+}
 
 interface Props {
   gameType: "lotto" | "pools";
@@ -21,20 +43,40 @@ export default function WeekResultSection({
   onChangeResult,
   onApplyResult,
 }: Props) {
+  const { toast } = useToast();
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       const value = e.currentTarget.value.trim();
       if (!value) return;
 
       if (gameType === "lotto") {
-        const num = Number(value);
-        if (isNaN(num)) return;
+        const num = isValidLottoResultNumber(value);
+        if (num === null) {
+          toast({
+            title: "Invalid number",
+            description: `Lotto result numbers must be between ${LOTTO_RESULT_MIN} and ${LOTTO_RESULT_MAX}.`,
+            variant: "destructive",
+          });
+          return;
+        }
         if (weekResult.some((v) => Number(v) === num)) return;
         const updatedResult = [...weekResult.map((v) => Number(v)), num];
         onChangeResult(updatedResult);
       } else {
+        const num = isValidPoolsResultNumber(value);
+        if (num === null) {
+          toast({
+            title: "Invalid number",
+            description: `Pools result numbers must be between ${POOLS_RESULT_MIN} and ${POOLS_RESULT_MAX}.`,
+            variant: "destructive",
+          });
+          return;
+        }
+        const numStr = String(num);
+        if (weekResult.some((v) => String(v) === numStr)) return;
         const newSet = new Set(weekResult.map((v) => String(v)));
-        newSet.add(value);
+        newSet.add(numStr);
         const updatedResult = Array.from(newSet).sort((a, b) =>
           a.localeCompare(b, undefined, { numeric: true })
         );
@@ -53,13 +95,18 @@ export default function WeekResultSection({
     <Card className="p-6">
       <h2 className="text-lg font-semibold mb-3">Week Result</h2>
       <Label className="text-sm text-muted-foreground">
-        Enter-separated values and press Enter to add
+        {gameType === "lotto"
+          ? "Enter numbers between 1 and 49, then press Enter to add"
+          : "Enter numbers between 1 and 99, then press Enter to add"}
       </Label>
       <div className="mt-2 flex items-center gap-2">
         <Input
           onKeyDown={handleKeyDown}
           className="w-32"
-          placeholder={gameType === "lotto" ? "e.g. 25" : "e.g. 12"}
+          type="number"
+          min={gameType === "lotto" ? LOTTO_RESULT_MIN : POOLS_RESULT_MIN}
+          max={gameType === "lotto" ? LOTTO_RESULT_MAX : POOLS_RESULT_MAX}
+          placeholder={gameType === "lotto" ? "1-49" : "1-99"}
           disabled={applying}
         />
         <div className="flex flex-wrap items-center gap-1">
