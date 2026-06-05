@@ -77,21 +77,21 @@ export default function WeekResultSection({
           ))}
         </div>
       </div>
-      {weekResult.length > 0 && (
-        <div className="mt-4">
-          <Button
-            onClick={onApplyResult}
-            disabled={applying || !hasPendingChanges}
-          >
-            {applying ? "Applying..." : "Apply this result now"}
-          </Button>
-          {hasPendingChanges && !applying && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Unsaved changes — click apply to update winnings and player balances.
-            </p>
-          )}
-        </div>
-      )}
+      <div className="mt-4">
+        <Button
+          onClick={onApplyResult}
+          disabled={applying || !hasPendingChanges}
+        >
+          {applying ? "Applying..." : "Apply this result now"}
+        </Button>
+        {hasPendingChanges && !applying && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {weekResult.length > 0
+              ? "Unsaved changes — click apply to update winnings and player balances."
+              : "Unsaved changes — click apply to clear the week result and reset winnings."}
+          </p>
+        )}
+      </div>
     </Card>
   );
 }

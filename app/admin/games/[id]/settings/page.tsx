@@ -180,10 +180,6 @@ export default function GameSettingsPage() {
       toast({ title: "Error", description: "Game type not found", variant: "destructive" });
       return;
     }
-    if (weekResult.length === 0) {
-      toast({ title: "Error", description: "Add at least one result number before applying", variant: "destructive" });
-      return;
-    }
     try {
       setApplyingResult(true);
       const res = await fetch(`/api/admin/bets/${game.type}/result`, {
