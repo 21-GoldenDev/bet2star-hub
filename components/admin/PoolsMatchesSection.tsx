@@ -39,6 +39,7 @@ import { Match } from "@/lib/types/matches";
 interface Props {
   gameId: string;
   gameWeek: number;
+  refreshKey?: number;
 }
 
 const EMPTY_FORM = {
@@ -48,7 +49,7 @@ const EMPTY_FORM = {
   status: "enable" as "enable" | "disable",
 };
 
-export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
+export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }: Props) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -64,7 +65,7 @@ export default function PoolsMatchesSection({ gameId, gameWeek }: Props) {
 
   useEffect(() => {
     fetchMatches();
-  }, [gameId, gameWeek]);
+  }, [gameId, gameWeek, refreshKey]);
 
   const fetchMatches = async () => {
     try {

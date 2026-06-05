@@ -59,6 +59,7 @@ export default function GameSettingsPage() {
     totalReward: 0,
   });
   const [weekResult, setWeekResult] = useState<Array<number | string>>([]);
+  const [poolsRefreshKey, setPoolsRefreshKey] = useState(0);
   const [terminalCommissions, setTerminalCommissions] = useState<Array<{ terminal: string; commission: number }>>([]);
 
   useEffect(() => {
@@ -97,9 +98,11 @@ export default function GameSettingsPage() {
     }
   }, [game, allPrizes]);
 
-  const fetchData = async () => {
+  const fetchData = async (options?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!options?.silent) {
+        setLoading(true);
+      }
       const gameRes = await fetch(`/api/admin/games/${gameId}`);
       if (!gameRes.ok) throw new Error("Failed to fetch game");
       const gameData = await gameRes.json();
@@ -161,7 +164,9 @@ export default function GameSettingsPage() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -189,23 +194,13 @@ export default function GameSettingsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to apply result");
 
-      setGame((prev) =>
-        prev
-          ? {
-              ...prev,
-              results: weekResult as GameInfo["results"],
-            }
-          : prev,
-      );
-
-      const statsRes = await fetch(`/api/admin/games/${gameId}/${game.type}/stats`);
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        setStats(statsData);
+      await fetchData({ silent: true });
+      if (game.type === "pools") {
+        setPoolsRefreshKey((key) => key + 1);
       }
 
       const balanceMsg =
-        game.type === "lotto" && data.balanceUpdates > 0
+        (game.type === "lotto" || game.type === "pools") && data.balanceUpdates > 0
           ? ` ${data.balanceUpdates} player balance(s) updated.`
           : "";
       toast({
@@ -275,7 +270,7 @@ export default function GameSettingsPage() {
         />
       )}
       {game?.type === "pools" && (
-        <PoolsMatchesSection gameId={gameId} gameWeek={game.week} />
+        <PoolsMatchesSection gameId={gameId} gameWeek={game.week} refreshKey={poolsRefreshKey} />
       )}
       {game?.type === "lotto" && (
         <LottoNumbersSection gameId={gameId} loading={loading} />

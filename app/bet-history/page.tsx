@@ -126,6 +126,7 @@ type PaginatedBetResult = {
   total: number;
   totalPages: number;
   weeks: number[];
+  weekResult: Array<number | string>;
   matches: Record<string, MatchInfo[]>;
   summary: { option: string; sales: number; winnings: number }[];
 };
@@ -313,6 +314,7 @@ async function fetchTabBets(
     total: Number(result?.pagination?.total || 0),
     totalPages: Number(result?.pagination?.totalPages || 1),
     weeks: Array.isArray(result?.weeks) ? result.weeks : [],
+    weekResult: Array.isArray(result?.weekResult) ? result.weekResult : [],
     matches: (result?.matches || {}) as Record<string, MatchInfo[]>,
     summary: Array.isArray(result?.summary) ? result.summary : [],
   };
@@ -524,6 +526,12 @@ export default function BetHistoryPage() {
   });
   const [pagesByTab, setPagesByTab] = useState<Record<BetTab, number>>(INITIAL_PAGES);
   const [totalPagesByTab, setTotalPagesByTab] = useState<Record<BetTab, number>>(INITIAL_PAGES);
+  const [weekResultByTab, setWeekResultByTab] = useState<Record<BetTab, Array<number | string>>>({
+    lotto: [],
+    pools: [],
+    sports: [],
+    "sports-draw": [],
+  });
 
   useEffect(() => {
     const loadBets = async () => {
@@ -539,7 +547,7 @@ export default function BetHistoryPage() {
       setLoading(true);
       try {
         const page = pagesByTab[activeTab];
-        const { rows, total, totalPages, weeks, matches, summary } = await fetchTabBets(activeTab, page, {
+        const { rows, total, totalPages, weeks, weekResult, matches, summary } = await fetchTabBets(activeTab, page, {
           week: weekFilter,
           betId: betIdFilter,
           betAbove: betAboveFilter,
@@ -549,6 +557,7 @@ export default function BetHistoryPage() {
         setTotalsByTab((prev) => ({ ...prev, [activeTab]: total }));
         setTotalPagesByTab((prev) => ({ ...prev, [activeTab]: totalPages }));
         setWeeksByTab((prev) => ({ ...prev, [activeTab]: weeks }));
+        setWeekResultByTab((prev) => ({ ...prev, [activeTab]: weekResult }));
         setMatchesByTab((prev) => ({ ...prev, [activeTab]: matches }));
         setSummaryByTab((prev) => ({ ...prev, [activeTab]: summary }));
       } catch (error) {
@@ -752,6 +761,24 @@ export default function BetHistoryPage() {
               </Button>
             </div>
           </div>
+
+          {(activeTab === "lotto" || activeTab === "pools") && (weekResultByTab[activeTab] || []).length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-4 mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-2">
+                Week {weekFilter || "-"} Result
+              </h3>
+              <div className="flex flex-wrap items-center gap-1">
+                {(weekResultByTab[activeTab] || []).map((num, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium"
+                  >
+                    {num}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {(summaryByTab[activeTab] || []).length > 0 && (
             <div className="bg-card border border-border rounded-2xl p-4 mb-4">
