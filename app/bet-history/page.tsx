@@ -126,6 +126,7 @@ type PaginatedBetResult = {
   total: number;
   totalPages: number;
   weeks: number[];
+  appliedWeek: number | null;
   matches: Record<string, MatchInfo[]>;
   summary: { option: string; sales: number; winnings: number }[];
 };
@@ -313,6 +314,7 @@ async function fetchTabBets(
     total: Number(result?.pagination?.total || 0),
     totalPages: Number(result?.pagination?.totalPages || 1),
     weeks: Array.isArray(result?.weeks) ? result.weeks : [],
+    appliedWeek: typeof result?.appliedWeek === "number" ? result.appliedWeek : null,
     matches: (result?.matches || {}) as Record<string, MatchInfo[]>,
     summary: Array.isArray(result?.summary) ? result.summary : [],
   };
@@ -539,7 +541,7 @@ export default function BetHistoryPage() {
       setLoading(true);
       try {
         const page = pagesByTab[activeTab];
-        const { rows, total, totalPages, weeks, matches, summary } = await fetchTabBets(activeTab, page, {
+        const { rows, total, totalPages, weeks, appliedWeek, matches, summary } = await fetchTabBets(activeTab, page, {
           week: weekFilter,
           betId: betIdFilter,
           betAbove: betAboveFilter,
@@ -551,6 +553,10 @@ export default function BetHistoryPage() {
         setWeeksByTab((prev) => ({ ...prev, [activeTab]: weeks }));
         setMatchesByTab((prev) => ({ ...prev, [activeTab]: matches }));
         setSummaryByTab((prev) => ({ ...prev, [activeTab]: summary }));
+
+        if (!weekFilter && appliedWeek != null) {
+          setWeekFilter(String(appliedWeek));
+        }
       } catch (error) {
         console.error("Failed to load bet history:", error);
         toast({ title: "Failed to load bet history", variant: "destructive" });
@@ -569,19 +575,12 @@ export default function BetHistoryPage() {
     }));
   }, [activeTab, weekFilter, betIdFilter, betAboveFilter]);
 
-  useEffect(() => {
-    const tabWeeks = weeksByTab[activeTab] || [];
-    if (!tabWeeks.length) return;
-
-    const latestWeek = String(tabWeeks[0]);
-    const hasSelectedWeek = weekFilter && tabWeeks.includes(Number(weekFilter));
-
-    if (!hasSelectedWeek) {
-      setWeekFilter(latestWeek);
-    }
-  }, [activeTab, weeksByTab, weekFilter]);
-
   const activeRows = useMemo(() => betsByTab[activeTab] || [], [betsByTab, activeTab]);
+
+  const handleTabChange = (value: string) => {
+    setWeekFilter("");
+    setActiveTab(value as BetTab);
+  };
 
   const openDeleteDialog = (tab: BetTab, id: string, betId: string) => {
     setPendingDelete({ tab, id, betId });
@@ -699,7 +698,7 @@ export default function BetHistoryPage() {
           <p className="text-muted-foreground">View your placed bets across all game types</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as BetTab)}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="mb-4 h-auto flex-wrap">
             <TabsTrigger value="lotto">Lotto</TabsTrigger>
             <TabsTrigger value="pools">Pools</TabsTrigger>
@@ -742,8 +741,7 @@ export default function BetHistoryPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  const latestWeek = weeksByTab[activeTab]?.[0];
-                  setWeekFilter(latestWeek ? String(latestWeek) : "");
+                  setWeekFilter("");
                   setBetIdFilter("");
                   setBetAboveFilter("");
                 }}

@@ -3,8 +3,48 @@ import { createSupabaseServer } from "@/lib/supabase/server";
 
 type BetTab = "lotto" | "pools" | "sports" | "sports-draw";
 
+const GAME_TYPE_BY_TAB: Record<BetTab, string> = {
+  lotto: "lotto",
+  pools: "pools",
+  sports: "sports",
+  "sports-draw": "sports_draw",
+};
+
 const isValidTab = (value: string | null): value is BetTab => {
   return value === "lotto" || value === "pools" || value === "sports" || value === "sports-draw";
+};
+
+const resolveDefaultWeek = async (supabase: Awaited<ReturnType<typeof createSupabaseServer>>, tab: BetTab) => {
+  const gameType = GAME_TYPE_BY_TAB[tab];
+  const now = new Date().toISOString();
+
+  const { data: activeGame } = await supabase
+    .from("games")
+    .select("week")
+    .eq("type", gameType)
+    .lte("start_time", now)
+    .gte("end_time", now)
+    .order("start_time", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (typeof activeGame?.week === "number" && Number.isFinite(activeGame.week)) {
+    return activeGame.week;
+  }
+
+  const { data: latestGame } = await supabase
+    .from("games")
+    .select("week")
+    .eq("type", gameType)
+    .order("week", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (typeof latestGame?.week === "number" && Number.isFinite(latestGame.week)) {
+    return latestGame.week;
+  }
+
+  return null;
 };
 
 const extractWeeks = (rows: any[] | null) => {
@@ -72,6 +112,14 @@ export async function GET(request: NextRequest) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
+    let effectiveWeekFilter: number | undefined = Number.isFinite(weekFilter) ? weekFilter : undefined;
+    if (effectiveWeekFilter === undefined) {
+      const defaultWeek = await resolveDefaultWeek(supabase, tabParam);
+      if (defaultWeek != null) {
+        effectiveWeekFilter = defaultWeek;
+      }
+    }
+
     let query;
     let weeksQuery;
     let summaryQuery;
@@ -97,14 +145,14 @@ export async function GET(request: NextRequest) {
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
-      if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
+      if (Number.isFinite(effectiveWeekFilter)) query = query.eq("games.week", effectiveWeekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
       if (Number.isFinite(betIdFilter)) weeksQuery = weeksQuery.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
 
-      if (Number.isFinite(weekFilter)) summaryQuery = summaryQuery.eq("games.week", weekFilter);
+      if (Number.isFinite(effectiveWeekFilter)) summaryQuery = summaryQuery.eq("games.week", effectiveWeekFilter);
     } else if (tabParam === "pools") {
       query = supabase
         .from("bets_pools")
@@ -126,14 +174,14 @@ export async function GET(request: NextRequest) {
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
-      if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
+      if (Number.isFinite(effectiveWeekFilter)) query = query.eq("games.week", effectiveWeekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
       if (Number.isFinite(betIdFilter)) weeksQuery = weeksQuery.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
 
-      if (Number.isFinite(weekFilter)) summaryQuery = summaryQuery.eq("games.week", weekFilter);
+      if (Number.isFinite(effectiveWeekFilter)) summaryQuery = summaryQuery.eq("games.week", effectiveWeekFilter);
     } else if (tabParam === "sports") {
       query = supabase
         .from("bets_sport")
@@ -151,7 +199,7 @@ export async function GET(request: NextRequest) {
 
       summaryQuery = null;
 
-      if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
+      if (Number.isFinite(effectiveWeekFilter)) query = query.eq("games.week", effectiveWeekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("number", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
@@ -174,7 +222,7 @@ export async function GET(request: NextRequest) {
 
       summaryQuery = null;
 
-      if (Number.isFinite(weekFilter)) query = query.eq("games.week", weekFilter);
+      if (Number.isFinite(effectiveWeekFilter)) query = query.eq("games.week", effectiveWeekFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("number", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
@@ -251,9 +299,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const betWeeks = extractWeeks(weekRows || []);
+    const appliedWeek = effectiveWeekFilter ?? betWeeks[0] ?? null;
+    const weeks = Array.from(
+      new Set([
+        ...(appliedWeek != null ? [appliedWeek] : []),
+        ...betWeeks,
+      ]),
+    ).sort((a, b) => b - a);
+
     return NextResponse.json({
       data: data || [],
-      weeks: extractWeeks(weekRows || []),
+      weeks,
+      appliedWeek,
       matches,
       summary,
       pagination: {
