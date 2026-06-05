@@ -29,7 +29,6 @@ import useAdminRole from "@/hooks/use-admin-role";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/games", label: "Games", icon: Gamepad2 },
   // { href: "/admin/transactions", label: "Transactions", icon: DollarSign },
   // { href: "/admin/reports", label: "Reports", icon: FileText },
   // { href: "/admin/matches", label: "Matches", icon: Goal },
@@ -411,6 +410,29 @@ export default function AdminSidebar() {
             {isAdmin && (
               <div
                 className="relative group"
+                onMouseEnter={(event) => setHoverPopup("games", event)}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <Link href="/admin/games" onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "flex items-center gap-3 rounded-lg transition-colors",
+                      isCollapsed ? "justify-center px-0 py-3" : "px-4 py-3",
+                      pathname === "/admin/games"
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    <Gamepad2 className="w-5 h-5" />
+                    {!isCollapsed && <span className="font-medium">Games</span>}
+                  </div>
+                </Link>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div
+                className="relative group"
                 onMouseEnter={(event) => setHoverPopup("terminals", event)}
                 onMouseLeave={() => setHoveredItem(null)}
               >
@@ -732,6 +754,29 @@ export default function AdminSidebar() {
               )}
             </div>
           </div>
+        )}
+
+        {hoveredItem === "games" && isCollapsed && isAdmin && (
+          <Link
+            href="/admin/games"
+            className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"
+            style={{ left: popupPosition.left, top: popupPosition.top }}
+            onMouseEnter={() => setHoveredItem("games")}
+            onMouseLeave={() => setHoveredItem(null)}
+            onClick={() => setIsOpen(false)}
+          >
+            <div
+              className={clsx(
+                "flex items-center gap-3 px-4 py-3",
+                pathname === "/admin/games"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground"
+              )}
+            >
+              <Gamepad2 className="w-5 h-5" />
+              <span className="font-medium">Games</span>
+            </div>
+          </Link>
         )}
 
         {hoveredItem === "terminals" && isCollapsed && isAdmin && (
