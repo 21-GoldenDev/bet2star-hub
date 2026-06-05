@@ -230,22 +230,6 @@ export async function GET(request: NextRequest) {
 
     const summary = Array.from(summaryMap.values()).sort((a, b) => a.option.localeCompare(b.option));
 
-    let weekResult: Array<number | string> = [];
-    if ((tabParam === "lotto" || tabParam === "pools") && Number.isFinite(weekFilter)) {
-      const { data: gameData, error: gameError } = await supabase
-        .from("games")
-        .select("results")
-        .eq("type", tabParam)
-        .eq("week", weekFilter)
-        .maybeSingle();
-
-      if (gameError) {
-        console.error("Failed to fetch week result:", gameError);
-      } else if (Array.isArray(gameData?.results)) {
-        weekResult = gameData.results as Array<number | string>;
-      }
-    }
-
     let matches: Record<string, any[]> = {};
     if ((tabParam === "sports" || tabParam === "sports-draw") && Array.isArray(data) && data.length > 0) {
       const gameIds = Array.from(new Set(data.map((row: any) => row.game_id).filter(Boolean)));
@@ -270,7 +254,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       data: data || [],
       weeks: extractWeeks(weekRows || []),
-      weekResult,
       matches,
       summary,
       pagination: {
