@@ -126,6 +126,7 @@ const EMPTY_WEEKS: Record<BetTab, number[]> = {
 type WeekGameInfo = {
   start_time: string;
   end_time: string;
+  results: Array<number | string>;
 };
 
 const EMPTY_WEEK_GAMES: Record<BetTab, Record<number, WeekGameInfo>> = {
@@ -153,6 +154,19 @@ const resolveWeekGameStatus = (game?: WeekGameInfo | null): "active" | "closed" 
   if (Number.isNaN(end)) return null;
 
   return Date.now() <= end ? "active" : "closed";
+};
+
+const getWeekResultForBet = (
+  bet: BetRow | null,
+  weekGamesByTab: Record<BetTab, Record<number, WeekGameInfo>>,
+): Array<number | string> => {
+  if (!bet || (bet.tab !== "lotto" && bet.tab !== "pools")) return [];
+
+  const week = Number(bet.week);
+  if (!Number.isFinite(week)) return [];
+
+  const results = weekGamesByTab[bet.tab]?.[week]?.results;
+  return Array.isArray(results) ? results : [];
 };
 
 type MatchInfo = {
@@ -339,7 +353,18 @@ async function fetchTabBets(
     totalPages: Number(result?.pagination?.totalPages || 1),
     weeks: Array.isArray(result?.weeks) ? result.weeks : [],
     appliedWeek: typeof result?.appliedWeek === "number" ? result.appliedWeek : null,
-    weekGames: result?.weekGames && typeof result.weekGames === "object" ? result.weekGames : {},
+    weekGames: result?.weekGames && typeof result.weekGames === "object"
+      ? Object.fromEntries(
+          Object.entries(result.weekGames as Record<string, WeekGameInfo>).map(([week, game]) => [
+            Number(week),
+            {
+              start_time: game.start_time,
+              end_time: game.end_time,
+              results: Array.isArray(game.results) ? game.results : [],
+            },
+          ]),
+        )
+      : {},
     matches: (result?.matches || {}) as Record<string, MatchInfo[]>,
     summary: Array.isArray(result?.summary) ? result.summary : [],
   };
@@ -609,6 +634,11 @@ export default function BetHistoryPage() {
     const game = weekGamesByTab[activeTab]?.[Number(weekFilter)];
     return resolveWeekGameStatus(game);
   }, [weekFilter, weekGamesByTab, activeTab]);
+
+  const selectedBetWeekResult = useMemo(
+    () => getWeekResultForBet(selectedBet, weekGamesByTab),
+    [selectedBet, weekGamesByTab],
+  );
 
   const handleTabChange = (value: string) => {
     setWeekFilter("");
@@ -992,6 +1022,26 @@ export default function BetHistoryPage() {
                     <p className="mt-1 font-medium">{selectedBet.week || "-"}</p>
                   </div>
                 </div>
+
+                {(selectedBet.tab === "lotto" || selectedBet.tab === "pools") && (
+                  <div className="border-t border-gray-600 pt-4">
+                    <Label className="text-xs font-semibold text-muted-foreground block mb-3">Week Result</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedBetWeekResult.length > 0 ? (
+                        selectedBetWeekResult.map((num, idx) => (
+                          <span
+                            key={idx}
+                            className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium"
+                          >
+                            {num}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No result set</span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="border-t border-gray-600 pt-4 grid grid-cols-2 gap-4">
                   <div>

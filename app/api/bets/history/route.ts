@@ -57,7 +57,7 @@ const fetchWeekGames = async (
   const gameType = GAME_TYPE_BY_TAB[tab];
   const { data, error } = await supabase
     .from("games")
-    .select("week, start_time, end_time")
+    .select("week, start_time, end_time, results")
     .eq("type", gameType)
     .in("week", weeks)
     .order("start_time", { ascending: false });
@@ -67,12 +67,13 @@ const fetchWeekGames = async (
     return {};
   }
 
-  const weekGames: Record<number, { start_time: string; end_time: string }> = {};
+  const weekGames: Record<number, { start_time: string; end_time: string; results: Array<number | string> }> = {};
   for (const row of data) {
     if (typeof row.week !== "number" || weekGames[row.week]) continue;
     weekGames[row.week] = {
       start_time: row.start_time,
       end_time: row.end_time,
+      results: Array.isArray(row.results) ? row.results : [],
     };
   }
 
