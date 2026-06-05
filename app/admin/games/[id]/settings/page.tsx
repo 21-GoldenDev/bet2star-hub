@@ -50,7 +50,7 @@ export default function GameSettingsPage() {
   const [maxStakes, setMaxStakes] = useState<MaxStake[]>([]);
   const [maxPrize, setMaxPrize] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [applyingResult, setApplyingResult] = useState(false);
   const { toast } = useToast();
 
   const [sports, setSports] = useState<SportsMatch[]>([]);
@@ -165,22 +165,38 @@ export default function GameSettingsPage() {
     }
   };
 
-  const updateWeekResult = async (result: Array<number | string>) => {
+  const savedWeekResult = Array.isArray(game?.results) ? game.results : [];
+
+  const hasPendingResultChanges =
+    JSON.stringify(weekResult) !== JSON.stringify(savedWeekResult);
+
+  const applyWeekResult = async () => {
     if (!game?.type) {
       toast({ title: "Error", description: "Game type not found", variant: "destructive" });
       return;
     }
+    if (weekResult.length === 0) {
+      toast({ title: "Error", description: "Add at least one result number before applying", variant: "destructive" });
+      return;
+    }
     try {
-      setSubmitting(true);
+      setApplyingResult(true);
       const res = await fetch(`/api/admin/bets/${game.type}/result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ game_id: gameId, result }),
+        body: JSON.stringify({ game_id: gameId, result: weekResult }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update result");
+      if (!res.ok) throw new Error(data.error || "Failed to apply result");
 
-      setWeekResult(result);
+      setGame((prev) =>
+        prev
+          ? {
+              ...prev,
+              results: weekResult as GameInfo["results"],
+            }
+          : prev,
+      );
 
       const statsRes = await fetch(`/api/admin/games/${gameId}/${game.type}/stats`);
       if (statsRes.ok) {
@@ -188,12 +204,23 @@ export default function GameSettingsPage() {
         setStats(statsData);
       }
 
-      toast({ title: "Success", description: "Week result updated and awards recomputed" });
+      const balanceMsg =
+        game.type === "lotto" && data.balanceUpdates > 0
+          ? ` ${data.balanceUpdates} player balance(s) updated.`
+          : "";
+      toast({
+        title: "Success",
+        description: `Week result applied and winnings updated.${balanceMsg}`,
+      });
     } catch (e) {
       console.error(e);
-      toast({ title: "Error", description: e instanceof Error ? e.message : "Failed to update result", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e instanceof Error ? e.message : "Failed to apply result",
+        variant: "destructive",
+      });
     } finally {
-      setSubmitting(false);
+      setApplyingResult(false);
     }
   };
 
@@ -241,8 +268,10 @@ export default function GameSettingsPage() {
         <WeekResultSection
           gameType={game.type}
           weekResult={weekResult}
-          submitting={submitting}
-          onUpdateResult={updateWeekResult}
+          applying={applyingResult}
+          hasPendingChanges={hasPendingResultChanges}
+          onChangeResult={setWeekResult}
+          onApplyResult={applyWeekResult}
         />
       )}
       {game?.type === "pools" && (

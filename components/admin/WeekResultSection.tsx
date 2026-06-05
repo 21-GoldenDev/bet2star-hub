@@ -1,16 +1,26 @@
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { XCircle } from "lucide-react";
 
 interface Props {
   gameType: "lotto" | "pools";
   weekResult: Array<number | string>;
-  submitting: boolean;
-  onUpdateResult: (result: Array<number | string>) => void;
+  applying: boolean;
+  hasPendingChanges: boolean;
+  onChangeResult: (result: Array<number | string>) => void;
+  onApplyResult: () => void;
 }
 
-export default function WeekResultSection({ gameType, weekResult, submitting, onUpdateResult }: Props) {
+export default function WeekResultSection({
+  gameType,
+  weekResult,
+  applying,
+  hasPendingChanges,
+  onChangeResult,
+  onApplyResult,
+}: Props) {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       const value = e.currentTarget.value.trim();
@@ -21,14 +31,14 @@ export default function WeekResultSection({ gameType, weekResult, submitting, on
         if (isNaN(num)) return;
         if (weekResult.some((v) => Number(v) === num)) return;
         const updatedResult = [...weekResult.map((v) => Number(v)), num];
-        onUpdateResult(updatedResult);
+        onChangeResult(updatedResult);
       } else {
         const newSet = new Set(weekResult.map((v) => String(v)));
         newSet.add(value);
         const updatedResult = Array.from(newSet).sort((a, b) =>
           a.localeCompare(b, undefined, { numeric: true })
         );
-        onUpdateResult(updatedResult);
+        onChangeResult(updatedResult);
       }
       e.currentTarget.value = "";
     }
@@ -36,7 +46,7 @@ export default function WeekResultSection({ gameType, weekResult, submitting, on
 
   const handleRemoveResult = (idx: number) => {
     const updatedResult = weekResult.filter((_, i) => i !== idx);
-    onUpdateResult(updatedResult);
+    onChangeResult(updatedResult);
   };
 
   return (
@@ -50,7 +60,7 @@ export default function WeekResultSection({ gameType, weekResult, submitting, on
           onKeyDown={handleKeyDown}
           className="w-32"
           placeholder={gameType === "lotto" ? "e.g. 25" : "e.g. 12"}
-          disabled={submitting}
+          disabled={applying}
         />
         <div className="flex flex-wrap items-center gap-1">
           {weekResult.map((num, idx) => (
@@ -61,12 +71,27 @@ export default function WeekResultSection({ gameType, weekResult, submitting, on
               {num}
               <XCircle
                 className="w-3 h-3 cursor-pointer hover:text-red-600"
-                onClick={() => handleRemoveResult(idx)}
+                onClick={() => !applying && handleRemoveResult(idx)}
               />
             </span>
           ))}
         </div>
       </div>
+      {weekResult.length > 0 && (
+        <div className="mt-4">
+          <Button
+            onClick={onApplyResult}
+            disabled={applying || !hasPendingChanges}
+          >
+            {applying ? "Applying..." : "Apply this result now"}
+          </Button>
+          {hasPendingChanges && !applying && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Unsaved changes — click apply to update winnings and player balances.
+            </p>
+          )}
+        </div>
+      )}
     </Card>
   );
 }
