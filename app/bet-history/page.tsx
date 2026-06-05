@@ -6,9 +6,11 @@ import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
 import { toast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -121,14 +123,36 @@ const EMPTY_WEEKS: Record<BetTab, number[]> = {
   "sports-draw": [],
 };
 
+type WeekGameInfo = {
+  start_time: string;
+  end_time: string;
+};
+
+const EMPTY_WEEK_GAMES: Record<BetTab, Record<number, WeekGameInfo>> = {
+  lotto: {},
+  pools: {},
+  sports: {},
+  "sports-draw": {},
+};
+
 type PaginatedBetResult = {
   rows: BetRow[];
   total: number;
   totalPages: number;
   weeks: number[];
   appliedWeek: number | null;
+  weekGames: Record<number, WeekGameInfo>;
   matches: Record<string, MatchInfo[]>;
   summary: { option: string; sales: number; winnings: number }[];
+};
+
+const resolveWeekGameStatus = (game?: WeekGameInfo | null): "active" | "closed" | null => {
+  if (!game?.end_time) return null;
+
+  const end = new Date(game.end_time).getTime();
+  if (Number.isNaN(end)) return null;
+
+  return Date.now() <= end ? "active" : "closed";
 };
 
 type MatchInfo = {
@@ -315,6 +339,7 @@ async function fetchTabBets(
     totalPages: Number(result?.pagination?.totalPages || 1),
     weeks: Array.isArray(result?.weeks) ? result.weeks : [],
     appliedWeek: typeof result?.appliedWeek === "number" ? result.appliedWeek : null,
+    weekGames: result?.weekGames && typeof result.weekGames === "object" ? result.weekGames : {},
     matches: (result?.matches || {}) as Record<string, MatchInfo[]>,
     summary: Array.isArray(result?.summary) ? result.summary : [],
   };
@@ -512,6 +537,7 @@ export default function BetHistoryPage() {
   const [betsByTab, setBetsByTab] = useState<Record<BetTab, BetRow[]>>(EMPTY_BETS);
   const [totalsByTab, setTotalsByTab] = useState<Record<BetTab, number>>(EMPTY_TOTALS);
   const [weeksByTab, setWeeksByTab] = useState<Record<BetTab, number[]>>(EMPTY_WEEKS);
+  const [weekGamesByTab, setWeekGamesByTab] = useState<Record<BetTab, Record<number, WeekGameInfo>>>(EMPTY_WEEK_GAMES);
   const [summaryByTab, setSummaryByTab] = useState<Record<BetTab, { option: string; sales: number; winnings: number }[]>>({
     lotto: [],
     pools: [],
@@ -541,7 +567,7 @@ export default function BetHistoryPage() {
       setLoading(true);
       try {
         const page = pagesByTab[activeTab];
-        const { rows, total, totalPages, weeks, appliedWeek, matches, summary } = await fetchTabBets(activeTab, page, {
+        const { rows, total, totalPages, weeks, appliedWeek, weekGames, matches, summary } = await fetchTabBets(activeTab, page, {
           week: weekFilter,
           betId: betIdFilter,
           betAbove: betAboveFilter,
@@ -551,6 +577,7 @@ export default function BetHistoryPage() {
         setTotalsByTab((prev) => ({ ...prev, [activeTab]: total }));
         setTotalPagesByTab((prev) => ({ ...prev, [activeTab]: totalPages }));
         setWeeksByTab((prev) => ({ ...prev, [activeTab]: weeks }));
+        setWeekGamesByTab((prev) => ({ ...prev, [activeTab]: weekGames }));
         setMatchesByTab((prev) => ({ ...prev, [activeTab]: matches }));
         setSummaryByTab((prev) => ({ ...prev, [activeTab]: summary }));
 
@@ -576,6 +603,12 @@ export default function BetHistoryPage() {
   }, [activeTab, weekFilter, betIdFilter, betAboveFilter]);
 
   const activeRows = useMemo(() => betsByTab[activeTab] || [], [betsByTab, activeTab]);
+
+  const selectedWeekGameStatus = useMemo(() => {
+    if (!weekFilter) return null;
+    const game = weekGamesByTab[activeTab]?.[Number(weekFilter)];
+    return resolveWeekGameStatus(game);
+  }, [weekFilter, weekGamesByTab, activeTab]);
 
   const handleTabChange = (value: string) => {
     setWeekFilter("");
@@ -708,21 +741,45 @@ export default function BetHistoryPage() {
 
           <div className="bg-card border border-border rounded-2xl p-4 mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <Select
-                value={weekFilter}
-                onValueChange={(value) => setWeekFilter(value)}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Filter by week" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(weeksByTab[activeTab] || []).map((week) => (
-                    <SelectItem key={week} value={String(week)}>
-                      Week {week}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2 min-w-0">
+                <Select
+                  value={weekFilter}
+                  onValueChange={(value) => setWeekFilter(value)}
+                >
+                  <SelectTrigger className="bg-muted border-border w-full">
+                    <SelectValue placeholder="Filter by week" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(weeksByTab[activeTab] || []).map((week) => (
+                      <SelectItem key={week} value={String(week)}>
+                        Week {week}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedWeekGameStatus && (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                    <span className="text-xs font-medium text-muted-foreground">Game status:</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        selectedWeekGameStatus === "active"
+                          ? "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400"
+                          : "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          selectedWeekGameStatus === "active" ? "bg-green-500" : "bg-blue-500",
+                        )}
+                      />
+                      {selectedWeekGameStatus === "active" ? "Active" : "Closed"}
+                    </Badge>
+                  </div>
+                )}
+              </div>
               <Input
                 type="text"
                 placeholder="Filter by bet ID"

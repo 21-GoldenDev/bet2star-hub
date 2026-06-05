@@ -47,6 +47,38 @@ const resolveDefaultWeek = async (supabase: Awaited<ReturnType<typeof createSupa
   return null;
 };
 
+const fetchWeekGames = async (
+  supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
+  tab: BetTab,
+  weeks: number[],
+) => {
+  if (!weeks.length) return {};
+
+  const gameType = GAME_TYPE_BY_TAB[tab];
+  const { data, error } = await supabase
+    .from("games")
+    .select("week, start_time, end_time")
+    .eq("type", gameType)
+    .in("week", weeks)
+    .order("start_time", { ascending: false });
+
+  if (error || !data) {
+    if (error) console.error("Failed to fetch week games:", error);
+    return {};
+  }
+
+  const weekGames: Record<number, { start_time: string; end_time: string }> = {};
+  for (const row of data) {
+    if (typeof row.week !== "number" || weekGames[row.week]) continue;
+    weekGames[row.week] = {
+      start_time: row.start_time,
+      end_time: row.end_time,
+    };
+  }
+
+  return weekGames;
+};
+
 const extractWeeks = (rows: any[] | null) => {
   const weeks = Array.from(
     new Set(
@@ -308,10 +340,13 @@ export async function GET(request: NextRequest) {
       ]),
     ).sort((a, b) => b - a);
 
+    const weekGames = await fetchWeekGames(supabase, tabParam, weeks);
+
     return NextResponse.json({
       data: data || [],
       weeks,
       appliedWeek,
+      weekGames,
       matches,
       summary,
       pagination: {
