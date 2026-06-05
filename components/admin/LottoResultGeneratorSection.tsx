@@ -207,7 +207,7 @@ export default function LottoResultGeneratorSection({
           <Input
             type="number"
             min={0}
-            placeholder="Input the difference"
+            placeholder="Input the amount"
             value={aboveDifference}
             onChange={(e) => setAboveDifference(e.target.value)}
             className="w-36"
@@ -228,7 +228,7 @@ export default function LottoResultGeneratorSection({
           <Input
             type="number"
             min={0}
-            placeholder="Input the difference"
+            placeholder="Input the amount"
             value={belowDifference}
             onChange={(e) => setBelowDifference(e.target.value)}
             className="w-36"

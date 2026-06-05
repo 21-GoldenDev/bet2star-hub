@@ -53,9 +53,11 @@ const Home = () => {
                   Start Playing
                 </Button>
               </Link>
-              <Button variant="outline" size="xl">
-                Learn More
-              </Button>
+              <Link href="/results">
+                <Button variant="outline" size="xl">
+                  View Results
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

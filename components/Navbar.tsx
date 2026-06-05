@@ -106,7 +106,10 @@ const Navbar = () => {
   const isAdminUser = isAdmin || roleInfo?.role === "admin";
   const isStaffOrAgent = roleInfo?.role === "staff" || roleInfo?.role === "agent";
 
-  const navLinks = [{ path: "/", label: "Home" }];
+  const navLinks = [
+    { path: "/", label: "Home" },
+    { path: "/results", label: "Results" },
+  ];
   const gameLinks = [
     { path: "/lotto", label: "Lotto" },
     { path: "/pools", label: "Pools" },
@@ -135,7 +138,7 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Navigation */}
-          {isLoggedIn && !isAdminPage && (
+          {!isAdminPage && (
             <div className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
                 <Link
@@ -152,25 +155,27 @@ const Navbar = () => {
                 </Link>
               ))}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="px-4 py-2 rounded-lg font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
-                  >
-                    Games
-                    <ChevronDown className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {!isStaffOrAgent &&
-                    gameLinks.map((link) => (
-                      <DropdownMenuItem key={link.path} asChild>
-                        <Link href={link.path}>{link.label}</Link>
-                      </DropdownMenuItem>
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {isLoggedIn && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="px-4 py-2 rounded-lg font-medium text-muted-foreground hover:text-foreground hover:bg-muted"
+                    >
+                      Games
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {!isStaffOrAgent &&
+                      gameLinks.map((link) => (
+                        <DropdownMenuItem key={link.path} asChild>
+                          <Link href={link.path}>{link.label}</Link>
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           )}
 
