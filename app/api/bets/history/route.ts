@@ -47,34 +47,6 @@ const resolveDefaultWeek = async (supabase: Awaited<ReturnType<typeof createSupa
   return null;
 };
 
-const resolveDefaultLottoGameId = async (supabase: Awaited<ReturnType<typeof createSupabaseServer>>) => {
-  const now = new Date().toISOString();
-
-  const { data: activeGame } = await supabase
-    .from("games")
-    .select("id")
-    .eq("type", "lotto")
-    .lte("start_time", now)
-    .gte("end_time", now)
-    .order("start_time", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (activeGame?.id) {
-    return activeGame.id;
-  }
-
-  const { data: latestGame } = await supabase
-    .from("games")
-    .select("id")
-    .eq("type", "lotto")
-    .order("week", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return latestGame?.id ?? null;
-};
-
 type LottoGameOption = {
   id: string;
   week: number;
@@ -102,7 +74,15 @@ const extractLottoGames = (rows: any[] | null): LottoGameOption[] => {
     });
   }
 
-  return Array.from(gamesMap.values()).sort((a, b) => b.week - a.week);
+  return Array.from(gamesMap.values()).sort((a, b) => {
+    if (b.week !== a.week) return b.week - a.week;
+    const aStart = new Date(a.start_time).getTime();
+    const bStart = new Date(b.start_time).getTime();
+    if (Number.isFinite(aStart) && Number.isFinite(bStart)) {
+      return bStart - aStart;
+    }
+    return 0;
+  });
 };
 
 const fetchWeekGames = async (
@@ -207,14 +187,7 @@ export async function GET(request: NextRequest) {
     let effectiveWeekFilter: number | undefined = Number.isFinite(weekFilter) ? weekFilter : undefined;
     let effectiveGameIdFilter: string | undefined = gameIdParam || undefined;
 
-    if (tabParam === "lotto") {
-      if (!effectiveGameIdFilter) {
-        const defaultGameId = await resolveDefaultLottoGameId(supabase);
-        if (defaultGameId) {
-          effectiveGameIdFilter = defaultGameId;
-        }
-      }
-    } else if (effectiveWeekFilter === undefined) {
+    if (tabParam !== "lotto" && effectiveWeekFilter === undefined) {
       const defaultWeek = await resolveDefaultWeek(supabase, tabParam);
       if (defaultWeek != null) {
         effectiveWeekFilter = defaultWeek;
@@ -226,6 +199,26 @@ export async function GET(request: NextRequest) {
     let summaryQuery;
 
     if (tabParam === "lotto") {
+      let lottoWeeksQuery = supabase
+        .from("bets_lotto")
+        .select("games:game_id (id, week, game_name, start_time, end_time, results)")
+        .eq("player", user.id)
+        .or("status.is.null,status.neq.void");
+
+      if (Number.isFinite(betIdFilter)) lottoWeeksQuery = lottoWeeksQuery.eq("bet_id", betIdFilter);
+      if (Number.isFinite(betAboveFilter)) lottoWeeksQuery = lottoWeeksQuery.gt("staked", betAboveFilter);
+
+      const { data: lottoWeekRows, error: lottoWeekError } = await lottoWeeksQuery;
+
+      if (lottoWeekError) {
+        console.error("Failed to fetch lotto week options:", lottoWeekError);
+      }
+
+      const gameOptions = extractLottoGames(lottoWeekRows || []);
+      if (!effectiveGameIdFilter && gameOptions.length > 0) {
+        effectiveGameIdFilter = gameOptions[0].id;
+      }
+
       query = supabase
         .from("bets_lotto")
         .select("id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name), prize:prize_id (name)", { count: "exact" })
@@ -234,26 +227,71 @@ export async function GET(request: NextRequest) {
         .order("bet_time", { ascending: false })
         .range(from, to);
 
-      weeksQuery = supabase
-        .from("bets_lotto")
-        .select("games:game_id (id, week, game_name, start_time, end_time, results)")
-        .eq("player", user.id)
-        .or("status.is.null,status.neq.void");
-
       summaryQuery = supabase
         .from("bets_lotto")
         .select("gameType, under, staked, award, games:game_id (week), prize:prize_id (name)")
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
-      if (effectiveGameIdFilter) query = query.eq("game_id", effectiveGameIdFilter);
+      if (effectiveGameIdFilter) {
+        query = query.eq("game_id", effectiveGameIdFilter);
+        summaryQuery = summaryQuery.eq("game_id", effectiveGameIdFilter);
+      }
       if (Number.isFinite(betIdFilter)) query = query.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
-      if (Number.isFinite(betIdFilter)) weeksQuery = weeksQuery.eq("bet_id", betIdFilter);
-      if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
+      const [{ data, error, count }, summaryResp] = await Promise.all([
+        query,
+        summaryQuery,
+      ]);
 
-      if (effectiveGameIdFilter) summaryQuery = summaryQuery.eq("game_id", effectiveGameIdFilter);
+      const summaryRows = summaryResp?.data || [];
+      const summaryError = summaryResp?.error || null;
+
+      if (error) {
+        console.error("Failed to fetch bet history:", error);
+        return NextResponse.json({ error: "Failed to fetch bet history" }, { status: 500 });
+      }
+
+      if (summaryError) {
+        console.error("Failed to fetch summary:", summaryError);
+      }
+
+      const summaryMap = new Map<string, { option: string; sales: number; winnings: number }>();
+      for (const row of summaryRows || []) {
+        let option = "-";
+        if (!(row as any).prize && row.gameType === "turbo") {
+          option = `Turbo ${row.under[0]}`;
+        } else if ((row as any).prize) {
+          option = Array.isArray((row as any).prize)
+            ? ((row as any).prize[0]?.name || "-")
+            : ((row as any).prize.name || "-");
+        }
+
+        const sales = Number((row as any).staked) || 0;
+        const winnings = Number((row as any).award) || 0;
+
+        const current = summaryMap.get(option) || { option, sales: 0, winnings: 0 };
+        current.sales += sales;
+        current.winnings += winnings;
+        summaryMap.set(option, current);
+      }
+
+      const summary = Array.from(summaryMap.values()).sort((a, b) => a.option.localeCompare(b.option));
+
+      return NextResponse.json({
+        data: data || [],
+        gameOptions,
+        appliedGameId: effectiveGameIdFilter ?? null,
+        matches: {},
+        summary,
+        pagination: {
+          page,
+          pageSize,
+          total: count || 0,
+          totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)),
+        },
+      });
     } else if (tabParam === "pools") {
       query = supabase
         .from("bets_pools")
@@ -398,25 +436,6 @@ export async function GET(request: NextRequest) {
           }, {} as Record<string, any[]>);
         }
       }
-    }
-
-    if (tabParam === "lotto") {
-      const gameOptions = extractLottoGames(weekRows || []);
-      const appliedGameId = effectiveGameIdFilter ?? gameOptions[0]?.id ?? null;
-
-      return NextResponse.json({
-        data: data || [],
-        gameOptions,
-        appliedGameId,
-        matches,
-        summary,
-        pagination: {
-          page,
-          pageSize,
-          total: count || 0,
-          totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)),
-        },
-      });
     }
 
     const betWeeks = extractWeeks(weekRows || []);

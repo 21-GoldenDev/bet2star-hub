@@ -99,29 +99,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date().toISOString();
-    const { data: activeGameData, error: activeGameError } = await supabase
-      .from("games")
-      .select("id, week, start_time, end_time")
-      .eq("type", type)
-      .lte("start_time", now)
-      .gte("end_time", now)
-      .order("start_time", { ascending: false })
-      .limit(1);
+    if (type !== "lotto") {
+      const now = new Date().toISOString();
+      const { data: activeGameData, error: activeGameError } = await supabase
+        .from("games")
+        .select("id, week, start_time, end_time")
+        .eq("type", type)
+        .lte("start_time", now)
+        .gte("end_time", now)
+        .order("start_time", { ascending: false })
+        .limit(1);
 
-    if (activeGameError) {
-      return NextResponse.json({ error: activeGameError.message }, { status: 500 });
-    }
+      if (activeGameError) {
+        return NextResponse.json({ error: activeGameError.message }, { status: 500 });
+      }
 
-    const activeGame = activeGameData?.[0];
-    if (activeGame) {
-      return NextResponse.json(
-        {
-          error: `A ${type} game is already active (week ${activeGame.week}).`,
-          activeGame,
-        },
-        { status: 409 }
-      );
+      const activeGame = activeGameData?.[0];
+      if (activeGame) {
+        return NextResponse.json(
+          {
+            error: `A ${type} game is already active (week ${activeGame.week}).`,
+            activeGame,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const trimmedGameName =

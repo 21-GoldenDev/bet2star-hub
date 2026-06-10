@@ -213,14 +213,16 @@ export default function GamesPage() {
   };
 
   const handleCreate = async () => {
-    const activeGame = getActiveGameForType(formData.type, formData.week);
-    if (activeGame) {
-      toast({
-        title: "Cannot create game",
-        description: `There is already an active ${getGameTypeLabel(formData.type)} game (Week ${activeGame.week}).`,
-        variant: "destructive",
-      });
-      return;
+    if (formData.type !== "lotto") {
+      const activeGame = getActiveGameForType(formData.type, formData.week);
+      if (activeGame) {
+        toast({
+          title: "Cannot create game",
+          description: `There is already an active ${getGameTypeLabel(formData.type)} game (Week ${activeGame.week}).`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     try {
@@ -407,7 +409,7 @@ export default function GamesPage() {
                   <Input
                     value={formData.gameName}
                     onChange={(e) => setFormData({ ...formData, gameName: e.target.value })}
-                    placeholder="e.g. Midweek Draw"
+                    placeholder=""
                     disabled={submitting}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -607,7 +609,7 @@ export default function GamesPage() {
                 <Input
                   value={formData.gameName}
                   onChange={(e) => setFormData({ ...formData, gameName: e.target.value })}
-                  placeholder="e.g. Midweek Draw"
+                  placeholder=""
                   disabled={submitting}
                 />
               </div>

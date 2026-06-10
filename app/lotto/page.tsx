@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import clsx from "clsx";
 import BettingAccessGate from "@/components/BettingAccessGate";
 import Direct from "@/components/lotto/Direct";
@@ -17,54 +17,77 @@ import { formatLottoWeekLabel } from "@/lib/helpers";
 const LottoPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
   const [gameMode, setGameMode] = useState<GameModeType>("nap_perm");
-  const [activeGame, setActiveGame] = useState<Game | null>(null);
+  const [activeGames, setActiveGames] = useState<Game[]>([]);
+  const [selectedGameId, setSelectedGameId] = useState<string>("");
   const [visibleNumbers, setVisibleNumbers] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingNumbers, setIsLoadingNumbers] = useState(false);
+
+  const activeGame =
+    activeGames.find((game) => game.id === selectedGameId) ?? activeGames[0] ?? null;
+
+  const fetchVisibleNumbers = useCallback(async (gameId: string) => {
+    try {
+      setIsLoadingNumbers(true);
+      const numbersResponse = await fetch(`/api/games/${gameId}/lotto/numbers`);
+      const numbersData = await numbersResponse.json();
+      setVisibleNumbers((numbersData.visibleNumbers || []).sort((a: number, b: number) => a - b));
+    } catch (error) {
+      console.error("Error fetching visible numbers:", error);
+      setVisibleNumbers([]);
+    } finally {
+      setIsLoadingNumbers(false);
+    }
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
-    const fetchActiveGame = async () => {
+    const fetchActiveGames = async () => {
       try {
         setIsLoading(true);
         const response = await fetch("/api/games/lotto/active");
         const data = await response.json();
-        setActiveGame(data.game);
+        const games: Game[] = data.games || (data.game ? [data.game] : []);
+        setActiveGames(games);
 
-        if (data.game) {
-          try {
-            const numbersResponse = await fetch(`/api/games/${data.game.id}/lotto/numbers`);
-            const numbersData = await numbersResponse.json();
-            setVisibleNumbers((numbersData.visibleNumbers || []).sort((a: number, b: number) => a - b));
-          } catch (error) {
-            console.error("Error fetching visible numbers:", error);
-            setVisibleNumbers([]);
+        setSelectedGameId((currentId) => {
+          if (games.some((game) => game.id === currentId)) {
+            return currentId;
           }
-        }
+          return games[0]?.id || "";
+        });
 
-        if (!data.game) {
+        if (games.length === 0) {
           if (!interval) {
-            interval = setInterval(fetchActiveGame, 30000);
+            interval = setInterval(fetchActiveGames, 30000);
           }
-        } else {
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
-          }
+        } else if (interval) {
+          clearInterval(interval);
+          interval = null;
         }
       } catch (error) {
-        console.error("Error fetching active game:", error);
+        console.error("Error fetching active games:", error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchActiveGame();
+    fetchActiveGames();
 
     return () => {
       if (interval) clearInterval(interval);
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedGameId) {
+      setVisibleNumbers([]);
+      return;
+    }
+
+    fetchVisibleNumbers(selectedGameId);
+  }, [selectedGameId, fetchVisibleNumbers]);
 
   return (
     <>
@@ -80,10 +103,10 @@ const LottoPage = () => {
             <div className="flex items-center justify-center py-20">
               <div className="text-center">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-                <p className="mt-4 text-muted-foreground">Loading game...</p>
+                <p className="mt-4 text-muted-foreground">Loading games...</p>
               </div>
             </div>
-          ) : !activeGame ? (
+          ) : activeGames.length === 0 ? (
             <div className="bg-card border border-border rounded-xl p-12 text-center">
               <div className="max-w-md mx-auto">
                 <svg
@@ -109,12 +132,33 @@ const LottoPage = () => {
                 </p>
               </div>
             </div>
-          ) : (
+          ) : activeGame ? (
             <>
-              {/* Top Header with Tabs and Info */}
+              {activeGames.length > 1 && (
+                <div className="mb-4 p-3 rounded-xl bg-card border border-border">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Active Games</p>
+                  <div className="flex flex-wrap gap-2">
+                    {activeGames.map((game) => (
+                      <button
+                        key={game.id}
+                        type="button"
+                        onClick={() => setSelectedGameId(game.id)}
+                        className={clsx(
+                          "cursor-pointer px-4 py-2 rounded-lg text-sm font-medium transition-all border",
+                          selectedGameId === game.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted text-muted-foreground border-border hover:text-foreground",
+                        )}
+                      >
+                        {formatLottoWeekLabel(game.week, game.game_name)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="mb-6 p-4 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-4 flex-wrap">
-                  {/* Left: Tab Buttons */}
                   <div className="bg-muted flex gap-1 rounded-lg overflow-hidden">
                     <button
                       onClick={() => setActiveTab("result")}
@@ -122,7 +166,7 @@ const LottoPage = () => {
                         "cursor-pointer px-4 py-2 rounded-lg font-medium transition-all",
                         activeTab === "result"
                           ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       Result
@@ -133,7 +177,7 @@ const LottoPage = () => {
                         "cursor-pointer px-4 py-2 rounded-lg font-medium transition-all",
                         activeTab === "fixtures"
                           ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
+                          : "text-muted-foreground hover:text-foreground",
                       )}
                     >
                       Fixtures
@@ -144,9 +188,19 @@ const LottoPage = () => {
                     {!!activeGame.start_time && (
                       <div className="text-muted-foreground">
                         <div className="font-semibold">
-                          {new Date(activeGame.start_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          {new Date(activeGame.start_time).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
                         </div>
-                        <div>{new Date(activeGame.start_time).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
+                        <div>
+                          {new Date(activeGame.start_time).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                          })}
+                        </div>
                       </div>
                     )}
                     <div className="text-muted-foreground border-l-2 border-r-2 border-border px-2">
@@ -158,9 +212,19 @@ const LottoPage = () => {
                     {!!activeGame.end_time && (
                       <div className="text-muted-foreground">
                         <div className="font-semibold">
-                          {new Date(activeGame.end_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          {new Date(activeGame.end_time).toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })}
                         </div>
-                        <div>{new Date(activeGame.end_time).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' })}</div>
+                        <div>
+                          {new Date(activeGame.end_time).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "2-digit",
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -168,85 +232,96 @@ const LottoPage = () => {
               </div>
 
               <div className="bg-card border border-border rounded-xl p-4">
-                {gameMode === "nap_perm" && (
-                  <Direct
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    prizes={activeGame.prizes}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
-                )}
-                {gameMode === "grouping" && (
-                  <Grouping
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    prizes={activeGame.prizes}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
-                )}
-                {gameMode === "one_banker" && (
-                  <OneBanker
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    prizes={activeGame.prizes}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
-                )}
-                {gameMode === "two_banker" && (
-                  <TwoBanker
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    prizes={activeGame.prizes}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
-                )}
-                {gameMode === "turbo" && (
-                  <Turbo
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
-                )}
-                {gameMode === "under1" && (
-                  <Under1
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    prizes={activeGame.prizes}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
-                )}
-                {gameMode === "under2" && (
-                  <Under2
-                    activeTab={activeTab}
-                    gameMode={gameMode}
-                    gameId={activeGame.id}
-                    prizes={activeGame.prizes}
-                    setGameMode={setGameMode}
-                    visibleNumbers={visibleNumbers}
-                    maxStake={activeGame.max_stake?.amount}
-                  />
+                {isLoadingNumbers ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-center">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                      <p className="mt-3 text-sm text-muted-foreground">Loading game...</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {gameMode === "nap_perm" && (
+                      <Direct
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        prizes={activeGame.prizes}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                    {gameMode === "grouping" && (
+                      <Grouping
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        prizes={activeGame.prizes}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                    {gameMode === "one_banker" && (
+                      <OneBanker
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        prizes={activeGame.prizes}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                    {gameMode === "two_banker" && (
+                      <TwoBanker
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        prizes={activeGame.prizes}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                    {gameMode === "turbo" && (
+                      <Turbo
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                    {gameMode === "under1" && (
+                      <Under1
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        prizes={activeGame.prizes}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                    {gameMode === "under2" && (
+                      <Under2
+                        activeTab={activeTab}
+                        gameMode={gameMode}
+                        gameId={activeGame.id}
+                        prizes={activeGame.prizes}
+                        setGameMode={setGameMode}
+                        visibleNumbers={visibleNumbers}
+                        maxStake={activeGame.max_stake?.amount}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </>
