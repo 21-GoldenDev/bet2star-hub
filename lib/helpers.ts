@@ -1,5 +1,13 @@
 import { Prize } from "./types/prize";
 
+export function formatLottoWeekLabel(week: number, gameName?: string | null): string {
+  const trimmed = gameName?.trim();
+  if (trimmed) {
+    return `Game ${week} ${trimmed}`;
+  }
+  return String(week);
+}
+
 const calcCombination = (total: number, select: number) => {
   if (select > total || select <= 0) return 0;
   if (select === total) return 1;

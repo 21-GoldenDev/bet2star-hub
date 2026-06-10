@@ -12,10 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { formatLottoWeekLabel } from "@/lib/helpers";
 
 interface LottoWeek {
   id: string;
   week: number;
+  game_name?: string | null;
 }
 
 export default function LottoResultGeneratorPage() {
@@ -77,7 +79,7 @@ export default function LottoResultGeneratorPage() {
           <SelectContent>
             {weeks.map((week) => (
               <SelectItem key={week.id} value={week.id}>
-                Week {week.week}
+                {formatLottoWeekLabel(week.week, week.game_name)}
               </SelectItem>
             ))}
           </SelectContent>

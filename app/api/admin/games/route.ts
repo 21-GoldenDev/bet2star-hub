@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { week, type, startTime, endTime, results } = body;
+    const { week, type, startTime, endTime, results, gameName } = body;
 
     // Validate required fields
     if (!week || !type || !startTime || !endTime) {
@@ -124,6 +124,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const trimmedGameName =
+      type === "lotto" && typeof gameName === "string" ? gameName.trim() : "";
+
     const { data, error } = await supabase
       .from("games")
       .insert([
@@ -133,6 +136,7 @@ export async function POST(request: NextRequest) {
           start_time: startTime,
           end_time: endTime,
           results: results || null,
+          game_name: trimmedGameName || null,
           max_prize:
             type === "sports"
               ? SPORTS_DEFAULT_MAX_PRIZE

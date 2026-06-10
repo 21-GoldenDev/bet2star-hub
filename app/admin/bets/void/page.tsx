@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
-import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
 import { cn } from "@/lib/utils";
 
 interface DeletedBet {
@@ -69,6 +69,7 @@ interface DeletedBet {
 interface GameWeek {
   id: string;
   week: number;
+  game_name?: string | null;
   results?: unknown;
 }
 
@@ -557,7 +558,9 @@ export default function VoidBetsPage() {
                   <SelectItem value="all">All weeks</SelectItem>
                   {weeksForTab.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      Week {w.week}
+                      {activeTab === "lotto"
+                        ? formatLottoWeekLabel(w.week, w.game_name)
+                        : `Week ${w.week}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -51,7 +51,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { week, type, startTime, endTime, results, prize_ids } = body;
+    const { week, type, startTime, endTime, results, prize_ids, gameName } = body;
 
     const updateData: any = {};
     if (week !== undefined) updateData.week = week;
@@ -60,6 +60,10 @@ export async function PUT(
     if (endTime !== undefined) updateData.end_time = endTime;
     if (results !== undefined) updateData.results = results;
     if (prize_ids !== undefined) updateData.prize_ids = prize_ids;
+    if (gameName !== undefined) {
+      updateData.game_name =
+        typeof gameName === "string" && gameName.trim() ? gameName.trim() : null;
+    }
 
     const { data, error } = await supabase
       .from("games")

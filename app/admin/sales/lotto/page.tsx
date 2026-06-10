@@ -30,10 +30,12 @@ import {
 } from "@/components/ui/table";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatLottoWeekLabel } from "@/lib/helpers";
 
 interface GameWeek {
   id: string;
   week: number;
+  game_name?: string | null;
 }
 
 interface TotalResult {
@@ -449,7 +451,7 @@ export default function LottoSalesPage() {
               <SelectContent>
                 {weeks.map((week) => (
                   <SelectItem key={week.id} value={week.id}>
-                    Week {week.week}
+                    {formatLottoWeekLabel(week.week, week.game_name)}
                   </SelectItem>
                 ))}
                 {!weeks.length && (

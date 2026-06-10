@@ -29,7 +29,7 @@ import { DateRange } from "react-day-picker";
 import { Trash2, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
 import type { LottoBet, Player } from "@/lib/types/lotto";
 import { useToast } from "@/hooks/use-toast";
 import useAdminRole from "@/hooks/use-admin-role";
@@ -388,7 +388,7 @@ export default function LottoPage() {
                 <SelectContent>
                   {weeksAll.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
-                      {w.week}
+                      {formatLottoWeekLabel(w.week, w.game_name)}
                     </SelectItem>
                   ))}
                   {weeksAll.length === 0 && (

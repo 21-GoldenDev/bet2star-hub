@@ -77,11 +77,13 @@ export default function GamesPage() {
   const [formData, setFormData] = useState<{
     week: number;
     type: GameType;
+    gameName: string;
     startTime: string;
     endTime: string;
   }>({
     week: 1,
     type: "lotto",
+    gameName: "",
     startTime: "",
     endTime: "",
   });
@@ -156,6 +158,7 @@ export default function GamesPage() {
     setFormData({
       week: game.week,
       type: game.type,
+      gameName: game.game_name || "",
       startTime: (game.startTime || game.start_time || "").slice(0, 16),
       endTime: (game.endTime || game.end_time || "").slice(0, 16),
     });
@@ -175,6 +178,7 @@ export default function GamesPage() {
         body: JSON.stringify({
           week: formData.week,
           type: formData.type,
+          gameName: formData.type === "lotto" ? formData.gameName : undefined,
           startTime: formData.startTime,
           endTime: formData.endTime,
         }),
@@ -229,6 +233,7 @@ export default function GamesPage() {
         body: JSON.stringify({
           week: formData.week,
           type: formData.type,
+          gameName: formData.type === "lotto" ? formData.gameName : undefined,
           startTime: formData.startTime,
           endTime: formData.endTime,
         }),
@@ -242,7 +247,7 @@ export default function GamesPage() {
           description: "Game created successfully",
         });
         setIsCreateOpen(false);
-        setFormData({ week: 1, type: "lotto", startTime: "", endTime: "" });
+        setFormData({ week: 1, type: "lotto", gameName: "", startTime: "", endTime: "" });
         fetchGames(); // Refresh the list
       } else {
         toast({
@@ -342,6 +347,7 @@ export default function GamesPage() {
               setFormData({
                 week: 1,
                 type: "lotto",
+                gameName: "",
                 startTime,
                 endTime,
               });
@@ -395,6 +401,20 @@ export default function GamesPage() {
                   );
                 })()}
               </div>
+              {formData.type === "lotto" && (
+                <div>
+                  <Label>Game Name</Label>
+                  <Input
+                    value={formData.gameName}
+                    onChange={(e) => setFormData({ ...formData, gameName: e.target.value })}
+                    placeholder="e.g. Midweek Draw"
+                    disabled={submitting}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Optional. Week lists show as &quot;Game [week] [game name]&quot; when set.
+                  </p>
+                </div>
+              )}
               <div>
                 <Label>Start Time</Label>
                 <Input
@@ -487,6 +507,16 @@ export default function GamesPage() {
               sortable: true,
             },
             {
+              key: "game_name",
+              label: "Name",
+              render: (_v, game) =>
+                game.type === "lotto" && game.game_name ? (
+                  <span className="text-sm">{game.game_name}</span>
+                ) : (
+                  <span className="text-muted-foreground text-xs">—</span>
+                ),
+            },
+            {
               key: "start_time",
               label: "Start Time",
               render: (_v, game) => new Date(game.startTime || game.start_time || "").toLocaleString(),
@@ -571,6 +601,17 @@ export default function GamesPage() {
                 </SelectContent>
               </Select>
             </div>
+            {formData.type === "lotto" && (
+              <div>
+                <Label>Game Name</Label>
+                <Input
+                  value={formData.gameName}
+                  onChange={(e) => setFormData({ ...formData, gameName: e.target.value })}
+                  placeholder="e.g. Midweek Draw"
+                  disabled={submitting}
+                />
+              </div>
+            )}
             <div>
               <Label>Start Time</Label>
               <Input

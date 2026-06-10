@@ -4,6 +4,7 @@ import { Prize } from "./prize";
 export interface Game {
   id: string;
   week: number;
+  game_name?: string | null;
   type: GameType;
   start_time?: string; // from database
   end_time?: string; // from database
