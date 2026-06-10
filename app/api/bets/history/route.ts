@@ -394,7 +394,7 @@ export async function GET(request: NextRequest) {
     }
 
     const summaryMap = new Map<string, { option: string; sales: number; winnings: number }>();
-    if (tabParam === "lotto" || tabParam === "pools") {
+    if (tabParam === "pools") {
       for (const row of summaryRows || []) {
         let option = "-";
         if (!(row as any).prize && row.gameType === "turbo") {

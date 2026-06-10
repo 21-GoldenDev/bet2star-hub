@@ -121,29 +121,33 @@ export default function ResultsPage() {
     [resultsByTab, activeTab],
   );
 
-  const weeksForTab = useMemo(
-    () =>
-      activeTab === "lotto"
-        ? gamesForTab.map((game) => game.id)
-        : Array.from(new Set(gamesForTab.map((game) => game.week))).sort((a, b) => b - a),
-    [gamesForTab, activeTab],
+  const weekNumbersForTab = useMemo(
+    () => Array.from(new Set(gamesForTab.map((game) => game.week))).sort((a, b) => b - a),
+    [gamesForTab],
   );
 
+  const hasWeekOptions =
+    activeTab === "lotto" ? gamesForTab.length > 0 : weekNumbersForTab.length > 0;
+
   useEffect(() => {
-    if (!weeksForTab.length) {
+    if (!hasWeekOptions) {
       setWeekFilter("");
       return;
     }
 
     const isValid =
       activeTab === "lotto"
-        ? weeksForTab.includes(weekFilter)
-        : weeksForTab.includes(Number(weekFilter));
+        ? gamesForTab.some((game) => game.id === weekFilter)
+        : weekNumbersForTab.includes(Number(weekFilter));
 
     if (!weekFilter || !isValid) {
-      setWeekFilter(String(weeksForTab[0]));
+      if (activeTab === "lotto") {
+        setWeekFilter(gamesForTab[0]?.id || "");
+      } else {
+        setWeekFilter(String(weekNumbersForTab[0]));
+      }
     }
-  }, [weeksForTab, weekFilter, activeTab]);
+  }, [hasWeekOptions, weekNumbersForTab, weekFilter, activeTab, gamesForTab]);
 
   const selectedGame = useMemo(() => {
     if (!weekFilter) return null;
@@ -183,7 +187,7 @@ export default function ResultsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Week</p>
-                <Select value={weekFilter} onValueChange={setWeekFilter} disabled={!weeksForTab.length}>
+                <Select value={weekFilter} onValueChange={setWeekFilter} disabled={!hasWeekOptions}>
                   <SelectTrigger className="bg-muted border-border w-full">
                     <SelectValue placeholder="Select week" />
                   </SelectTrigger>
@@ -194,7 +198,7 @@ export default function ResultsPage() {
                             {formatLottoWeekLabel(game.week, game.game_name)}
                           </SelectItem>
                         ))
-                      : weeksForTab.map((week) => (
+                      : weekNumbersForTab.map((week) => (
                           <SelectItem key={week} value={String(week)}>
                             Week {week}
                           </SelectItem>
