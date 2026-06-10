@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { betIncludesDisabledMatches } from "@/lib/bets/poolsMatches";
+import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 type BetTab = "lotto" | "pools" | "sports" | "sports-draw";
@@ -47,6 +49,45 @@ export async function POST(request: NextRequest) {
     if (selectError) {
       console.error("Failed to find bet:", selectError);
       return NextResponse.json({ error: "Bet not found" }, { status: 404 });
+    }
+
+    if (tab === "pools") {
+      const serviceClient = getServiceClient();
+      const { data: gameData, error: gameError } = await serviceClient
+        .from("games")
+        .select("week")
+        .eq("id", betData.game_id)
+        .single();
+
+      if (gameError) {
+        console.error("Failed to fetch pools game for bet:", gameError);
+        return NextResponse.json({ error: "Failed to validate bet" }, { status: 500 });
+      }
+
+      const week = gameData?.week;
+      if (typeof week === "number" && Number.isFinite(week)) {
+        const { data: disabledMatches, error: disabledMatchesError } = await serviceClient
+          .from("matches")
+          .select("number")
+          .eq("week", week)
+          .eq("status", "disable");
+
+        if (disabledMatchesError) {
+          console.error("Failed to fetch disabled pool matches:", disabledMatchesError);
+          return NextResponse.json({ error: "Failed to validate bet" }, { status: 500 });
+        }
+
+        const disabledMatchNumbersByWeek = {
+          [week]: (disabledMatches || []).map((match) => match.number),
+        };
+
+        if (betIncludesDisabledMatches(betData.matches, week, disabledMatchNumbersByWeek)) {
+          return NextResponse.json(
+            { error: "This bet cannot be deleted because it includes disabled matches" },
+            { status: 403 },
+          );
+        }
+      }
     }
 
     const { error } = await supabase

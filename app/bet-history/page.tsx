@@ -67,6 +67,7 @@ type BetRow = {
   staked: number;
   winning: number;
   betTime: string;
+  canDelete?: boolean;
 };
 
 type BetRecord = {
@@ -84,7 +85,8 @@ type BetRecord = {
   award?: number;
   bet_time?: string;
   status?: string | null;
-  games?: { week?: number | null; game_name?: string | null } | null;
+  canDelete?: boolean;
+  games?: { week?: number | null; game_name?: string | null } | Array<{ week?: number | null; game_name?: string | null }> | null;
   prize?: { name?: string } | Array<{ name?: string }> | null;
 };
 
@@ -306,10 +308,11 @@ const resolveApl = (bet: BetRecord, tab: BetTab) => {
 };
 
 const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
-  const week = bet.games?.week;
+  const games = Array.isArray(bet.games) ? bet.games[0] : bet.games;
+  const week = games?.week;
   const weekLabel =
     tab === "lotto" && typeof week === "number"
-      ? formatLottoWeekLabel(week, bet.games?.game_name)
+      ? formatLottoWeekLabel(week, games?.game_name)
       : week !== null && week !== undefined
         ? String(week)
         : "-";
@@ -338,6 +341,7 @@ const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
     staked: Number(bet.staked) || 0,
     winning: Number(bet.award) || 0,
     betTime: formatDateTime(bet.bet_time),
+    canDelete: bet.canDelete,
   };
 };
 
@@ -400,6 +404,11 @@ async function fetchTabBets(
     summary: Array.isArray(result?.summary) ? result.summary : [],
   };
 }
+
+const canDeleteBet = (tab: BetTab, row: BetRow) => {
+  if (tab !== "pools") return true;
+  return row.canDelete !== false;
+};
 
 const getUnderValue = (gameType: string, under: any) => {
   if (gameType === "under1" || gameType === "under2") {
@@ -971,15 +980,17 @@ export default function BetHistoryPage() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-destructive"
-                                  onClick={() => openDeleteDialog(tab, row.id, row.betId)}
-                                  disabled={deletingKey === rowDeleteKey}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
+                                {canDeleteBet(tab, row) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive"
+                                    onClick={() => openDeleteDialog(tab, row.id, row.betId)}
+                                    disabled={deletingKey === rowDeleteKey}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>

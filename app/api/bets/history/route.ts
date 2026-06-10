@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { betIncludesDisabledMatches, resolvePoolsBetWeek } from "@/lib/bets/poolsMatches";
+import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
 type BetTab = "lotto" | "pools" | "sports" | "sports-draw";
@@ -295,7 +297,7 @@ export async function GET(request: NextRequest) {
     } else if (tabParam === "pools") {
       query = supabase
         .from("bets_pools")
-        .select("id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week), prize:prize_id (name)", { count: "exact" })
+        .select("id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
         .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
@@ -449,8 +451,76 @@ export async function GET(request: NextRequest) {
 
     const weekGames = await fetchWeekGames(supabase, tabParam, weeks);
 
+    let disabledMatchNumbers: Record<number, number[]> = {};
+    let responseData = data || [];
+
+    if (tabParam === "pools" && Array.isArray(data)) {
+      const serviceClient = getServiceClient();
+      const gameIds = Array.from(new Set(data.map((bet: any) => bet.game_id).filter(Boolean)));
+      const gameWeekById: Record<string, number> = {};
+
+      if (gameIds.length > 0) {
+        const { data: gamesData, error: gamesError } = await serviceClient
+          .from("games")
+          .select("id, week")
+          .in("id", gameIds);
+
+        if (gamesError) {
+          console.error("Failed to fetch pools game weeks:", gamesError);
+        } else {
+          for (const game of gamesData || []) {
+            if (typeof game.week === "number" && Number.isFinite(game.week)) {
+              gameWeekById[game.id] = game.week;
+            }
+          }
+        }
+      }
+
+      const weeksToCheck = new Set<number>(weeks);
+      for (const bet of data) {
+        const week = resolvePoolsBetWeek(bet) ?? gameWeekById[bet.game_id];
+        if (typeof week === "number" && Number.isFinite(week)) {
+          weeksToCheck.add(week);
+        }
+      }
+
+      if (weeksToCheck.size > 0) {
+        const { data: disabledMatches, error: disabledMatchesError } = await serviceClient
+          .from("matches")
+          .select("number, week")
+          .eq("status", "disable")
+          .in("week", Array.from(weeksToCheck));
+
+        if (disabledMatchesError) {
+          console.error("Failed to fetch disabled pool matches:", disabledMatchesError);
+        } else {
+          disabledMatchNumbers = (disabledMatches || []).reduce((acc, match) => {
+            if (typeof match.week !== "number" || !Number.isFinite(match.week)) {
+              return acc;
+            }
+
+            if (!acc[match.week]) {
+              acc[match.week] = [];
+            }
+
+            acc[match.week].push(match.number);
+            return acc;
+          }, {} as Record<number, number[]>);
+        }
+      }
+
+      responseData = data.map((bet: any) => {
+        const week = resolvePoolsBetWeek(bet) ?? gameWeekById[bet.game_id] ?? null;
+        const canDelete = week == null
+          ? true
+          : !betIncludesDisabledMatches(bet.matches, week, disabledMatchNumbers);
+
+        return { ...bet, canDelete };
+      });
+    }
+
     return NextResponse.json({
-      data: data || [],
+      data: responseData,
       weeks,
       appliedWeek,
       weekGames,
