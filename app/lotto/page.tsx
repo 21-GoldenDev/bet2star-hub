@@ -12,6 +12,7 @@ import { Game } from "@/lib/types/game";
 import Turbo from "@/components/lotto/Turbo";
 import Under1 from "@/components/lotto/Under1";
 import Under2 from "@/components/lotto/Under2";
+import { formatLottoWeekLabel } from "@/lib/helpers";
 
 const LottoPage = () => {
   const [activeTab, setActiveTab] = useState<"result" | "fixtures">("fixtures");
@@ -149,8 +150,10 @@ const LottoPage = () => {
                       </div>
                     )}
                     <div className="text-muted-foreground border-l-2 border-r-2 border-border px-2">
-                      <div>Week</div>
-                      <div className="font-bold">{activeGame.week}</div>
+                      <div>{activeGame.game_name ? "Game" : "Week"}</div>
+                      <div className="font-bold">
+                        {formatLottoWeekLabel(activeGame.week, activeGame.game_name)}
+                      </div>
                     </div>
                     {!!activeGame.end_time && (
                       <div className="text-muted-foreground">

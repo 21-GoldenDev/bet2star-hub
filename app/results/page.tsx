@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatLottoWeekLabel } from "@/lib/helpers";
 
 type GameTab = "lotto" | "pools" | "sports" | "sports-draw";
 
@@ -37,6 +38,7 @@ type SportsMatch = {
 type WeekResult = {
   id: string;
   week: number;
+  game_name?: string | null;
   start_time: string | null;
   end_time: string | null;
   results: Array<number | string>;
@@ -114,11 +116,17 @@ export default function ResultsPage() {
     loadResults();
   }, []);
 
+  const gamesForTab = useMemo(
+    () => resultsByTab[activeTab] || [],
+    [resultsByTab, activeTab],
+  );
+
   const weeksForTab = useMemo(
     () =>
-      Array.from(new Set((resultsByTab[activeTab] || []).map((game) => game.week)))
-        .sort((a, b) => b - a),
-    [resultsByTab, activeTab],
+      activeTab === "lotto"
+        ? gamesForTab.map((game) => game.id)
+        : Array.from(new Set(gamesForTab.map((game) => game.week))).sort((a, b) => b - a),
+    [gamesForTab, activeTab],
   );
 
   useEffect(() => {
@@ -127,16 +135,25 @@ export default function ResultsPage() {
       return;
     }
 
-    if (!weekFilter || !weeksForTab.includes(Number(weekFilter))) {
+    const isValid =
+      activeTab === "lotto"
+        ? weeksForTab.includes(weekFilter)
+        : weeksForTab.includes(Number(weekFilter));
+
+    if (!weekFilter || !isValid) {
       setWeekFilter(String(weeksForTab[0]));
     }
-  }, [weeksForTab, weekFilter]);
+  }, [weeksForTab, weekFilter, activeTab]);
 
   const selectedGame = useMemo(() => {
+    if (!weekFilter) return null;
+    if (activeTab === "lotto") {
+      return gamesForTab.find((game) => game.id === weekFilter) || null;
+    }
     const week = Number(weekFilter);
     if (!Number.isFinite(week)) return null;
-    return (resultsByTab[activeTab] || []).find((game) => game.week === week) || null;
-  }, [resultsByTab, activeTab, weekFilter]);
+    return gamesForTab.find((game) => game.week === week) || null;
+  }, [gamesForTab, activeTab, weekFilter]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value as GameTab);
@@ -171,11 +188,17 @@ export default function ResultsPage() {
                     <SelectValue placeholder="Select week" />
                   </SelectTrigger>
                   <SelectContent>
-                    {weeksForTab.map((week) => (
-                      <SelectItem key={week} value={String(week)}>
-                        Week {week}
-                      </SelectItem>
-                    ))}
+                    {activeTab === "lotto"
+                      ? gamesForTab.map((game) => (
+                          <SelectItem key={game.id} value={game.id}>
+                            {formatLottoWeekLabel(game.week, game.game_name)}
+                          </SelectItem>
+                        ))
+                      : weeksForTab.map((week) => (
+                          <SelectItem key={week} value={String(week)}>
+                            Week {week}
+                          </SelectItem>
+                        ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -216,7 +239,9 @@ export default function ResultsPage() {
                 ) : tab === "lotto" || tab === "pools" ? (
                   <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-lg font-semibold mb-4">
-                      Week {selectedGame.week} Result
+                      {activeTab === "lotto"
+                        ? `${formatLottoWeekLabel(selectedGame.week, selectedGame.game_name)} Result`
+                        : `Week ${selectedGame.week} Result`}
                     </h2>
                     {selectedGame.results.length > 0 ? (
                       <div className="flex flex-wrap gap-2">

@@ -47,6 +47,64 @@ const resolveDefaultWeek = async (supabase: Awaited<ReturnType<typeof createSupa
   return null;
 };
 
+const resolveDefaultLottoGameId = async (supabase: Awaited<ReturnType<typeof createSupabaseServer>>) => {
+  const now = new Date().toISOString();
+
+  const { data: activeGame } = await supabase
+    .from("games")
+    .select("id")
+    .eq("type", "lotto")
+    .lte("start_time", now)
+    .gte("end_time", now)
+    .order("start_time", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeGame?.id) {
+    return activeGame.id;
+  }
+
+  const { data: latestGame } = await supabase
+    .from("games")
+    .select("id")
+    .eq("type", "lotto")
+    .order("week", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return latestGame?.id ?? null;
+};
+
+type LottoGameOption = {
+  id: string;
+  week: number;
+  game_name: string | null;
+  start_time: string;
+  end_time: string;
+  results: Array<number | string>;
+};
+
+const extractLottoGames = (rows: any[] | null): LottoGameOption[] => {
+  const gamesMap = new Map<string, LottoGameOption>();
+
+  for (const row of rows || []) {
+    const game = row?.games;
+    if (!game?.id || gamesMap.has(game.id)) continue;
+    if (typeof game.week !== "number" || !Number.isFinite(game.week)) continue;
+
+    gamesMap.set(game.id, {
+      id: game.id,
+      week: game.week,
+      game_name: game.game_name ?? null,
+      start_time: game.start_time,
+      end_time: game.end_time,
+      results: Array.isArray(game.results) ? game.results : [],
+    });
+  }
+
+  return Array.from(gamesMap.values()).sort((a, b) => b.week - a.week);
+};
+
 const fetchWeekGames = async (
   supabase: Awaited<ReturnType<typeof createSupabaseServer>>,
   tab: BetTab,
@@ -123,6 +181,7 @@ export async function GET(request: NextRequest) {
       : 20;
 
     const weekParam = (request.nextUrl.searchParams.get("week") || "").trim();
+    const gameIdParam = (request.nextUrl.searchParams.get("game_id") || "").trim();
     const betIdParam = (request.nextUrl.searchParams.get("betId") || "").trim();
     const betAboveParam = (request.nextUrl.searchParams.get("betAbove") || "").trim();
 
@@ -146,7 +205,16 @@ export async function GET(request: NextRequest) {
     const to = from + pageSize - 1;
 
     let effectiveWeekFilter: number | undefined = Number.isFinite(weekFilter) ? weekFilter : undefined;
-    if (effectiveWeekFilter === undefined) {
+    let effectiveGameIdFilter: string | undefined = gameIdParam || undefined;
+
+    if (tabParam === "lotto") {
+      if (!effectiveGameIdFilter) {
+        const defaultGameId = await resolveDefaultLottoGameId(supabase);
+        if (defaultGameId) {
+          effectiveGameIdFilter = defaultGameId;
+        }
+      }
+    } else if (effectiveWeekFilter === undefined) {
       const defaultWeek = await resolveDefaultWeek(supabase, tabParam);
       if (defaultWeek != null) {
         effectiveWeekFilter = defaultWeek;
@@ -160,7 +228,7 @@ export async function GET(request: NextRequest) {
     if (tabParam === "lotto") {
       query = supabase
         .from("bets_lotto")
-        .select("id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week), prize:prize_id (name)", { count: "exact" })
+        .select("id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
         .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
@@ -168,7 +236,7 @@ export async function GET(request: NextRequest) {
 
       weeksQuery = supabase
         .from("bets_lotto")
-        .select("games:game_id (week)")
+        .select("games:game_id (id, week, game_name, start_time, end_time, results)")
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
@@ -178,14 +246,14 @@ export async function GET(request: NextRequest) {
         .eq("player", user.id)
         .or("status.is.null,status.neq.void");
 
-      if (Number.isFinite(effectiveWeekFilter)) query = query.eq("games.week", effectiveWeekFilter);
+      if (effectiveGameIdFilter) query = query.eq("game_id", effectiveGameIdFilter);
       if (Number.isFinite(betIdFilter)) query = query.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) query = query.gt("staked", betAboveFilter);
 
       if (Number.isFinite(betIdFilter)) weeksQuery = weeksQuery.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) weeksQuery = weeksQuery.gt("staked", betAboveFilter);
 
-      if (Number.isFinite(effectiveWeekFilter)) summaryQuery = summaryQuery.eq("games.week", effectiveWeekFilter);
+      if (effectiveGameIdFilter) summaryQuery = summaryQuery.eq("game_id", effectiveGameIdFilter);
     } else if (tabParam === "pools") {
       query = supabase
         .from("bets_pools")
@@ -330,6 +398,25 @@ export async function GET(request: NextRequest) {
           }, {} as Record<string, any[]>);
         }
       }
+    }
+
+    if (tabParam === "lotto") {
+      const gameOptions = extractLottoGames(weekRows || []);
+      const appliedGameId = effectiveGameIdFilter ?? gameOptions[0]?.id ?? null;
+
+      return NextResponse.json({
+        data: data || [],
+        gameOptions,
+        appliedGameId,
+        matches,
+        summary,
+        pagination: {
+          page,
+          pageSize,
+          total: count || 0,
+          totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)),
+        },
+      });
     }
 
     const betWeeks = extractWeeks(weekRows || []);

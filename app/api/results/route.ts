@@ -25,6 +25,7 @@ type SportsMatchRow = {
 type WeekResult = {
   id: string;
   week: number;
+  game_name?: string | null;
   start_time: string | null;
   end_time: string | null;
   results: Array<number | string>;
@@ -79,7 +80,7 @@ export async function GET() {
       tabs.map(async (tab) => {
         const { data, error } = await supabase
           .from("games")
-          .select("id, week, start_time, end_time, results")
+          .select("id, week, game_name, start_time, end_time, results")
           .eq("type", GAME_TYPE_BY_TAB[tab])
           .order("week", { ascending: false });
 
@@ -109,6 +110,7 @@ export async function GET() {
       results[entry.tab] = entry.games.map((game) => ({
         id: game.id,
         week: game.week,
+        game_name: game.game_name,
         start_time: game.start_time,
         end_time: game.end_time,
         results: normalizeResults(game.results),

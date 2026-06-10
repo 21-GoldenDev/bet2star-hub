@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
-import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,7 @@ type BetRecord = {
   award?: number;
   bet_time?: string;
   status?: string | null;
-  games?: { week?: number | null } | null;
+  games?: { week?: number | null; game_name?: string | null } | null;
   prize?: { name?: string } | Array<{ name?: string }> | null;
 };
 
@@ -129,6 +129,15 @@ type WeekGameInfo = {
   results: Array<number | string>;
 };
 
+type LottoGameOption = {
+  id: string;
+  week: number;
+  game_name: string | null;
+  start_time: string;
+  end_time: string;
+  results: Array<number | string>;
+};
+
 const EMPTY_WEEK_GAMES: Record<BetTab, Record<number, WeekGameInfo>> = {
   lotto: {},
   pools: {},
@@ -142,6 +151,8 @@ type PaginatedBetResult = {
   totalPages: number;
   weeks: number[];
   appliedWeek: number | null;
+  gameOptions: LottoGameOption[];
+  appliedGameId: string | null;
   weekGames: Record<number, WeekGameInfo>;
   matches: Record<string, MatchInfo[]>;
   summary: { option: string; sales: number; winnings: number }[];
@@ -159,8 +170,14 @@ const resolveWeekGameStatus = (game?: WeekGameInfo | null): "active" | "closed" 
 const getWeekResultForBet = (
   bet: BetRow | null,
   weekGamesByTab: Record<BetTab, Record<number, WeekGameInfo>>,
+  gameOptionsByTab: Record<BetTab, LottoGameOption[]>,
 ): Array<number | string> => {
   if (!bet || (bet.tab !== "lotto" && bet.tab !== "pools")) return [];
+
+  if (bet.tab === "lotto" && bet.gameId) {
+    const game = gameOptionsByTab.lotto.find((g) => g.id === bet.gameId);
+    return Array.isArray(game?.results) ? game.results : [];
+  }
 
   const week = Number(bet.week);
   if (!Number.isFinite(week)) return [];
@@ -290,6 +307,12 @@ const resolveApl = (bet: BetRecord, tab: BetTab) => {
 
 const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
   const week = bet.games?.week;
+  const weekLabel =
+    tab === "lotto" && typeof week === "number"
+      ? formatLottoWeekLabel(week, bet.games?.game_name)
+      : week !== null && week !== undefined
+        ? String(week)
+        : "-";
   const gameList = tab === "lotto"
     ? formatGameListAdminStyle(bet.numbers)
     : tab === "pools"
@@ -306,7 +329,7 @@ const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
     numbers: bet.numbers,
     matches: bet.matches,
     selections: bet.selections,
-    week: week !== null && week !== undefined ? String(week) : "-",
+    week: weekLabel,
     betId: String(bet.bet_id ?? bet.number ?? bet.id),
     option: tab === "lotto" || tab === "pools" ? formatPrize(bet.prize) : formatMode(bet.mode),
     under: getUnderValue(bet.gameType || "", bet.under),
@@ -329,7 +352,13 @@ async function fetchTabBets(
     pageSize: String(PAGE_SIZE),
   });
 
-  if (filters.week.trim()) searchParams.set("week", filters.week.trim());
+  if (filters.week.trim()) {
+    if (tab === "lotto") {
+      searchParams.set("game_id", filters.week.trim());
+    } else {
+      searchParams.set("week", filters.week.trim());
+    }
+  }
   if (filters.betId.trim()) searchParams.set("betId", filters.betId.trim());
   if (filters.betAbove.trim()) searchParams.set("betAbove", filters.betAbove.trim());
 
@@ -353,6 +382,8 @@ async function fetchTabBets(
     totalPages: Number(result?.pagination?.totalPages || 1),
     weeks: Array.isArray(result?.weeks) ? result.weeks : [],
     appliedWeek: typeof result?.appliedWeek === "number" ? result.appliedWeek : null,
+    gameOptions: Array.isArray(result?.gameOptions) ? result.gameOptions : [],
+    appliedGameId: typeof result?.appliedGameId === "string" ? result.appliedGameId : null,
     weekGames: result?.weekGames && typeof result.weekGames === "object"
       ? Object.fromEntries(
           Object.entries(result.weekGames as Record<string, WeekGameInfo>).map(([week, game]) => [
@@ -562,6 +593,12 @@ export default function BetHistoryPage() {
   const [betsByTab, setBetsByTab] = useState<Record<BetTab, BetRow[]>>(EMPTY_BETS);
   const [totalsByTab, setTotalsByTab] = useState<Record<BetTab, number>>(EMPTY_TOTALS);
   const [weeksByTab, setWeeksByTab] = useState<Record<BetTab, number[]>>(EMPTY_WEEKS);
+  const [gameOptionsByTab, setGameOptionsByTab] = useState<Record<BetTab, LottoGameOption[]>>({
+    lotto: [],
+    pools: [],
+    sports: [],
+    "sports-draw": [],
+  });
   const [weekGamesByTab, setWeekGamesByTab] = useState<Record<BetTab, Record<number, WeekGameInfo>>>(EMPTY_WEEK_GAMES);
   const [summaryByTab, setSummaryByTab] = useState<Record<BetTab, { option: string; sales: number; winnings: number }[]>>({
     lotto: [],
@@ -592,7 +629,18 @@ export default function BetHistoryPage() {
       setLoading(true);
       try {
         const page = pagesByTab[activeTab];
-        const { rows, total, totalPages, weeks, appliedWeek, weekGames, matches, summary } = await fetchTabBets(activeTab, page, {
+        const {
+          rows,
+          total,
+          totalPages,
+          weeks,
+          appliedWeek,
+          gameOptions,
+          appliedGameId,
+          weekGames,
+          matches,
+          summary,
+        } = await fetchTabBets(activeTab, page, {
           week: weekFilter,
           betId: betIdFilter,
           betAbove: betAboveFilter,
@@ -602,12 +650,17 @@ export default function BetHistoryPage() {
         setTotalsByTab((prev) => ({ ...prev, [activeTab]: total }));
         setTotalPagesByTab((prev) => ({ ...prev, [activeTab]: totalPages }));
         setWeeksByTab((prev) => ({ ...prev, [activeTab]: weeks }));
+        setGameOptionsByTab((prev) => ({ ...prev, [activeTab]: gameOptions }));
         setWeekGamesByTab((prev) => ({ ...prev, [activeTab]: weekGames }));
         setMatchesByTab((prev) => ({ ...prev, [activeTab]: matches }));
         setSummaryByTab((prev) => ({ ...prev, [activeTab]: summary }));
 
-        if (!weekFilter && appliedWeek != null) {
-          setWeekFilter(String(appliedWeek));
+        if (!weekFilter) {
+          if (activeTab === "lotto" && appliedGameId) {
+            setWeekFilter(appliedGameId);
+          } else if (appliedWeek != null) {
+            setWeekFilter(String(appliedWeek));
+          }
         }
       } catch (error) {
         console.error("Failed to load bet history:", error);
@@ -631,13 +684,17 @@ export default function BetHistoryPage() {
 
   const selectedWeekGameStatus = useMemo(() => {
     if (!weekFilter) return null;
+    if (activeTab === "lotto") {
+      const game = gameOptionsByTab.lotto.find((g) => g.id === weekFilter);
+      return resolveWeekGameStatus(game);
+    }
     const game = weekGamesByTab[activeTab]?.[Number(weekFilter)];
     return resolveWeekGameStatus(game);
-  }, [weekFilter, weekGamesByTab, activeTab]);
+  }, [weekFilter, weekGamesByTab, gameOptionsByTab, activeTab]);
 
   const selectedBetWeekResult = useMemo(
-    () => getWeekResultForBet(selectedBet, weekGamesByTab),
-    [selectedBet, weekGamesByTab],
+    () => getWeekResultForBet(selectedBet, weekGamesByTab, gameOptionsByTab),
+    [selectedBet, weekGamesByTab, gameOptionsByTab],
   );
 
   const handleTabChange = (value: string) => {
@@ -780,11 +837,17 @@ export default function BetHistoryPage() {
                     <SelectValue placeholder="Filter by week" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(weeksByTab[activeTab] || []).map((week) => (
-                      <SelectItem key={week} value={String(week)}>
-                        Week {week}
-                      </SelectItem>
-                    ))}
+                    {activeTab === "lotto"
+                      ? (gameOptionsByTab.lotto || []).map((game) => (
+                          <SelectItem key={game.id} value={game.id}>
+                            {formatLottoWeekLabel(game.week, game.game_name)}
+                          </SelectItem>
+                        ))
+                      : (weeksByTab[activeTab] || []).map((week) => (
+                          <SelectItem key={week} value={String(week)}>
+                            Week {week}
+                          </SelectItem>
+                        ))}
                   </SelectContent>
                 </Select>
                 {selectedWeekGameStatus && (
