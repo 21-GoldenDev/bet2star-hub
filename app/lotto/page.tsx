@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import BettingAccessGate from "@/components/BettingAccessGate";
 import Direct from "@/components/lotto/Direct";
@@ -40,45 +41,44 @@ const LottoPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+  const refreshLottoGames = useCallback(async (options?: { silent?: boolean }) => {
+    try {
+      if (!options?.silent) setIsLoading(true);
+      const response = await fetch("/api/games/lotto/active");
+      const data = await response.json();
+      const games: Game[] = data.games || (data.game ? [data.game] : []);
+      setActiveGames(games);
 
-    const fetchActiveGames = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/games/lotto/active");
-        const data = await response.json();
-        const games: Game[] = data.games || (data.game ? [data.game] : []);
-        setActiveGames(games);
-
-        setSelectedGameId((currentId) => {
-          if (games.some((game) => game.id === currentId)) {
-            return currentId;
-          }
-          return games[0]?.id || "";
-        });
-
-        if (games.length === 0) {
-          if (!interval) {
-            interval = setInterval(fetchActiveGames, 30000);
-          }
-        } else if (interval) {
-          clearInterval(interval);
-          interval = null;
+      setSelectedGameId((currentId) => {
+        if (games.some((game) => game.id === currentId)) {
+          return currentId;
         }
-      } catch (error) {
-        console.error("Error fetching active games:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchActiveGames();
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
+        return games[0]?.id || "";
+      });
+    } catch (error) {
+      console.error("Error fetching active games:", error);
+    } finally {
+      if (!options?.silent) setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void refreshLottoGames();
+  }, [refreshLottoGames]);
+
+  useSupabaseRealtime({
+    channelName: "lotto-page",
+    subscriptions: [
+      { table: "games", filter: "type=eq.lotto" },
+      { table: "prize" },
+    ],
+    onEvent: () => {
+      void refreshLottoGames({ silent: true });
+      if (selectedGameId) {
+        void fetchVisibleNumbers(selectedGameId);
+      }
+    },
+  });
 
   useEffect(() => {
     if (!selectedGameId) {

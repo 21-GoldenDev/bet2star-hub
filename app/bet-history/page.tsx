@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import Link from "next/link";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
@@ -621,8 +622,8 @@ export default function BetHistoryPage() {
   const [pagesByTab, setPagesByTab] = useState<Record<BetTab, number>>(INITIAL_PAGES);
   const [totalPagesByTab, setTotalPagesByTab] = useState<Record<BetTab, number>>(INITIAL_PAGES);
 
-  useEffect(() => {
-    const loadBets = async () => {
+  const loadBets = useCallback(
+    async (options?: { silent?: boolean }) => {
       if (!user) {
         setBetsByTab(EMPTY_BETS);
         setTotalsByTab(EMPTY_TOTALS);
@@ -632,7 +633,7 @@ export default function BetHistoryPage() {
         return;
       }
 
-      setLoading(true);
+      if (!options?.silent) setLoading(true);
       try {
         const page = pagesByTab[activeTab];
         const {
@@ -670,14 +671,38 @@ export default function BetHistoryPage() {
         }
       } catch (error) {
         console.error("Failed to load bet history:", error);
-        toast({ title: "Failed to load bet history", variant: "destructive" });
+        if (!options?.silent) {
+          toast({ title: "Failed to load bet history", variant: "destructive" });
+        }
       } finally {
-        setLoading(false);
+        if (!options?.silent) setLoading(false);
       }
-    };
+    },
+    [user, activeTab, pagesByTab, weekFilter, betIdFilter, betAboveFilter],
+  );
 
-    loadBets();
-  }, [user, activeTab, pagesByTab, weekFilter, betIdFilter, betAboveFilter]);
+  useEffect(() => {
+    void loadBets();
+  }, [loadBets]);
+
+  useSupabaseRealtime({
+    channelName: `bet-history:${user?.id ?? "guest"}`,
+    enabled: Boolean(user?.id),
+    subscriptions: user?.id
+      ? [
+          { table: "games" },
+          { table: "matches" },
+          { table: "sports" },
+          { table: "bets_lotto", filter: `user_id=eq.${user.id}` },
+          { table: "bets_pools", filter: `user_id=eq.${user.id}` },
+          { table: "bets_sport", filter: `user_id=eq.${user.id}` },
+          { table: "bets_sports_draw", filter: `user_id=eq.${user.id}` },
+        ]
+      : [],
+    onEvent: () => {
+      void loadBets({ silent: true });
+    },
+  });
 
   useEffect(() => {
     setPagesByTab((prev) => ({

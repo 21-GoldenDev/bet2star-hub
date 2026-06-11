@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,73 +60,74 @@ const SportsDrawPage = () => {
     setMatchAtLeast((prev) => prev.filter((val) => val <= maxValidValue));
   }, [selectedBets.length]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+  const fetchMatches = useCallback(async (gameId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("sports")
+        .select("*")
+        .eq("game_id", gameId)
+        .neq("status", "void")
+        .order("number", { ascending: true });
 
-    const fetchMatches = async (gameId: string) => {
+      if (error) throw error;
+
+      const formattedMatches: Match[] = (data || []).map((m: SportsMatch) => ({
+        id: m.id,
+        number: m.number,
+        league: m.league,
+        homeTeam: m.home,
+        awayTeam: m.away,
+        prizes: m.prizes,
+        status: m.status,
+        start_time: m.start_time,
+        end_time: m.end_time,
+      }));
+
+      setMatches(formattedMatches.slice(0, 49));
+    } catch (error) {
+      console.error("Error fetching sports draw matches:", error);
+    }
+  }, []);
+
+  const refreshSportsDrawData = useCallback(
+    async (options?: { silent?: boolean }) => {
       try {
-        const { data, error } = await supabase
-          .from("sports")
-          .select("*")
-          .eq("game_id", gameId)
-          .neq("status", "void")
-          .order("number", { ascending: true });
-
-        if (error) throw error;
-
-        const formattedMatches: Match[] = (data || []).map((m: SportsMatch) => ({
-          id: m.id,
-          number: m.number,
-          league: m.league,
-          homeTeam: m.home,
-          awayTeam: m.away,
-          prizes: m.prizes,
-          status: m.status,
-          start_time: m.start_time,
-          end_time: m.end_time,
-        }));
-
-        setMatches(formattedMatches.slice(0, 49));
-      } catch (error) {
-        console.error("Error fetching sports draw matches:", error);
-      }
-    };
-
-    const fetchActiveGame = async () => {
-      try {
-        setIsLoading(true);
+        if (!options?.silent) setIsLoading(true);
         const response = await fetch("/api/games/sports-draw/active");
         const data = await response.json();
         const game = data?.game as SportsDrawGame | null;
         setActiveGame(game);
         setDrawOddsMap(extractSportsDrawOddsMap(game?.prize_ids));
 
-        // Now fetch matches directly from the sports_draw game
         if (!game?.id) {
           setMatches([]);
-          if (!interval) {
-            interval = setInterval(fetchActiveGame, 30000);
-          }
         } else {
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
-          }
           await fetchMatches(game.id);
         }
       } catch (error) {
         console.error("Error fetching active sports draw game:", error);
       } finally {
-        setIsLoading(false);
+        if (!options?.silent) setIsLoading(false);
       }
-    };
+    },
+    [fetchMatches],
+  );
 
-    fetchActiveGame();
+  useEffect(() => {
+    refreshSportsDrawData();
+  }, [refreshSportsDrawData]);
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, []);
+  useSupabaseRealtime({
+    channelName: `sports-draw-page:${activeGame?.id ?? "waiting"}`,
+    subscriptions: [
+      { table: "games", filter: "type=eq.sports_draw" },
+      ...(activeGame?.id ? [{ table: "sports", filter: `game_id=eq.${activeGame.id}` }] : []),
+      { table: "prize" },
+    ],
+    onEvent: () => {
+      void refreshSportsDrawData({ silent: true });
+    },
+  });
 
   const toggleBet = (matchId: string, matchNumber: number, odds: number) => {
     const option: BetOptionKey = "D";

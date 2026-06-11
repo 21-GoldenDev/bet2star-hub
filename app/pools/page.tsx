@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import Direct from "@/components/pools/Direct";
 import Grouping from "@/components/pools/Grouping";
@@ -20,55 +21,48 @@ const PoolsPage = () => {
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const refreshPoolsData = useCallback(async (options?: { silent?: boolean }) => {
+    try {
+      if (!options?.silent) setIsLoading(true);
+      const response = await fetch("/api/games/pools/active");
+      const data = await response.json();
+      setActiveGame(data.game);
+    } catch (error) {
+      console.error("Error fetching active game:", error);
+    } finally {
+      if (!options?.silent) setIsLoading(false);
+    }
+  }, []);
+
+  const refreshMatches = useCallback(async () => {
+    try {
+      const response = await fetch("/api/matches");
+      const data = await response.json();
+      const matchList = data.matches.map((match: any) => match.number);
+      setMatches(matchList);
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+      setMatches(Array.from({ length: 49 }, (_, i) => `${i + 1}`));
+    }
   }, []);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    void refreshPoolsData();
+    void refreshMatches();
+  }, [refreshPoolsData, refreshMatches]);
 
-    const fetchActiveGame = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch("/api/games/pools/active");
-        const data = await response.json();
-        setActiveGame(data.game);
-
-        if (!data.game) {
-          if (!interval) {
-            interval = setInterval(fetchActiveGame, 30000);
-          }
-        } else {
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching active game:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const getMatches = async () => {
-      try {
-        const response = await fetch("/api/matches");
-        const data = await response.json();
-        const matchList = data.matches.map((match: any) => match.number);
-        setMatches(matchList);
-      } catch (error) {
-        console.error("Error fetching matches:", error);
-        setMatches(Array.from({ length: 49 }, (_, i) => `${i + 1}`));
-      }
-    };
-
-    fetchActiveGame();
-    getMatches();
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, []);
+  useSupabaseRealtime({
+    channelName: "pools-page",
+    subscriptions: [
+      { table: "games", filter: "type=eq.pools" },
+      { table: "matches" },
+      { table: "prize" },
+    ],
+    onEvent: () => {
+      void refreshPoolsData({ silent: true });
+      void refreshMatches();
+    },
+  });
 
   return (
     <>

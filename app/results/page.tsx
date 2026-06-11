@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -86,35 +87,51 @@ export default function ResultsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadResults = async () => {
-      try {
+  const loadResults = useCallback(async (options?: { silent?: boolean }) => {
+    try {
+      if (!options?.silent) {
         setLoading(true);
         setError(null);
-
-        const response = await fetch("/api/results");
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload.error || "Failed to load results");
-        }
-
-        setResultsByTab({
-          lotto: payload.data?.lotto || [],
-          pools: payload.data?.pools || [],
-          sports: payload.data?.sports || [],
-          "sports-draw": payload.data?.["sports-draw"] || [],
-        });
-      } catch (loadError) {
-        console.error("Failed to load results:", loadError);
-        setError(loadError instanceof Error ? loadError.message : "Failed to load results");
-      } finally {
-        setLoading(false);
       }
-    };
 
-    loadResults();
+      const response = await fetch("/api/results");
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to load results");
+      }
+
+      setResultsByTab({
+        lotto: payload.data?.lotto || [],
+        pools: payload.data?.pools || [],
+        sports: payload.data?.sports || [],
+        "sports-draw": payload.data?.["sports-draw"] || [],
+      });
+    } catch (loadError) {
+      console.error("Failed to load results:", loadError);
+      if (!options?.silent) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to load results");
+      }
+    } finally {
+      if (!options?.silent) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadResults();
+  }, [loadResults]);
+
+  useSupabaseRealtime({
+    channelName: "results-page",
+    subscriptions: [
+      { table: "games" },
+      { table: "sports" },
+      { table: "matches" },
+    ],
+    onEvent: () => {
+      void loadResults({ silent: true });
+    },
+  });
 
   const gamesForTab = useMemo(
     () => resultsByTab[activeTab] || [],

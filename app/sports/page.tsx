@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,78 +51,79 @@ const Football = () => {
     setMatchAtLeast(prev => prev.filter(val => val <= maxValidValue));
   }, [selectedBets.length]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+  const fetchMatches = useCallback(async (gameId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("sports")
+        .select("*")
+        .eq("game_id", gameId)
+        .neq("status", "void")
+        .order("number", { ascending: true });
 
-    const fetchActiveGame = async () => {
+      if (error) throw error;
+
+      const now = Date.now();
+      const available = (data || []).filter((m: any) => {
+        const started = m.start_time ? new Date(m.start_time).getTime() <= now : false;
+        return !started && !Boolean(m.processed);
+      });
+
+      const formattedMatches: Match[] = available.map((m: SportsMatch) => ({
+        id: m.id,
+        number: m.number,
+        league: m.league,
+        homeTeam: m.home,
+        awayTeam: m.away,
+        prizes: m.prizes,
+        status: m.status,
+        processed: m.processed,
+        start_time: m.start_time,
+        end_time: m.end_time,
+      }));
+
+      setMatches(formattedMatches);
+    } catch (error) {
+      console.error("Error fetching matches:", error);
+    }
+  }, []);
+
+  const refreshSportsData = useCallback(
+    async (options?: { silent?: boolean }) => {
       try {
-        setIsLoading(true);
+        if (!options?.silent) setIsLoading(true);
         const response = await fetch("/api/games/sports/active");
         const data = await response.json();
         setActiveGame(data.game);
 
         if (!data.game) {
           setMatches([]);
-          if (!interval) {
-            interval = setInterval(fetchActiveGame, 30000);
-          }
         } else {
-          if (interval) {
-            clearInterval(interval);
-            interval = null;
-          }
-          // Fetch matches for this game
           await fetchMatches(data.game.id);
         }
       } catch (error) {
         console.error("Error fetching active game:", error);
       } finally {
-        setIsLoading(false);
+        if (!options?.silent) setIsLoading(false);
       }
-    };
+    },
+    [fetchMatches],
+  );
 
-    const fetchMatches = async (gameId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from("sports")
-          .select("*")
-          .eq("game_id", gameId)
-          .neq("status", "void")
-          .order("number", { ascending: true });
+  useEffect(() => {
+    refreshSportsData();
+  }, [refreshSportsData]);
 
-        if (error) throw error;
-
-        const now = Date.now();
-        const available = (data || []).filter((m: any) => {
-          const started = m.start_time ? new Date(m.start_time).getTime() <= now : false;
-          return !started && !Boolean(m.processed);
-        });
-
-        const formattedMatches: Match[] = available.map((m: SportsMatch) => ({
-          id: m.id,
-          number: m.number,
-          league: m.league,
-          homeTeam: m.home,
-          awayTeam: m.away,
-          prizes: m.prizes,
-          status: m.status,
-          processed: m.processed,
-          start_time: m.start_time,
-          end_time: m.end_time,
-        }));
-
-        setMatches(formattedMatches);
-      } catch (error) {
-        console.error("Error fetching matches:", error);
-      }
-    };
-
-    fetchActiveGame();
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, []);
+  useSupabaseRealtime({
+    channelName: `sports-page:${activeGame?.id ?? "waiting"}`,
+    subscriptions: [
+      { table: "games", filter: "type=eq.sports" },
+      ...(activeGame?.id ? [{ table: "sports", filter: `game_id=eq.${activeGame.id}` }] : []),
+      { table: "prize" },
+    ],
+    onEvent: () => {
+      void refreshSportsData({ silent: true });
+    },
+  });
 
   const isMatchLive = (startTime?: string, endTime?: string): boolean => {
     if (!startTime || !endTime) return false;
