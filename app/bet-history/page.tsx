@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
+import { useSupabaseRealtime, type RealtimeSubscription } from "@/hooks/use-supabase-realtime";
 import Link from "next/link";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
@@ -685,20 +685,37 @@ export default function BetHistoryPage() {
     void loadBets();
   }, [loadBets]);
 
+  const betHistorySubscriptions = useMemo((): RealtimeSubscription[] => {
+    if (!user?.id) return [];
+
+    const subs: RealtimeSubscription[] = [
+      { table: "bets_lotto", filter: `player=eq.${user.id}` },
+      { table: "bets_pools", filter: `player=eq.${user.id}` },
+      { table: "bets_sport", filter: `player=eq.${user.id}` },
+      { table: "bets_sports_draw", filter: `player=eq.${user.id}` },
+    ];
+
+    if (activeTab === "lotto") {
+      subs.push({ table: "games", filter: "type=eq.lotto" });
+    }
+
+    if (activeTab === "pools") {
+      subs.push({ table: "matches" });
+      subs.push({ table: "games", filter: "type=eq.pools" });
+    }
+
+    if (activeTab === "sports" || activeTab === "sports-draw") {
+      subs.push({ table: "games" });
+      subs.push({ table: "sports" });
+    }
+
+    return subs;
+  }, [user?.id, activeTab]);
+
   useSupabaseRealtime({
-    channelName: `bet-history:${user?.id ?? "guest"}`,
+    channelName: `bet-history:${user?.id ?? "guest"}:${activeTab}`,
     enabled: Boolean(user?.id),
-    subscriptions: user?.id
-      ? [
-          { table: "games" },
-          { table: "matches" },
-          { table: "sports" },
-          { table: "bets_lotto", filter: `user_id=eq.${user.id}` },
-          { table: "bets_pools", filter: `user_id=eq.${user.id}` },
-          { table: "bets_sport", filter: `user_id=eq.${user.id}` },
-          { table: "bets_sports_draw", filter: `user_id=eq.${user.id}` },
-        ]
-      : [],
+    subscriptions: betHistorySubscriptions,
     onEvent: () => {
       void loadBets({ silent: true });
     },
