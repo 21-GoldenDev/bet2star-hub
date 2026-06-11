@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { betIncludesInvisibleNumbers } from "@/lib/bets/lottoNumbers";
 import { betIncludesDisabledMatches } from "@/lib/bets/poolsMatches";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -51,7 +52,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bet not found" }, { status: 404 });
     }
 
-    if (tab === "pools") {
+    if (tab === "lotto") {
+      const serviceClient = getServiceClient();
+      const { data: gameData, error: gameError } = await serviceClient
+        .from("games")
+        .select("visible_numbers")
+        .eq("id", betData.game_id)
+        .single();
+
+      if (gameError) {
+        console.error("Failed to fetch lotto game for bet:", gameError);
+        return NextResponse.json({ error: "Failed to validate bet" }, { status: 500 });
+      }
+
+      if (betIncludesInvisibleNumbers(betData.numbers, gameData?.visible_numbers)) {
+        return NextResponse.json(
+          { error: "This bet cannot be deleted because it includes invisible numbers" },
+          { status: 403 },
+        );
+      }
+    } else if (tab === "pools") {
       const serviceClient = getServiceClient();
       const { data: gameData, error: gameError } = await serviceClient
         .from("games")

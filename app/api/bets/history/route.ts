@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { betIncludesInvisibleNumbers } from "@/lib/bets/lottoNumbers";
 import { betIncludesDisabledMatches, resolvePoolsBetWeek } from "@/lib/bets/poolsMatches";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
@@ -223,7 +224,7 @@ export async function GET(request: NextRequest) {
 
       query = supabase
         .from("bets_lotto")
-        .select("id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name), prize:prize_id (name)", { count: "exact" })
+        .select("id, game_id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
         .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
@@ -281,8 +282,39 @@ export async function GET(request: NextRequest) {
 
       const summary = Array.from(summaryMap.values()).sort((a, b) => a.option.localeCompare(b.option));
 
+      let lottoResponseData = data || [];
+
+      if (Array.isArray(data) && data.length > 0) {
+        const serviceClient = getServiceClient();
+        const gameIds = Array.from(new Set(data.map((bet: any) => bet.game_id).filter(Boolean)));
+        const visibleNumbersByGameId: Record<string, unknown> = {};
+
+        if (gameIds.length > 0) {
+          const { data: gamesData, error: gamesError } = await serviceClient
+            .from("games")
+            .select("id, visible_numbers")
+            .in("id", gameIds);
+
+          if (gamesError) {
+            console.error("Failed to fetch lotto visible numbers:", gamesError);
+          } else {
+            for (const game of gamesData || []) {
+              visibleNumbersByGameId[game.id] = game.visible_numbers;
+            }
+          }
+        }
+
+        lottoResponseData = data.map((bet: any) => {
+          const canDelete = !bet.game_id
+            ? true
+            : !betIncludesInvisibleNumbers(bet.numbers, visibleNumbersByGameId[bet.game_id]);
+
+          return { ...bet, canDelete };
+        });
+      }
+
       return NextResponse.json({
-        data: data || [],
+        data: lottoResponseData,
         gameOptions,
         appliedGameId: effectiveGameIdFilter ?? null,
         matches: {},

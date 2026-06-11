@@ -405,10 +405,7 @@ async function fetchTabBets(
   };
 }
 
-const canDeleteBet = (tab: BetTab, row: BetRow) => {
-  if (tab !== "pools") return true;
-  return row.canDelete !== false;
-};
+const canDeleteBet = (_tab: BetTab, row: BetRow) => row.canDelete !== false;
 
 const getUnderValue = (gameType: string, under: any) => {
   if (gameType === "under1" || gameType === "under2") {
