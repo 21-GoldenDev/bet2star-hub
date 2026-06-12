@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { provisionHierarchyAuthUser } from "@/lib/auth/provisionHierarchyAuthUser";
+import { validateHierarchyPassword } from "@/lib/auth/hierarchyPassword";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -38,6 +40,10 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await req.json();
+    const passwordError = validateHierarchyPassword(body.password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
 
     const { data, error } = await supabase
       .from("agent")
@@ -57,7 +63,16 @@ export async function PUT(
 
     if (error) throw error;
 
-    return NextResponse.json(data[0]);
+    const updated = data[0];
+    if (updated?.email && updated?.password) {
+      await provisionHierarchyAuthUser({
+        email: updated.email,
+        password: updated.password,
+        role: "agent",
+      });
+    }
+
+    return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message },

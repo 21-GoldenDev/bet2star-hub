@@ -67,6 +67,30 @@ async function resolveIdentifierToEmail(identifier: string) {
   return data.email;
 }
 
+export async function getPostLoginRedirect(fallback = "/") {
+  try {
+    const response = await fetch("/api/admin/me");
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const data = await response.json();
+    if (data?.role === "staff") {
+      return "/admin/agents";
+    }
+    if (data?.role === "agent") {
+      return "/admin/terminals";
+    }
+    if (data?.role === "admin") {
+      return "/admin";
+    }
+  } catch {
+    // Fall back to the default redirect when role resolution fails.
+  }
+
+  return fallback;
+}
+
 export async function signInWithEmail(identifier: string, password: string) {
   const normalizedIdentifier = identifier.trim();
   if (!normalizedIdentifier) {

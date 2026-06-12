@@ -9,8 +9,10 @@ export default function BettingAccessGate() {
   const { roleInfo, loadingRole } = useAdminRole();
 
   useEffect(() => {
-    if (!loadingRole && (roleInfo?.role === "staff" || roleInfo?.role === "agent")) {
-      router.replace("/admin");
+    if (!loadingRole && roleInfo?.role === "staff") {
+      router.replace("/admin/agents");
+    } else if (!loadingRole && roleInfo?.role === "agent") {
+      router.replace("/admin/terminals");
     }
   }, [loadingRole, roleInfo, router]);
 

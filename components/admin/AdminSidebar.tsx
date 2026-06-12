@@ -431,7 +431,7 @@ export default function AdminSidebar() {
               </div>
             )}
 
-            {isAdmin && (
+            {(isAdmin || isAgent) && (
               <div
                 className="relative group"
                 onMouseEnter={(event) => setHoverPopup("terminals", event)}
@@ -749,32 +749,32 @@ export default function AdminSidebar() {
                 </div>
               </Link>
               {isAdmin && (
-                <>
-                  <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
-                    <div
-                      className={clsx(
-                        "rounded-lg px-4 py-2 text-sm transition-colors",
-                        pathname?.startsWith("/admin/staff")
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}
-                    >
-                      Staff
-                    </div>
-                  </Link>
-                  <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
-                    <div
-                      className={clsx(
-                        "rounded-lg px-4 py-2 text-sm transition-colors",
-                        pathname?.startsWith("/admin/agents")
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      )}
-                    >
-                      Agents
-                    </div>
-                  </Link>
-                </>
+                <Link href="/admin/staff" onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "rounded-lg px-4 py-2 text-sm transition-colors",
+                      pathname?.startsWith("/admin/staff")
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    Staff
+                  </div>
+                </Link>
+              )}
+              {(isStaff || isAdmin) && (
+                <Link href="/admin/agents" onClick={() => setIsOpen(false)}>
+                  <div
+                    className={clsx(
+                      "rounded-lg px-4 py-2 text-sm transition-colors",
+                      pathname?.startsWith("/admin/agents")
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    )}
+                  >
+                    Agents
+                  </div>
+                </Link>
               )}
             </div>
           </div>
@@ -803,7 +803,7 @@ export default function AdminSidebar() {
           </Link>
         )}
 
-        {hoveredItem === "terminals" && isCollapsed && isAdmin && (
+        {hoveredItem === "terminals" && isCollapsed && (isAdmin || isAgent) && (
           <Link
             href="/admin/terminals"
             className="fixed z-60 w-56 overflow-hidden rounded-2xl border border-sidebar-border bg-sidebar-background shadow-lg"

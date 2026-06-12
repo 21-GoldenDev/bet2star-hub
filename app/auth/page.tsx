@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { signInWithEmail, signUpWithEmail, signInWithGoogle } from "@/lib/auth";
+import { signInWithEmail, signUpWithEmail, signInWithGoogle, getPostLoginRedirect } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
@@ -53,8 +53,9 @@ const AuthForm = () => {
           const { error } = await signInWithEmail(identifier, formData.password);
           if (error) throw error;
 
-          const redirectTo = searchParams.get('redirectTo') || '/';
-          router.push(redirectTo);
+          const redirectTo = searchParams.get("redirectTo") || "/";
+          const destination = await getPostLoginRedirect(redirectTo);
+          router.push(destination);
         }
       } catch (err: any) {
         toast({ title: err?.message || "Auth error", variant: "destructive" });

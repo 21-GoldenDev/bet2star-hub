@@ -80,14 +80,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ email: identifier.toLowerCase() });
     }
 
-    const emailFromProfile = await getEmailFromProfileUsername(identifier);
-    if (emailFromProfile) {
-      return NextResponse.json({ email: emailFromProfile.toLowerCase() });
-    }
-
     const emailFromAgentOrStaff = await getEmailFromAgentOrStaffUsername(identifier);
     if (emailFromAgentOrStaff) {
       return NextResponse.json({ email: emailFromAgentOrStaff.toLowerCase() });
+    }
+
+    const emailFromProfile = await getEmailFromProfileUsername(identifier);
+    if (emailFromProfile) {
+      return NextResponse.json({ email: emailFromProfile.toLowerCase() });
     }
 
     return NextResponse.json(

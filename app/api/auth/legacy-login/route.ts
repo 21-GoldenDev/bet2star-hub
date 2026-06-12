@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { validateHierarchyPassword } from "@/lib/auth/hierarchyPassword";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -7,7 +8,7 @@ const supabase = createClient(
 );
 
 async function findLegacyUser(email: string) {
-  const normalizedEmail = email.trim();
+  const normalizedEmail = email.trim().toLowerCase();
 
   const { data: agent, error: agentError } = await supabase
     .from("agent")
@@ -19,12 +20,12 @@ async function findLegacyUser(email: string) {
     throw agentError;
   }
 
-  if (agent && agent.password === undefined) {
+  if (agent?.status === "inactive") {
     return null;
   }
 
-  if (agent && String(agent.email).toLowerCase() === normalizedEmail.toLowerCase()) {
-    return { type: "agent", row: agent };
+  if (agent && agent.password != null && String(agent.password).length > 0) {
+    return { type: "agent" as const, row: agent };
   }
 
   const { data: staff, error: staffError } = await supabase
@@ -37,34 +38,49 @@ async function findLegacyUser(email: string) {
     throw staffError;
   }
 
-  if (staff && staff.password === undefined) {
+  if (staff?.status === "inactive") {
     return null;
   }
 
-  if (staff && String(staff.email).toLowerCase() === normalizedEmail.toLowerCase()) {
-    return { type: "staff", row: staff };
+  if (staff && staff.password != null && String(staff.password).length > 0) {
+    return { type: "staff" as const, row: staff };
   }
 
   return null;
 }
 
 async function getAuthUserByEmail(email: string) {
-  const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1000 });
-  if (error) {
-    throw error;
-  }
+  const normalizedEmail = email.trim().toLowerCase();
+  let page = 1;
+  const perPage = 1000;
 
-  return data?.users?.find(
-    (user: any) =>
-      typeof user.email === "string" &&
-      user.email.toLowerCase() === email.toLowerCase()
-  );
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) {
+      throw error;
+    }
+
+    const users = data?.users ?? [];
+    const match = users.find(
+      (user: any) =>
+        typeof user.email === "string" && user.email.toLowerCase() === normalizedEmail
+    );
+    if (match) {
+      return match;
+    }
+
+    if (users.length < perPage) {
+      return null;
+    }
+
+    page += 1;
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const email = String(body.email || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
     const password = String(body.password || "");
 
     if (!email || !password) {
@@ -88,6 +104,11 @@ export async function POST(req: NextRequest) {
         { error: "Invalid email or password." },
         { status: 401 }
       );
+    }
+
+    const passwordError = validateHierarchyPassword(storedPassword);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
     const authUser = await getAuthUserByEmail(email);

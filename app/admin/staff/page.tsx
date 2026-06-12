@@ -220,6 +220,7 @@ export default function StaffPage() {
                   id="password"
                   name="password"
                   type="password"
+                  minLength={6}
                   value={formData.password}
                   onChange={handleInputChange}
                   required={!editingId}
