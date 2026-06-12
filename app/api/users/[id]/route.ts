@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { getAdminRoleFromRequest } from "@/lib/admin/role";
+import { validateAuthPassword } from "@/lib/auth/hierarchyPassword";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -30,6 +32,8 @@ export async function GET(
 
     const email = authData?.user?.email ?? null;
 
+    const roleInfo = await getAdminRoleFromRequest(req);
+
     return NextResponse.json({
       id,
       profile_id: profile.id,
@@ -43,6 +47,7 @@ export async function GET(
       created_at: profile.created_at,
       updated_at: profile.updated_at,
       email,
+      ...(roleInfo?.role === "admin" ? { password: profile.password || "" } : {}),
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -58,29 +63,49 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const roleInfo = await getAdminRoleFromRequest(req);
+    if (roleInfo?.role !== "admin") {
+      return NextResponse.json({ error: "Only admins can update online users." }, { status: 403 });
+    }
+
     const { id } = await params;
     const body = await req.json();
 
-    // update auth email if provided
+    const authUpdates: { email?: string; password?: string } = {};
     if (body.email) {
-      try {
-        await supabase.auth.admin.updateUserById(id, { email: body.email });
-      } catch (e) {
-        console.warn("Failed to update auth email:", e);
+      authUpdates.email = String(body.email).trim().toLowerCase();
+    }
+    if (body.password) {
+      const passwordError = validateAuthPassword(body.password);
+      if (passwordError) {
+        return NextResponse.json({ error: passwordError }, { status: 400 });
       }
+      authUpdates.password = String(body.password);
+    }
+
+    if (Object.keys(authUpdates).length > 0) {
+      const { error: authUpdateError } = await supabase.auth.admin.updateUserById(id, authUpdates);
+      if (authUpdateError) {
+        throw authUpdateError;
+      }
+    }
+
+    const profileUpdates: Record<string, unknown> = {
+      username: body.username,
+      full_name: body.full_name,
+      phone: body.phone,
+      avatar: body.avatar,
+      role: body.role,
+      address: body.address,
+      balance: body.balance,
+    };
+    if (body.password) {
+      profileUpdates.password = String(body.password);
     }
 
     const { data, error } = await supabase
       .from("profiles")
-      .update({
-        username: body.username,
-        full_name: body.full_name,
-        phone: body.phone,
-        avatar: body.avatar,
-        role: body.role,
-        address: body.address,
-        balance: body.balance,
-      })
+      .update(profileUpdates)
       .eq("user_id", id)
       .select();
 
@@ -101,6 +126,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const roleInfo = await getAdminRoleFromRequest(req);
+    if (roleInfo?.role !== "admin") {
+      return NextResponse.json({ error: "Only admins can delete online users." }, { status: 403 });
+    }
+
     const { id } = await params;
 
     const { error: delProfileError } = await supabase

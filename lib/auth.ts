@@ -1,6 +1,9 @@
 import supabase from "./supabase/client";
 
-async function createUserProfile(userId: string, profileData: { username?: string; full_name?: string; phone?: string; avatar?: string }) {
+async function createUserProfile(
+  userId: string,
+  profileData: { username?: string; full_name?: string; phone?: string; avatar?: string; password?: string }
+) {
   const { data, error } = await supabase
     .from('profiles')
     .insert([{ user_id: userId, ...profileData }]);
@@ -35,7 +38,7 @@ export async function signUpWithEmail(email: string, password: string, metadata?
   if (error || !data.user) {
     return { data, error };
   }
-  await createUserProfile(data.user.id, metadata || {});
+  await createUserProfile(data.user.id, { ...(metadata || {}), password });
   return { data, error };
 }
 
@@ -179,5 +182,8 @@ export async function resetPassword(email: string) {
 
 export async function updatePassword(newPassword: string) {
   const { data, error } = await supabase.auth.updateUser({ password: newPassword });
+  if (!error && data?.user?.id) {
+    await supabase.from("profiles").update({ password: newPassword }).eq("user_id", data.user.id);
+  }
   return { data, error };
 }

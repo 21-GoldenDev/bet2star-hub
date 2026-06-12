@@ -33,11 +33,13 @@ import {
 } from "@/components/ui/table";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
 import useAdminRole from "@/hooks/use-admin-role";
+import { useToast } from "@/hooks/use-toast";
 
 interface OnlineUser {
   id: string;
   username: string;
   email: string;
+  password?: string;
   full_name: string;
   phone?: string;
   address?: string;
@@ -47,6 +49,7 @@ interface OnlineUser {
 }
 
 export default function UsersPage() {
+  const { toast } = useToast();
   const [users, setUsers] = useState<OnlineUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,12 +64,12 @@ export default function UsersPage() {
     username: "",
     full_name: "",
     email: "",
+    password: "",
     phone: "",
     address: "",
   });
   const { roleInfo, loadingRole } = useAdminRole();
   const canModify = roleInfo?.role === "admin";
-  const canAdd = roleInfo?.role === "admin" || roleInfo?.role === "staff" || roleInfo?.role === "agent";
 
   useEffect(() => {
     fetchUsers();
@@ -118,6 +121,7 @@ export default function UsersPage() {
       username: user.username,
       full_name: user.full_name || "",
       email: user.email,
+      password: user.password || "",
       phone: user.phone || "",
       address: user.address || "",
     });
@@ -127,24 +131,41 @@ export default function UsersPage() {
   const handleSave = async () => {
     const isCreate = !selectedUser;
 
+    if (isCreate && !formData.password.trim()) {
+      toast({
+        title: "Password required",
+        description: "Enter a password when creating a new online user.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const url = isCreate ? "/api/admin/users" : `/api/users/${selectedUser.id}`;
       const method = isCreate ? "POST" : "PUT";
+      const payload = { ...formData };
+      if (!isCreate && !payload.password.trim()) {
+        delete (payload as { password?: string }).password;
+      }
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        throw new Error(isCreate ? "Failed to add user" : "Failed to update user");
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || (isCreate ? "Failed to add user" : "Failed to update user"));
       }
 
       await fetchUsers();
       setIsDialogOpen(false);
       setSelectedUser(null);
     } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save user";
+      toast({ title: "Error", description: message, variant: "destructive" });
       console.error("Error saving user:", error);
     } finally {
       setIsSaving(false);
@@ -186,10 +207,10 @@ export default function UsersPage() {
             Manage online player accounts and information
           </p>
         </div>
-        {canAdd && (
+        {canModify && (
           <Button className="w-full md:w-auto" onClick={() => {
             setSelectedUser(null);
-            setFormData({ username: "", full_name: "", email: "", phone: "", address: "" });
+            setFormData({ username: "", full_name: "", email: "", password: "", phone: "", address: "" });
             setIsDialogOpen(true);
           }}>
             <Plus className="w-4 h-4 mr-2" /> Add User
@@ -255,6 +276,7 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>Username</TableHead>
+                  {canModify && <TableHead>Password</TableHead>}
                   <TableHead>Email</TableHead>
                   <TableHead>Full Name</TableHead>
                   <TableHead>Phone</TableHead>
@@ -269,6 +291,7 @@ export default function UsersPage() {
                   <TableRow key={user.id}>
                     <TableCell>{user.id}</TableCell>
                     <TableCell className="font-medium">{user.username}</TableCell>
+                    {canModify && <TableCell>{user.password || "-"}</TableCell>}
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.full_name}</TableCell>
                     <TableCell>{user.phone || "-"}</TableCell>
@@ -351,6 +374,21 @@ export default function UsersPage() {
                 }
               />
             </div>
+            {canModify && (
+              <div>
+                <Label>Password</Label>
+                <Input
+                  value={formData.password}
+                  type="text"
+                  minLength={6}
+                  required={!selectedUser}
+                  placeholder={selectedUser ? "Leave empty to keep current password" : ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                />
+              </div>
+            )}
             <div>
               <Label>Phone</Label>
               <Input
