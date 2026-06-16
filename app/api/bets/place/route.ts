@@ -327,7 +327,7 @@ async function validateSportsSelectionsAvailability(
 
   const { data: selectedMatches, error: selectedMatchesError } = await supabase
     .from('sports')
-    .select('number, status, start_time, processed')
+    .select('number, status, end_time, processed')
     .eq('game_id', gameId)
     .in('number', selectedNumbers);
 
@@ -347,9 +347,9 @@ async function validateSportsSelectionsAvailability(
       throw new Error(`Match ${match.number} has been processed`);
     }
 
-    if (match.start_time) {
-      const start = new Date(match.start_time).getTime();
-      if (Number.isFinite(start) && start <= now) {
+    if (match.end_time) {
+      const end = new Date(match.end_time).getTime();
+      if (Number.isFinite(end) && end <= now) {
         throw new Error(`Match ${match.number} has expired and can no longer be played`);
       }
     }

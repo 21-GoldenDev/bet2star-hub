@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { Clock, Zap } from "lucide-react";
+import { Clock } from "lucide-react";
 import { toast } from "sonner";
 import { Game } from "@/lib/types/game";
 import { SportsMatch } from "@/lib/types/sports";
@@ -64,8 +64,8 @@ const Football = () => {
 
       const now = Date.now();
       const available = (data || []).filter((m: any) => {
-        const started = m.start_time ? new Date(m.start_time).getTime() <= now : false;
-        return !started && !Boolean(m.processed);
+        const expired = m.end_time ? new Date(m.end_time).getTime() <= now : false;
+        return !expired && !Boolean(m.processed);
       });
 
       const formattedMatches: Match[] = available.map((m: SportsMatch) => ({
@@ -124,14 +124,6 @@ const Football = () => {
       void refreshSportsData({ silent: true });
     },
   });
-
-  const isMatchLive = (startTime?: string, endTime?: string): boolean => {
-    if (!startTime || !endTime) return false;
-    const now = new Date();
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    return now >= start && now <= end;
-  };
 
   const optionLabels: Record<BetOptionKey, string> = {
     H: "1",
@@ -336,10 +328,10 @@ const Football = () => {
     }
     Object.keys(map).forEach((league) => {
       map[league].sort((a, b) => {
-        if (!a.start_time && !b.start_time) return 0;
-        if (!a.start_time) return 1;
-        if (!b.start_time) return -1;
-        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+        if (!a.end_time && !b.end_time) return 0;
+        if (!a.end_time) return 1;
+        if (!b.end_time) return -1;
+        return new Date(a.end_time).getTime() - new Date(b.end_time).getTime();
       });
     });
     return map;
@@ -500,28 +492,15 @@ const Football = () => {
                                             </TableCell>
                                             <TableCell className="p-1 border border-border">
                                               <div className="flex flex-col items-center justify-center gap-1 text-[10px] text-muted-foreground">
-                                                {isMatchLive(match.start_time, match.end_time) ? (
-                                                  <span className="flex w-fit items-center gap-1 px-2 py-1 rounded-full bg-destructive/20 text-destructive text-xs font-medium">
-                                                    <Zap className="w-3 h-3" /> LIVE
-                                                  </span>
+                                                {match.end_time ? (
+                                                  <div className="flex items-center gap-1 text-center">
+                                                    <Clock className="w-3 h-3 shrink-0" />
+                                                    {new Date(match.end_time).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                  </div>
                                                 ) : (
-                                                  <>
-                                                    {match.start_time && (
-                                                      <div className="flex items-center gap-1">
-                                                        Start: {new Date(match.start_time).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                      </div>
-                                                    )}
-                                                    {match.end_time && (
-                                                      <div className="text-[9px]">
-                                                        End: {new Date(match.end_time).toLocaleString('en-US', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                      </div>
-                                                    )}
-                                                    {!match.start_time && !match.end_time && (
-                                                      <span className="flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" /> TBD
-                                                      </span>
-                                                    )}
-                                                  </>
+                                                  <span className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" /> TBD
+                                                  </span>
                                                 )}
                                               </div>
                                             </TableCell>

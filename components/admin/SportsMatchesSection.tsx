@@ -325,8 +325,10 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
 
     try {
       setSubmitting(true);
-      const startIso = sportsForm.start_time ? new Date(sportsForm.start_time).toISOString() : null;
       const endIso = sportsForm.end_time ? new Date(sportsForm.end_time).toISOString() : null;
+      const startIso = drawMode && sportsForm.start_time
+        ? new Date(sportsForm.start_time).toISOString()
+        : null;
       const res = await fetch(`/api/admin/games/${gameId}/sports`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -336,7 +338,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
           status: sportsForm.status || "void",
           home_goal: drawMode ? 1 : undefined,
           away_goal: drawMode ? 0 : undefined,
-          start_time: startIso,
+          ...(drawMode ? { start_time: startIso } : {}),
           end_time: endIso,
         }),
       });
@@ -387,15 +389,15 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
   };
 
   const now = new Date();
-  const hasStarted = (match: SportsMatch) => {
-    if (!match.start_time) return false;
-    const start = new Date(match.start_time);
-    if (isNaN(start.getTime())) return false;
-    return start <= now;
+  const hasExpired = (match: SportsMatch) => {
+    if (!match.end_time) return false;
+    const end = new Date(match.end_time);
+    if (isNaN(end.getTime())) return false;
+    return end <= now;
   };
 
-  const activeMatches = sports.filter((match) => !(match as any).processed && !hasStarted(match));
-  const expiredMatches = sports.filter((match) => !(match as any).processed && hasStarted(match));
+  const activeMatches = sports.filter((match) => !(match as any).processed && !hasExpired(match));
+  const expiredMatches = sports.filter((match) => !(match as any).processed && hasExpired(match));
   const processedMatches = sports.filter((match) => Boolean((match as any).processed));
 
   const tabMatches = drawMode
@@ -596,15 +598,26 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <Label>Start Time</Label>
-                    <Input
-                      type="datetime-local"
-                      value={formatDateTimeLocal(sportsForm.start_time)}
-                      onChange={(e) => setSportsForm({ ...sportsForm, start_time: e.target.value })}
-                    />
+                {drawMode ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <Label>Start Time</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formatDateTimeLocal(sportsForm.start_time)}
+                        onChange={(e) => setSportsForm({ ...sportsForm, start_time: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label>End Time</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formatDateTimeLocal(sportsForm.end_time)}
+                        onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
+                      />
+                    </div>
                   </div>
+                ) : (
                   <div>
                     <Label>End Time</Label>
                     <Input
@@ -613,7 +626,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
                       onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
                     />
                   </div>
-                </div>
+                )}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label>Home Team</Label>

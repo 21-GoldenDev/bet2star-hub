@@ -86,7 +86,9 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
   const homeGoal = Number(match.home_goal);
   const awayGoal = Number(match.away_goal);
   const isDrawResult = Number.isFinite(homeGoal) && Number.isFinite(awayGoal) && homeGoal === awayGoal;
-  const isExpired = match.start_time ? new Date(match.start_time).getTime() <= Date.now() : false;
+  const isExpired = drawMode
+    ? (match.start_time ? new Date(match.start_time).getTime() <= Date.now() : false)
+    : (match.end_time ? new Date(match.end_time).getTime() <= Date.now() : false);
   const isProcessed = Boolean((match as any).processed);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -190,8 +192,10 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
 
     try {
       setSubmitting(true);
-      const startIso = editRowForm.start_time ? new Date(editRowForm.start_time).toISOString() : null;
       const endIso = editRowForm.end_time ? new Date(editRowForm.end_time).toISOString() : null;
+      const startIso = drawMode && editRowForm.start_time
+        ? new Date(editRowForm.start_time).toISOString()
+        : null;
       const res = await fetch(`/api/admin/games/${gameId}/sports/${match.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -204,7 +208,7 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
           away_goal: editRowForm.away_goal,
           prizes: editRowForm.prizes,
           status: editRowForm.status,
-          start_time: startIso,
+          ...(drawMode ? { start_time: startIso } : {}),
           end_time: endIso,
         }),
       });
@@ -422,16 +426,18 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-xs">Start Time</Label>
-              <Input
-                type="datetime-local"
-                className="h-9 text-xs"
-                value={formatDateTimeLocal(editRowForm.start_time)}
-                onChange={(e) => setEditRowForm({ ...editRowForm, start_time: e.target.value })}
-              />
-            </div>
+          <div className={drawMode ? "grid grid-cols-2 gap-2" : undefined}>
+            {drawMode && (
+              <div>
+                <Label className="text-xs">Start Time</Label>
+                <Input
+                  type="datetime-local"
+                  className="h-9 text-xs"
+                  value={formatDateTimeLocal(editRowForm.start_time)}
+                  onChange={(e) => setEditRowForm({ ...editRowForm, start_time: e.target.value })}
+                />
+              </div>
+            )}
             <div>
               <Label className="text-xs">End Time</Label>
               <Input
@@ -580,19 +586,21 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
                     </span>
                   </span>
                 )}
+                {drawMode && (
+                  <span>
+                    Start:{" "}
+                    {match.start_time
+                      ? new Date(match.start_time).toLocaleString("en-NG", {
+                        month: "short",
+                        day: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                      : "-"}
+                  </span>
+                )}
                 <span>
-                  Start:{" "}
-                  {match.start_time
-                    ? new Date(match.start_time).toLocaleString("en-NG", {
-                      month: "short",
-                      day: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                    : "-"}
-                </span>
-                <span>
-                  End:{" "}
+                  {drawMode ? "End: " : "Ends: "}
                   {match.end_time
                     ? new Date(match.end_time).toLocaleString("en-NG", {
                       month: "short",
