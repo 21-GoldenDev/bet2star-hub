@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { validateHierarchyPassword } from "@/lib/auth/hierarchyPassword";
+import { validateAuthPassword, validateHierarchyPassword } from "@/lib/auth/hierarchyPassword";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -49,6 +49,29 @@ async function findLegacyUser(email: string) {
   return null;
 }
 
+async function findProfileUser(email: string) {
+  const authUser = await getAuthUserByEmail(email);
+  if (!authUser) {
+    return null;
+  }
+
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("user_id", authUser.id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (profile && profile.password != null && String(profile.password).length > 0) {
+    return { type: "user" as const, row: profile, authUserId: authUser.id };
+  }
+
+  return null;
+}
+
 async function getAuthUserByEmail(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
   let page = 1;
@@ -91,14 +114,25 @@ export async function POST(req: NextRequest) {
     }
 
     const legacyUser = await findLegacyUser(email);
-    if (!legacyUser) {
+    const profileUser = legacyUser ? null : await findProfileUser(email);
+    const account = legacyUser || profileUser;
+
+    if (!account) {
+      const authUser = await getAuthUserByEmail(email);
+      if (authUser) {
+        return NextResponse.json(
+          { error: "Invalid email or password." },
+          { status: 401 }
+        );
+      }
+
       return NextResponse.json(
-        { error: "No legacy staff or agent account found for this email." },
+        { error: "No account found for this email." },
         { status: 401 }
       );
     }
 
-    const storedPassword = String(legacyUser.row.password || "");
+    const storedPassword = String(account.row.password || "");
     if (storedPassword !== password) {
       return NextResponse.json(
         { error: "Invalid email or password." },
@@ -106,16 +140,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const passwordError = validateHierarchyPassword(storedPassword);
+    const passwordError =
+      account.type === "user"
+        ? validateAuthPassword(storedPassword)
+        : validateHierarchyPassword(storedPassword);
     if (passwordError) {
       return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
-    const authUser = await getAuthUserByEmail(email);
-    const userMetadata = { role: legacyUser.type };
-    if (authUser) {
+    const userMetadata =
+      account.type === "user"
+        ? { role: account.row.role || "user" }
+        : { role: account.type };
+
+    if (account.type === "user") {
       const { error: updateError } = await supabase.auth.admin.updateUserById(
-        authUser.id,
+        account.authUserId,
         {
           password,
           email_confirm: true,
@@ -127,15 +167,31 @@ export async function POST(req: NextRequest) {
         throw updateError;
       }
     } else {
-      const { error: createError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: userMetadata,
-      });
+      const authUser = await getAuthUserByEmail(email);
+      if (authUser) {
+        const { error: updateError } = await supabase.auth.admin.updateUserById(
+          authUser.id,
+          {
+            password,
+            email_confirm: true,
+            user_metadata: userMetadata,
+          }
+        );
 
-      if (createError) {
-        throw createError;
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        const { error: createError } = await supabase.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true,
+          user_metadata: userMetadata,
+        });
+
+        if (createError) {
+          throw createError;
+        }
       }
     }
 
