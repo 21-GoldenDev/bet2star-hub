@@ -43,6 +43,40 @@ export const calcAplGrouping = (stake: number, selects: Record<string, string[] 
   return apl;
 }
 
+export function computeLottoApl(
+  gameMode: string,
+  stake: number,
+  under: number[] = [],
+  numbers: number[] | Record<string, string[] | number[]> = [],
+): number {
+  if (stake <= 0) {
+    throw new Error("Stake must be greater than zero");
+  }
+
+  if (gameMode === "turbo" || gameMode === "under1" || gameMode === "under2") {
+    return stake;
+  }
+
+  if (gameMode === "nap_perm") {
+    if (!Array.isArray(numbers)) {
+      throw new Error("numbers must be an array for nap_perm");
+    }
+    if (under.length === 0) {
+      throw new Error("under is required for nap_perm");
+    }
+    return calcAplDirect(stake, under, numbers.length);
+  }
+
+  if (gameMode === "grouping" || gameMode === "one_banker" || gameMode === "two_banker") {
+    if (!numbers || typeof numbers !== "object" || Array.isArray(numbers)) {
+      throw new Error("numbers must be an object for grouping/banker modes");
+    }
+    return calcAplGrouping(stake, numbers as Record<string, string[] | number[]>);
+  }
+
+  throw new Error(`Unsupported game mode: ${gameMode}`);
+}
+
 const isArrayInvolved = (array1: string[], array2: string[]): boolean => {
   if (array2.length === 0) return true;
   return array2.every(item => array1.includes(item));
