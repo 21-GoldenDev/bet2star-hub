@@ -125,7 +125,6 @@ export async function POST(req: NextRequest) {
           password: body.password,
           credit_limit: body.credit_limit,
           max_stake: body.max_stake,
-          game_types: body.game_types,
           game_modes: body.game_modes,
           prizes,
           status: "active",

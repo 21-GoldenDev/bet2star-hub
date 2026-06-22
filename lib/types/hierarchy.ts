@@ -1,4 +1,4 @@
-import { GameModeType, GameType } from "./gameMode";
+import { GameType } from "./gameMode";
 
 export interface Staff {
   id: string;
@@ -36,7 +36,6 @@ export interface Terminal {
   password: string;
   credit_limit: number;
   max_stake?: number;
-  game_types?: GameModeType[];
   game_modes?: GameType[];
   prizes?:
     | Array<{

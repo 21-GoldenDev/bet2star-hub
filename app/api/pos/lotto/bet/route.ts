@@ -14,7 +14,7 @@ async function handleBetRequest(request: NextRequest) {
     const input = await parsePosInput(request);
 
     const tsn = pickString(input, "tsn", "TSN", "serial_number", "terminal");
-    const gameId = pickString(input, "gameId", "game_id");
+    const gameId = pickString(input, "gameId", "game_id") || undefined;
     const gameMode = pickString(input, "gameMode", "game_mode", "gameType") as GameModeType;
     const stake = Number(input.stake ?? input.staked ?? input.betAmount);
     const prizeId = pickString(input, "prize", "prize_id", "prizeId") || undefined;
@@ -24,12 +24,6 @@ async function handleBetRequest(request: NextRequest) {
     if (!tsn) {
       return addCORSHeaders(
         NextResponse.json({ error: "tsn is required" }, { status: 400 }),
-      );
-    }
-
-    if (!gameId) {
-      return addCORSHeaders(
-        NextResponse.json({ error: "gameId is required" }, { status: 400 }),
       );
     }
 

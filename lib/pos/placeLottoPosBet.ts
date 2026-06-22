@@ -6,7 +6,7 @@ import type { Prize } from "@/lib/types/prize";
 
 type PlaceLottoPosBetInput = {
   tsn: string;
-  gameId: string;
+  gameId?: string;
   gameMode: GameModeType;
   stake: number;
   under: number[];
@@ -18,6 +18,7 @@ export type PlaceLottoPosBetResult = {
   apl: number;
   stake: number;
   gameMode: GameModeType;
+  gameId: string;
   betId: string;
   betNumber: number;
   tsn: string;
@@ -25,6 +26,49 @@ export type PlaceLottoPosBetResult = {
   remainingCredit: number;
   award: number;
 };
+
+async function resolveActiveLottoGame(supabase: SupabaseClient, gameId?: string) {
+  const now = new Date().toISOString();
+
+  if (gameId) {
+    const { data: game, error } = await supabase
+      .from("games")
+      .select("id, start_time, end_time, visible_numbers")
+      .eq("id", gameId)
+      .eq("type", "lotto")
+      .single();
+
+    if (error || !game) {
+      throw new Error("Lotto game not found");
+    }
+
+    if (game.start_time > now || game.end_time < now) {
+      throw new Error("Lotto game is not active");
+    }
+
+    return game;
+  }
+
+  const { data: games, error } = await supabase
+    .from("games")
+    .select("id, start_time, end_time, visible_numbers")
+    .eq("type", "lotto")
+    .lte("start_time", now)
+    .gte("end_time", now)
+    .order("start_time", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const game = games?.[0];
+  if (!game) {
+    throw new Error("No active lotto game");
+  }
+
+  return game;
+}
 
 async function loadPrize(supabase: SupabaseClient, prizeId?: string): Promise<Prize | null> {
   if (!prizeId) return null;
@@ -60,7 +104,7 @@ export async function placeLottoPosBet(
 
   const { data: terminal, error: terminalError } = await supabase
     .from("terminal")
-    .select("id, serial_number, status, credit_limit, max_stake, game_types, game_modes, prizes")
+    .select("id, serial_number, status, credit_limit, max_stake, game_modes, prizes")
     .eq("serial_number", tsn)
     .maybeSingle();
 
@@ -81,11 +125,6 @@ export async function placeLottoPosBet(
     throw new Error("Terminal is not allowed to place lotto bets");
   }
 
-  const allowedModes = Array.isArray(terminal.game_types) ? terminal.game_types : [];
-  if (allowedModes.length > 0 && !allowedModes.includes(gameMode)) {
-    throw new Error(`Terminal is not allowed to place ${gameMode} bets`);
-  }
-
   const maxStake = Number(terminal.max_stake || 0);
   if (maxStake > 0 && stake > maxStake) {
     throw new Error(`Maximum stake is ${maxStake}`);
@@ -97,20 +136,8 @@ export async function placeLottoPosBet(
   }
 
   const now = new Date().toISOString();
-  const { data: game, error: gameError } = await supabase
-    .from("games")
-    .select("id, start_time, end_time, visible_numbers")
-    .eq("id", gameId)
-    .eq("type", "lotto")
-    .single();
-
-  if (gameError || !game) {
-    throw new Error("Lotto game not found");
-  }
-
-  if (game.start_time > now || game.end_time < now) {
-    throw new Error("Lotto game is not active");
-  }
+  const game = await resolveActiveLottoGame(supabase, gameId);
+  const resolvedGameId = game.id;
 
   const terminalPrizes = normalizeTerminalPrizeEntries(terminal.prizes);
   let resolvedPrizeId = prizeId || getDefaultTerminalPrizeId(terminal.prizes) || undefined;
@@ -127,7 +154,7 @@ export async function placeLottoPosBet(
   const { data: existingBets, error: countError } = await supabase
     .from("bets_lotto")
     .select("bet_id")
-    .eq("game_id", gameId)
+    .eq("game_id", resolvedGameId)
     .order("bet_id", { ascending: false })
     .limit(1);
 
@@ -151,7 +178,7 @@ export async function placeLottoPosBet(
   const { data: bet, error: insertError } = await supabase
     .from("bets_lotto")
     .insert({
-      game_id: gameId,
+      game_id: resolvedGameId,
       bet_id: nextNumber,
       terminal: terminal.id,
       player: null,
@@ -181,7 +208,7 @@ export async function placeLottoPosBet(
     throw new Error("Failed to deduct terminal credit");
   }
 
-  const award = await computeAward(supabase, gameId, bet, resolvedPrizeId);
+  const award = await computeAward(supabase, resolvedGameId, bet, resolvedPrizeId);
   if (award > 0) {
     await supabase.from("bets_lotto").update({ award }).eq("id", bet.id);
   }
@@ -190,6 +217,7 @@ export async function placeLottoPosBet(
     apl: Math.round(apl * 100) / 100,
     stake,
     gameMode,
+    gameId: resolvedGameId,
     betId: bet.id,
     betNumber: nextNumber,
     tsn: terminal.serial_number,

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import clsx from "clsx";
 import { Terminal, Agent, Staff } from "@/lib/types/hierarchy";
-import { gameModes, GameModeType, GameType } from "@/lib/types/gameMode";
+import { GameType } from "@/lib/types/gameMode";
 import { Prize } from "@/lib/types/prize";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +58,6 @@ type TerminalFormState = {
   password: string;
   credit_limit: number;
   max_stake: number;
-  game_types: GameModeType[];
   game_modes: GameType[];
 };
 
@@ -88,7 +87,6 @@ export default function TerminalsPage() {
     password: "",
     credit_limit: 0,
     max_stake: 2000000,
-    game_types: [],
     game_modes: [],
   });
   const [prizeRows, setPrizeRows] = useState<PrizeRow[]>([
@@ -112,7 +110,6 @@ export default function TerminalsPage() {
     return rowsToPrizeRows(serialized);
   };
 
-  const gameTypeOptions = [["under1", "Under 1"], ["under2", "Under 2"]] as const;
   const gameModeOptions: Array<{ value: GameType; label: string }> = [
     { value: "lotto", label: "Lotto" },
     { value: "pools", label: "Pools" },
@@ -172,7 +169,6 @@ export default function TerminalsPage() {
         password: formData.password,
         credit_limit: parseFloat(formData.credit_limit.toString()),
         max_stake: Number(formData.max_stake) || 0,
-        game_types: formData.game_types,
         game_modes: formData.game_modes,
         prizes: sanitizedPrizes,
       };
@@ -292,7 +288,6 @@ export default function TerminalsPage() {
       password: "",
       credit_limit: 0,
       max_stake: 2000000,
-      game_types: [],
       game_modes: [],
     });
     setPrizeRows([{ prize_id: "", commission: 0, status: "active", default: false }]);
@@ -311,7 +306,6 @@ export default function TerminalsPage() {
       password: terminal.password,
       credit_limit: terminal.credit_limit,
       max_stake: terminal.max_stake ?? 0,
-      game_types: terminal.game_types || [],
       game_modes: terminal.game_modes || [],
     });
     setPrizeRows(
@@ -331,15 +325,6 @@ export default function TerminalsPage() {
         name === "credit_limit" || name === "max_stake"
           ? Number(value)
           : value,
-    }));
-  };
-
-  const toggleGameType = (value: GameModeType) => {
-    setFormData((prev) => ({
-      ...prev,
-      game_types: prev.game_types.includes(value)
-        ? prev.game_types.filter((item) => item !== value)
-        : [...prev.game_types, value],
     }));
   };
 
@@ -414,8 +399,6 @@ export default function TerminalsPage() {
   };
 
   const defaultPrizeId = prizeRows.find((r) => r.default && r.prize_id)?.prize_id ?? "";
-
-  const formatGameType = (value: GameModeType) => gameModes[value] || value;
 
   const formatGameMode = (value: GameType) =>
     value === "lotto"
@@ -571,27 +554,6 @@ export default function TerminalsPage() {
                       value={formData.max_stake}
                       onChange={handleInputChange}
                     />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Game Types (Play Styles)</Label>
-                  <div className="grid grid-cols-2 gap-3 rounded-md border p-3">
-                    {gameTypeOptions.map(([value, label]) => (
-                      <div key={value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`game_type_${value}`}
-                          checked={formData.game_types.includes(value)}
-                          onCheckedChange={() => toggleGameType(value)}
-                        />
-                        <Label
-                          htmlFor={`game_type_${value}`}
-                          className="text-sm font-normal"
-                        >
-                          {label}
-                        </Label>
-                      </div>
-                    ))}
                   </div>
                 </div>
 
@@ -776,7 +738,6 @@ export default function TerminalsPage() {
                 <TableHead>Agent</TableHead>
                 <TableHead>Credit Limit</TableHead>
                 <TableHead>Max Stake</TableHead>
-                <TableHead>Game Types</TableHead>
                 <TableHead>Game Modes</TableHead>
                 <TableHead>Prizes</TableHead>
                 <TableHead>Status</TableHead>
@@ -787,7 +748,7 @@ export default function TerminalsPage() {
             <TableBody>
               {filteredTerminals.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="text-center py-8">
+                  <TableCell colSpan={10} className="text-center py-8">
                     {searchQuery || filterAgentId !== "all" || filterStatus !== "all" ? "No terminals found matching your criteria" : "No terminals found"}
                   </TableCell>
                 </TableRow>
@@ -803,10 +764,6 @@ export default function TerminalsPage() {
                     <TableCell>{terminal.credit_limit}</TableCell>
                     <TableCell>
                       {terminal.max_stake ?? 0}
-                    </TableCell>
-                    <TableCell>
-                      {(terminal.game_types || [])
-                        .map((type, index) => <div key={index}>{formatGameType(type)}</div>)}
                     </TableCell>
                     <TableCell>
                       {(terminal.game_modes || [])

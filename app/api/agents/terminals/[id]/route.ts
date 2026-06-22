@@ -47,7 +47,6 @@ export async function PUT(
     if (body.password !== undefined) updateData.password = body.password;
     if (body.credit_limit !== undefined) updateData.credit_limit = body.credit_limit;
     if (body.max_stake !== undefined) updateData.max_stake = body.max_stake;
-    if (body.game_types !== undefined) updateData.game_types = body.game_types;
     if (body.game_modes !== undefined) updateData.game_modes = body.game_modes;
     if (body.prizes !== undefined || body.default_prize_id !== undefined) {
       let prizesInput = body.prizes;
