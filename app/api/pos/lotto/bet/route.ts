@@ -1,21 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
-import { computeLottoApl } from "@/lib/helpers";
+import { placeLottoPosBet } from "@/lib/pos/placeLottoPosBet";
 import { parseNumbers, parseNumberList, parsePosInput, pickString } from "@/lib/pos/parsePosInput";
 import { gameModes, type GameModeType } from "@/lib/types/gameMode";
+import { getServiceClient } from "@/lib/supabase/service";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
 }
 
-async function handleAplRequest(request: NextRequest) {
+async function handleBetRequest(request: NextRequest) {
   try {
     const input = await parsePosInput(request);
 
+    const tsn = pickString(input, "tsn", "TSN", "serial_number", "terminal");
+    const gameId = pickString(input, "gameId", "game_id");
     const gameMode = pickString(input, "gameMode", "game_mode", "gameType") as GameModeType;
     const stake = Number(input.stake ?? input.staked ?? input.betAmount);
+    const prizeId = pickString(input, "prize", "prize_id", "prizeId") || undefined;
     const under = parseNumberList(input.under ?? input.matchAtLeast);
     const numbers = parseNumbers(input.numbers ?? input.selectedNumbers);
+
+    if (!tsn) {
+      return addCORSHeaders(
+        NextResponse.json({ error: "tsn is required" }, { status: 400 }),
+      );
+    }
+
+    if (!gameId) {
+      return addCORSHeaders(
+        NextResponse.json({ error: "gameId is required" }, { status: 400 }),
+      );
+    }
 
     if (!gameMode || !(gameMode in gameModes)) {
       return addCORSHeaders(
@@ -35,30 +51,36 @@ async function handleAplRequest(request: NextRequest) {
       );
     }
 
-    const apl = computeLottoApl(gameMode, stake, under.filter((u) => u > 0), numbers);
+    const supabase = getServiceClient();
+    const result = await placeLottoPosBet(supabase, {
+      tsn,
+      gameId,
+      gameMode,
+      stake,
+      under: under.filter((u) => u > 0),
+      numbers,
+      prizeId,
+    });
 
     return addCORSHeaders(
       NextResponse.json({
         success: true,
-        data: {
-          apl: Math.round(apl * 100) / 100,
-          stake,
-          gameMode,
-        },
+        data: result,
       }),
     );
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to calculate APL";
+    const message = error instanceof Error ? error.message : "Failed to place bet";
+    const status = message.includes("not found") ? 404 : 400;
     return addCORSHeaders(
-      NextResponse.json({ error: message }, { status: 400 }),
+      NextResponse.json({ error: message }, { status }),
     );
   }
 }
 
 export async function GET(request: NextRequest) {
-  return handleAplRequest(request);
+  return handleBetRequest(request);
 }
 
 export async function POST(request: NextRequest) {
-  return handleAplRequest(request);
+  return handleBetRequest(request);
 }
