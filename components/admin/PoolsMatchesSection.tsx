@@ -11,18 +11,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Edit2, Trash2, Loader2, Eye, EyeOff, Search, X } from "lucide-react";
+import { Edit2, Loader2, Eye, EyeOff, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Match } from "@/lib/types/matches";
 
@@ -52,11 +41,7 @@ const EMPTY_FORM = {
 export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }: Props) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
-  const [deletePassword, setDeletePassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -94,11 +79,6 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
     }
   };
 
-  const handleOpenAdd = () => {
-    setFormData({ ...EMPTY_FORM, number: Math.max(...matches.map((m) => m.number), 0) + 1 });
-    setIsAddDialogOpen(true);
-  };
-
   const handleOpenEdit = (match: Match) => {
     setSelectedMatch(match);
     setFormData({
@@ -108,48 +88,6 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
       status: match.status,
     });
     setIsEditDialogOpen(true);
-  };
-
-  const handleCreate = async () => {
-    try {
-      setSubmitting(true);
-      const response = await fetch(`/api/admin/games/${gameId}/pools/matches`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          number: formData.number,
-          home: formData.home,
-          away: formData.away,
-          status: formData.status,
-        }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Match created successfully",
-        });
-        setIsAddDialogOpen(false);
-        setFormData({ ...EMPTY_FORM, number: 1 });
-        fetchMatches();
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to create match",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error creating match:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create match",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const handleSave = async () => {
@@ -196,63 +134,6 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
       });
     } finally {
       setSubmitting(false);
-    }
-  };
-
-  const openDeleteDialog = (matchId: string) => {
-    setMatchToDelete(matchId);
-    setDeletePassword("");
-    setIsDeleteAlertOpen(true);
-  };
-
-  const handleDelete = async () => {
-    if (!matchToDelete) return;
-    if (!deletePassword.trim()) {
-      toast({
-        title: "Password required",
-        description: "Enter the delete password to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const response = await fetch(
-        `/api/admin/games/${gameId}/pools/matches/${matchToDelete}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password: deletePassword }),
-        }
-      );
-      const data = await response.json();
-
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Match deleted successfully",
-        });
-        fetchMatches();
-      } else {
-        toast({
-          title: "Error",
-          description: data.error || "Failed to delete match",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error deleting match:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete match",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-      setIsDeleteAlertOpen(false);
-      setMatchToDelete(null);
-      setDeletePassword("");
     }
   };
 
@@ -310,101 +191,11 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Pools Match Fixtures</h2>
-          <p className="text-muted-foreground mt-2">
-            Manage week {gameWeek} pool matches for this game.
-          </p>
-        </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" disabled={loading}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Match
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Match</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Match Number</Label>
-                <Input
-                  type="number"
-                  value={formData.number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, number: Number(e.target.value) })
-                  }
-                  disabled={submitting}
-                />
-              </div>
-              <div>
-                <Label>Home Team</Label>
-                <Input
-                  type="text"
-                  placeholder="e.g., Manchester United"
-                  value={formData.home}
-                  onChange={(e) => setFormData({ ...formData, home: e.target.value })}
-                  disabled={submitting}
-                />
-              </div>
-              <div>
-                <Label>Away Team</Label>
-                <Input
-                  type="text"
-                  placeholder="e.g., Liverpool"
-                  value={formData.away}
-                  onChange={(e) => setFormData({ ...formData, away: e.target.value })}
-                  disabled={submitting}
-                />
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(v: "enable" | "disable") =>
-                    setFormData({ ...formData, status: v })
-                  }
-                  disabled={submitting}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="enable">Enable</SelectItem>
-                    <SelectItem value="disable">Disable</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Week</Label>
-                <Input type="number" value={gameWeek} disabled />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsAddDialogOpen(false)}
-                  disabled={submitting}
-                >
-                  Cancel
-                </Button>
-                <Button className="flex-1" onClick={handleCreate} disabled={submitting}>
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Match"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div>
+        <h2 className="text-2xl font-bold">Pools Match Fixtures</h2>
+        <p className="text-muted-foreground mt-2">
+          Edit week {gameWeek} pool matches (1–49) for this game.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -501,9 +292,6 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
                 <Button variant="outline" size="sm" onClick={() => handleOpenEdit(match)}>
                   <Edit2 className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => openDeleteDialog(match.id)}>
-                  <Trash2 className="w-4 h-4" />
-                </Button>
               </div>
             )}
           />
@@ -518,14 +306,7 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
           <div className="space-y-4">
             <div>
               <Label>Match Number</Label>
-              <Input
-                type="number"
-                value={formData.number}
-                onChange={(e) =>
-                  setFormData({ ...formData, number: Number(e.target.value) })
-                }
-                disabled={submitting}
-              />
+              <Input type="number" value={formData.number} disabled />
             </div>
             <div>
               <Label>Home Team</Label>
@@ -592,47 +373,6 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
           </div>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog
-        open={isDeleteAlertOpen}
-        onOpenChange={(open) => {
-          setIsDeleteAlertOpen(open);
-          if (!open) {
-            setDeletePassword("");
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the match.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="delete-match-password">Password</Label>
-            <Input
-              id="delete-match-password"
-              type="password"
-              placeholder="Enter password"
-              value={deletePassword}
-              onChange={(e) => setDeletePassword(e.target.value)}
-              disabled={submitting}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={submitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={submitting || !deletePassword.trim()}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {submitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

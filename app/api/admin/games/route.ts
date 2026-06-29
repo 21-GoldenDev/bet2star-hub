@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { buildDefaultPoolsMatches } from "@/lib/pools/defaultMatches";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -155,13 +156,54 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === "pools") {
-      const { error: matchEnableError } = await supabase
+      const { data: previousPoolsGame } = await supabase
+        .from("games")
+        .select("week")
+        .eq("type", "pools")
+        .lt("week", week)
+        .order("week", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let latestWeekTemplates: Array<{ number: number; home: string; away: string }> = [];
+
+      if (previousPoolsGame) {
+        const { data: previousWeekMatches } = await supabase
+          .from("matches")
+          .select("number, home, away")
+          .eq("week", previousPoolsGame.week)
+          .order("number", { ascending: true });
+
+        latestWeekTemplates = previousWeekMatches || [];
+      }
+
+      const defaultMatches = buildDefaultPoolsMatches(week, latestWeekTemplates);
+
+      const { error: clearMatchesError } = await supabase
         .from("matches")
-        .update({ status: "enable" })
+        .delete()
         .eq("week", week);
 
-      if (matchEnableError) {
-        console.error("Error enabling matches for new pools game:", matchEnableError);
+      if (clearMatchesError) {
+        console.error("Error clearing matches for new pools game:", clearMatchesError);
+        await supabase.from("games").delete().eq("id", data.id);
+        return NextResponse.json(
+          { error: "Failed to prepare default pool matches" },
+          { status: 500 }
+        );
+      }
+
+      const { error: matchInsertError } = await supabase
+        .from("matches")
+        .insert(defaultMatches);
+
+      if (matchInsertError) {
+        console.error("Error seeding matches for new pools game:", matchInsertError);
+        await supabase.from("games").delete().eq("id", data.id);
+        return NextResponse.json(
+          { error: "Failed to create default pool matches" },
+          { status: 500 }
+        );
       }
     }
 

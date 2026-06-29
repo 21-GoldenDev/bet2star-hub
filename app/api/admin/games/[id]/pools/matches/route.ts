@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { dedupePoolsMatchesByNumber } from "@/lib/pools/defaultMatches";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -50,7 +51,10 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ matches: data || [] }, { status: 200 });
+    return NextResponse.json(
+      { matches: dedupePoolsMatchesByNumber(data || []) },
+      { status: 200 },
+    );
   } catch (error) {
     console.error("Error fetching pools matches:", error);
     const message = error instanceof Error ? error.message : "Internal server error";

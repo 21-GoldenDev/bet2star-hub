@@ -115,7 +115,7 @@ export async function DELETE(
 
     const { data: game, error: gameError } = await supabase
       .from("games")
-      .select("id, type")
+      .select("id, type, week")
       .eq("id", id)
       .single();
 
@@ -146,6 +146,27 @@ export async function DELETE(
 
       if (betsPoolsDeleteError) {
         return NextResponse.json({ error: betsPoolsDeleteError.message }, { status: 500 });
+      }
+
+      const { count: poolsGamesForWeek, error: poolsGamesCountError } = await supabase
+        .from("games")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "pools")
+        .eq("week", game.week);
+
+      if (poolsGamesCountError) {
+        return NextResponse.json({ error: poolsGamesCountError.message }, { status: 500 });
+      }
+
+      if (poolsGamesForWeek === 1) {
+        const { error: matchesDeleteError } = await supabase
+          .from("matches")
+          .delete()
+          .eq("week", game.week);
+
+        if (matchesDeleteError) {
+          return NextResponse.json({ error: matchesDeleteError.message }, { status: 500 });
+        }
       }
     }
 

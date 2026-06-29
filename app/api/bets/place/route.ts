@@ -8,6 +8,7 @@ import {
   computePoolsAward,
 } from '@/lib/helpers';
 import { getGamePrizeException } from '@/lib/admin/syncTerminalPrizesFromGame';
+import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
 import { Prize } from '@/lib/types/prize';
 
 export async function OPTIONS(request: NextRequest) {
@@ -442,17 +443,26 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
 async function placePoolsBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
   const { selectedMatches, matchAtLeast, gameMode, prize } = betData;
 
+  const { data: gameData, error: gameError } = await supabase
+    .from("games")
+    .select("week")
+    .eq("id", gameId)
+    .single();
+
+  if (gameError) throw gameError;
+
   const { data: matchData, error: matchError } = await supabase
     .from("matches")
     .select("*")
     .eq("status", "enable")
-    .order("created_at", { ascending: false });
+    .eq("week", gameData.week)
+    .order("number", { ascending: true });
 
   if (matchError) throw matchError;
 
   const visibleMatches: string[] =
-    matchData?.map((match: { number: number }) => match.number).sort((a: number, b: number) => a - b)
-    || Array.from({ length: 49 }, (_, i) => i + 1);
+    dedupePoolsMatchesByNumber(matchData || []).map((match) => String(match.number))
+    || Array.from({ length: 49 }, (_, i) => String(i + 1));
 
   const { data: existingBets, error: countError } = await supabase
     .from('bets_pools')
