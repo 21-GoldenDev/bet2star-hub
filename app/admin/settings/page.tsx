@@ -21,7 +21,6 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [settings, setSettings] = useState({
     siteName: "Bet2Star",
-    siteEmail: "support@bet2star.com",
     maintenanceMode: false,
     maintenanceMessage: "",
     maxBetAmount: 100000,
@@ -60,6 +59,12 @@ export default function SettingsPage() {
   const [terminalCreditLoading, setTerminalCreditLoading] = useState(false);
   const [generalSaveLoading, setGeneralSaveLoading] = useState(false);
   const [generalSettingsLoading, setGeneralSettingsLoading] = useState(true);
+  const [contactSettings, setContactSettings] = useState({
+    email: "",
+    phone: "",
+  });
+  const [contactSaveLoading, setContactSaveLoading] = useState(false);
+  const [contactSettingsLoading, setContactSettingsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -91,6 +96,34 @@ export default function SettingsPage() {
     };
 
     loadGeneralSettings();
+  }, [toast]);
+
+  useEffect(() => {
+    const loadContactSettings = async () => {
+      try {
+        const response = await fetch("/api/admin/settings/contact");
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.error || "Failed to load contact settings.");
+        }
+
+        setContactSettings({
+          email: result.email || "",
+          phone: result.phone || "",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Failed to load contact settings",
+          description: error?.message || "Could not load contact details.",
+          variant: "destructive",
+        });
+      } finally {
+        setContactSettingsLoading(false);
+      }
+    };
+
+    loadContactSettings();
   }, [toast]);
 
   const handleSaveGeneral = async () => {
@@ -132,6 +165,53 @@ export default function SettingsPage() {
       });
     } finally {
       setGeneralSaveLoading(false);
+    }
+  };
+
+  const handleSaveContact = async () => {
+    const email = contactSettings.email.trim();
+    const phone = contactSettings.phone.trim();
+
+    if (!email && !phone) {
+      toast({
+        title: "Missing contact details",
+        description: "Enter at least a contact email or phone number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setContactSaveLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/settings/contact", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, phone }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Failed to save contact settings.");
+      }
+
+      setContactSettings({
+        email: result.email || "",
+        phone: result.phone || "",
+      });
+
+      toast({
+        title: "Contact details saved",
+        description: "Users will see these details in the Contact Us section.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to save contact details",
+        description: error?.message || "Failed to save contact settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setContactSaveLoading(false);
     }
   };
 
@@ -249,16 +329,6 @@ export default function SettingsPage() {
                       value={settings.siteName}
                       onChange={(e) =>
                         setSettings({ ...settings, siteName: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-2">Support Email</Label>
-                    <Input
-                      type="email"
-                      value={settings.siteEmail}
-                      onChange={(e) =>
-                        setSettings({ ...settings, siteEmail: e.target.value })
                       }
                     />
                   </div>
@@ -387,6 +457,57 @@ export default function SettingsPage() {
               >
                 <Save className="w-4 h-4 mr-2" />
                 {generalSaveLoading ? "Saving..." : "Save Settings"}
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h3 className="text-lg font-bold mb-2">Contact Us</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              These details are shown to users in the site footer.
+            </p>
+
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2">Contact Email</Label>
+                  <Input
+                    type="email"
+                    value={contactSettings.email}
+                    onChange={(e) =>
+                      setContactSettings({
+                        ...contactSettings,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="support@bet2star.com"
+                    disabled={contactSettingsLoading}
+                  />
+                </div>
+                <div>
+                  <Label className="mb-2">Contact Phone</Label>
+                  <Input
+                    type="tel"
+                    value={contactSettings.phone}
+                    onChange={(e) =>
+                      setContactSettings({
+                        ...contactSettings,
+                        phone: e.target.value,
+                      })
+                    }
+                    placeholder="+234 800 000 0000"
+                    disabled={contactSettingsLoading}
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveContact}
+                className="w-full"
+                disabled={contactSaveLoading || contactSettingsLoading}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {contactSaveLoading ? "Saving..." : "Save Contact Details"}
               </Button>
             </div>
           </Card>

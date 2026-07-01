@@ -5,7 +5,6 @@ import { Hash, Type, Trophy, Sparkles, TrendingUp, Shield } from "lucide-react";
 import GameCard from "@/components/GameCard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import useAdminRole from "@/hooks/use-admin-role";
 
@@ -133,24 +132,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-4 border-t border-border/50">
-        <div className="container mx-auto">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Image
-                src="/logo2.png"
-                alt="Logo"
-                width={250}
-                height={33}
-              />
-            </div>
-            <p className="text-muted-foreground text-sm">
-              © 2025 bet2star. All rights reserved. Play responsibly.
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

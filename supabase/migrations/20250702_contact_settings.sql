@@ -1,0 +1,3 @@
+ALTER TABLE platform_settings
+  ADD COLUMN IF NOT EXISTS contact_email TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS contact_phone TEXT NOT NULL DEFAULT '';

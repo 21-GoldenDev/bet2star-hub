@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
+import SiteFooter from "@/components/SiteFooter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +32,11 @@ export default function RootLayout({
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </head>
       <body className={clsx(geistSans.variable, geistMono.variable, "antialiased")}>
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background flex flex-col">
           <Navbar />
           <Providers>
-            {children}
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
           </Providers>
         </div>
       </body>
