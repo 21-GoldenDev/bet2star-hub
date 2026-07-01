@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -408,11 +408,31 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
         ? expiredMatches
         : processedMatches;
 
+  const drawResultNumbers = useMemo(() => {
+    if (!drawMode) return [];
+    return sports
+      .filter((match) => {
+        const homeGoal = Number(match.home_goal);
+        const awayGoal = Number(match.away_goal);
+        return Number.isFinite(homeGoal) && Number.isFinite(awayGoal) && homeGoal === awayGoal;
+      })
+      .map((match) => match.number)
+      .sort((a, b) => a - b);
+  }, [sports, drawMode]);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold">Sports Matches</h2>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <h2 className="text-2xl font-bold">Sports Matches</h2>
+            {drawMode && drawResultNumbers.length > 0 && (
+              <span className="text-1xl font-bold text-muted-foreground">
+                result={drawResultNumbers.join("-")} ={drawResultNumbers.length} draw
+                {drawResultNumbers.length === 1 ? "" : "s"}
+              </span>
+            )}
+          </div>
           <p className="text-muted-foreground mt-1">Manage matches and goals for this sports game</p>
         </div>
         <div className="flex items-center gap-2">
