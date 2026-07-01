@@ -181,12 +181,17 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
   const filteredMatches = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return matches;
-    return matches.filter(
-      (m) =>
-        String(m.number).includes(term) ||
+
+    const isNumeric = /^\d+$/.test(term);
+    return matches.filter((m) => {
+      if (isNumeric) {
+        return String(m.number) === term;
+      }
+      return (
         m.home.toLowerCase().includes(term) ||
         m.away.toLowerCase().includes(term)
-    );
+      );
+    });
   }, [matches, searchTerm]);
 
   return (
