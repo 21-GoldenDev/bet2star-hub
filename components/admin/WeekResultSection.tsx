@@ -122,6 +122,13 @@ export default function WeekResultSection({
               />
             </span>
           ))}
+          {weekResult.length > 0 && (
+            <span className="text-sm text-muted-foreground ml-1">
+              {gameType === "lotto"
+                ? `${weekResult.length} number${weekResult.length === 1 ? "" : "s"}`
+                : `${weekResult.length} match${weekResult.length === 1 ? "" : "es"}`}
+            </span>
+          )}
         </div>
       </div>
       <div className="mt-4">
