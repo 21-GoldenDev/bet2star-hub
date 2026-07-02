@@ -9,14 +9,20 @@ export type GamePrizeEntry = {
   id: string;
   status?: "active" | "inactive";
   commission?: number;
-  /** Pools only: result number excluded from award matching for this prize. */
+  /** Pools only: result number(s) excluded from award matching for this prize. */
   exception?: string;
 };
 
 export function normalizeException(value: unknown): string | undefined {
   if (value === null || value === undefined) return undefined;
   const str = String(value).trim();
-  return str.length > 0 ? str : undefined;
+  if (str.length === 0) return undefined;
+  const parts = str
+    .split(/[,;\s]+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+  if (parts.length === 0) return undefined;
+  return parts.join(",");
 }
 
 export function getGamePrizeException(

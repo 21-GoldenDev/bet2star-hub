@@ -412,11 +412,11 @@ export default function PrizesSection({
                           exception: e.target.value,
                         })
                       }
-                      // placeholder="e.g. 67"
+                      placeholder="e.g. 6,7,8,9"
                       disabled={submitting}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Result number ignored when calculating awards for this prize
+                      Result numbers ignored for matching; each also reduces the draw count used for prize lookup
                     </p>
                   </div>
                 </>
@@ -579,11 +579,11 @@ export default function PrizesSection({
                         exception: e.target.value,
                       })
                     }
-                    placeholder="e.g. 67"
+                    placeholder="e.g. 6,7,8,9"
                     disabled={submitting}
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    Result number ignored when calculating awards for this prize
+                    Result numbers ignored for matching; each also reduces the draw count used for prize lookup
                   </p>
                 </div>
               </>

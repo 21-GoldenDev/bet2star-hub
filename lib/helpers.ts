@@ -288,14 +288,32 @@ export function computeLottoAward(
   return award;
 }
 
-/** Remove a pools result exception number before matching (draw count uses the original result). */
+/** Parse comma/whitespace-separated pools result exception numbers. */
+export function parseResultExceptions(exception?: string | null): string[] {
+  if (!exception) return [];
+  return String(exception)
+    .split(/[,;\s]+/)
+    .map((n) => n.trim())
+    .filter(Boolean);
+}
+
+/** Draw count for prize table lookup: total results minus listed exceptions. */
+export function getEffectiveDrawCount(
+  weekResult: Array<string | number>,
+  exception?: string | null,
+): number {
+  const exceptions = parseResultExceptions(exception);
+  return Math.max(0, weekResult.length - exceptions.length);
+}
+
+/** Remove pools result exception numbers before matching. */
 export function applyResultException(
   weekResult: Array<string | number>,
   exception?: string | null,
 ): string[] {
-  if (!exception) return weekResult.map(String);
-  const exclude = String(exception);
-  return weekResult.map(String).filter((n) => n !== exclude);
+  const exclude = new Set(parseResultExceptions(exception));
+  if (exclude.size === 0) return weekResult.map(String);
+  return weekResult.map(String).filter((n) => !exclude.has(n));
 }
 
 export function computePoolsAward(
@@ -309,6 +327,7 @@ export function computePoolsAward(
   if (bet.status === "void") return bet.staked || 0;
 
   const matchResult = applyResultException(weekResult, resultException);
+  const effectiveDrawCount = getEffectiveDrawCount(weekResult, resultException);
 
   if (bet.gameType === "turbo") {
     let turboPrize: number[];
@@ -345,7 +364,7 @@ export function computePoolsAward(
       const parsedDraw = parseDraws(drawKey);
       if (!parsedDraw) return;
       const { start, end } = parsedDraw;
-      if (weekResult.length < start || weekResult.length > end) return;
+      if (effectiveDrawCount < start || effectiveDrawCount > end) return;
 
       const columnIndex = bet.gameType === "under1" ? 0 : 1;
       const multiplier = (prize.data?.data?.[drawKey]?.[columnIndex] || 0) as number;
@@ -365,7 +384,7 @@ export function computePoolsAward(
     const parsedDraw = parseDraws(drawKey);
     if (!parsedDraw) return;
     const { start, end } = parsedDraw;
-    if (weekResult.length < start || weekResult.length > end) return;
+    if (effectiveDrawCount < start || effectiveDrawCount > end) return;
 
     let multiplier = 0;
     if (isNapPerm) {
