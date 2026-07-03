@@ -55,7 +55,7 @@ export async function authenticatePosLogin(
   const { data: terminal, error: terminalError } = await supabase
     .from("terminal")
     .select(
-      "id, serial_number, password, status, credit_limit, max_stake, game_modes, prizes, default_prize_id, agent_id",
+      "id, serial_number, password, status, credit_limit, max_stake, game_modes, prizes, agent_id",
     )
     .eq("serial_number", normalizedSerial)
     .maybeSingle();
@@ -95,10 +95,7 @@ export async function authenticatePosLogin(
     throw new Error("Assigned agent is inactive.");
   }
 
-  const prizeEntries = normalizeTerminalPrizeEntries(
-    terminal.prizes,
-    terminal.default_prize_id,
-  );
+  const prizeEntries = normalizeTerminalPrizeEntries(terminal.prizes);
   const activePrizeIds = prizeEntries
     .filter(isTerminalPrizeActive)
     .map((entry) => entry.prize_id);
