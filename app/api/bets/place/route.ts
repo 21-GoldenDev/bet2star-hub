@@ -9,6 +9,7 @@ import {
 } from '@/lib/helpers';
 import { getGamePrizeException } from '@/lib/admin/syncTerminalPrizesFromGame';
 import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
+import { flattenSportsMatchNumbers } from '@/lib/bets/sportsCombinations';
 import { Prize } from '@/lib/types/prize';
 
 export async function OPTIONS(request: NextRequest) {
@@ -169,18 +170,33 @@ async function placeSportsBet(
   betAmount: number,
   betData: any,
 ) {
-  const { selections, under, mode } = betData;
+  const { under, mode } = betData;
+  let selections = betData.selections;
 
   const normalizedMode = typeof mode === 'string' ? mode.toLowerCase() : '';
-  if (!['direct', 'permutation'].includes(normalizedMode)) {
-    throw new Error('Invalid mode. Must be "direct" or "permutation"');
+  const allowedModes = ['direct', 'permutation', 'grouping', 'one_banker'];
+  if (!allowedModes.includes(normalizedMode)) {
+    throw new Error('Invalid mode. Must be "direct", "permutation", "grouping", or "one_banker"');
   }
 
-  if (normalizedMode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
+  if (normalizedMode === 'grouping') {
+    if (!betData.grouping?.selectedUs?.length || !betData.grouping?.groupSelections) {
+      throw new Error('Grouping mode requires grouping data');
+    }
+    selections = betData.grouping.groupSelections;
+    if (!Array.isArray(under) || under.length !== 1) {
+      throw new Error('For grouping mode, "under" must be an array with a single total-under value');
+    }
+  } else if (normalizedMode === 'one_banker') {
+    if (!selections || typeof selections !== 'object') {
+      throw new Error('One banker mode requires selections');
+    }
+    if (!Array.isArray(under) || under.length !== 1 || under[0] !== 2) {
+      throw new Error('For one_banker mode, "under" must be [2]');
+    }
+  } else if (normalizedMode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
     throw new Error('For permutation mode, "under" must be a non-empty array');
-  }
-
-  if (normalizedMode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
+  } else if (normalizedMode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
     throw new Error('For direct mode, "under" must be an array with a single value');
   }
 
@@ -312,15 +328,13 @@ async function placeSportsDrawBet(
 async function validateSportsSelectionsAvailability(
   supabase: any,
   gameId: string,
-  selections: Record<string, string[]>,
+  selections: Record<string, unknown>,
 ) {
   if (!selections || typeof selections !== 'object') {
     throw new Error('Invalid selections');
   }
 
-  const selectedNumbers = Object.keys(selections)
-    .map((key) => Number(key))
-    .filter((value) => Number.isFinite(value));
+  const selectedNumbers = flattenSportsMatchNumbers(selections as any);
 
   if (selectedNumbers.length === 0) {
     throw new Error('No matches selected');
@@ -551,7 +565,7 @@ async function computeSportsAward(
     }
 
     const selections = bet?.selections || {};
-    const matchNumbers = Object.keys(selections);
+    const matchNumbers = flattenSportsMatchNumbers(selections);
     if (matchNumbers.length === 0) return 0;
 
     const matchesWithScores = matches.filter((m: any) =>
@@ -559,7 +573,7 @@ async function computeSportsAward(
     );
 
     const allSelectedHaveScores = matchNumbers.every((num) =>
-      matchesWithScores.some((m: any) => m.number === Number(num))
+      matchesWithScores.some((m: any) => m.number === num)
     );
 
     if (!allSelectedHaveScores) return 0;

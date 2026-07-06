@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { Game } from "@/lib/types/game";
 import { SportsMatch } from "@/lib/types/sports";
 import BettingAccessGate from "@/components/BettingAccessGate";
+import SportsGrouping from "@/components/sports/Grouping";
+import SportsOneBanker from "@/components/sports/OneBanker";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
 
@@ -40,7 +42,7 @@ const Football = () => {
   const [selectedBets, setSelectedBets] = useState<BetSelection[]>([]);
   const [betAmount, setBetAmount] = useState<number>(5000);
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([]);
-  const [mode, setMode] = useState<"direct" | "permutation">("direct");
+  const [mode, setMode] = useState<"direct" | "permutation" | "grouping" | "one_banker">("direct");
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -398,25 +400,50 @@ const Football = () => {
             </div>
           ) : (
             <>
+              <div className="mb-4 p-4 rounded-xl bg-card border border-border max-w-xs">
+                <RadioGroup
+                  value={mode}
+                  onValueChange={(val) => setMode(val as typeof mode)}
+                >
+                  <label className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem id="mode-direct-top" value="direct" />
+                    <span className="text-sm">Direct</span>
+                  </label>
+                  <label className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem id="mode-permutation-top" value="permutation" />
+                    <span className="text-sm">Permutation</span>
+                  </label>
+                  <label className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem id="mode-grouping-top" value="grouping" />
+                    <span className="text-sm">Grouping</span>
+                  </label>
+                  {/* <label className="cursor-pointer flex items-center gap-2">
+                    <RadioGroupItem id="mode-one-banker-top" value="one_banker" />
+                    <span className="text-sm">1 Against</span>
+                  </label> */}
+                </RadioGroup>
+              </div>
+
+              {mode === "grouping" ? (
+                <SportsGrouping
+                  matches={matches}
+                  groupedMatches={groupedMatches}
+                  matchNumberMap={matchNumberMap}
+                  activeGame={activeGame}
+                  onBetPlaced={() => {}}
+                />
+              ) : mode === "one_banker" ? (
+                <SportsOneBanker
+                  matches={matches}
+                  groupedMatches={groupedMatches}
+                  matchNumberMap={matchNumberMap}
+                  activeGame={activeGame}
+                  onBetPlaced={() => {}}
+                />
+              ) : (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Column 1: Match at Least */}
                 <div className="lg:col-span-2">
-                  <div className="p-4 rounded-xl bg-card border border-border">
-                    <RadioGroup
-                      value={mode}
-                      onValueChange={(val) => setMode(val as "direct" | "permutation")}
-                    >
-                      <label className="cursor-pointer flex items-center gap-2">
-                        <RadioGroupItem id="mode-direct" value="direct" />
-                        <span className="text-sm">Direct</span>
-                      </label>
-                      <label className="cursor-pointer flex items-center gap-2">
-                        <RadioGroupItem id="mode-permutation" value="permutation" />
-                        <span className="text-sm">Permutation</span>
-                      </label>
-                    </RadioGroup>
-                  </div>
-
                   {mode === "permutation" && (
                     <div className="p-4 rounded-xl bg-card border border-border mt-3">
                       <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
@@ -657,6 +684,7 @@ const Football = () => {
                   </div>
                 </div>
               </div>
+              )}
             </>
           )}
         </div>

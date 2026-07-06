@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
+import { calcSportsGroupedApl, flattenSportsMatchNumbers, isGroupedSportsSelections } from "@/lib/bets/sportsCombinations";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -270,13 +271,31 @@ const formatPrize = (value: BetRecord["prize"]) => {
 
 const formatMode = (mode?: string) => {
   if (!mode) return "-";
-  return mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
+  const labels: Record<string, string> = {
+    direct: "Direct",
+    permutation: "Permutation",
+    grouping: "Grouping",
+    one_banker: "1 Against",
+  };
+  return labels[mode.toLowerCase()] || mode.charAt(0).toUpperCase() + mode.slice(1).toLowerCase();
 };
 
 const resolveApl = (bet: BetRecord, tab: BetTab) => {
   const staked = Number(bet.staked) || 0;
 
   if (tab === "sports" || tab === "sports-draw") {
+    const selections = bet.selections as Record<string, unknown> | undefined;
+    if (selections && isGroupedSportsSelections(selections as any)) {
+      const groups: Record<string, string[]> = {};
+      for (const [key, group] of Object.entries(selections)) {
+        groups[key] = Object.keys(group as Record<string, unknown>);
+      }
+      return calcSportsGroupedApl(staked, groups);
+    }
+    const flatCount = flattenSportsMatchNumbers((selections || {}) as any).length;
+    if (flatCount > 0 && Array.isArray(bet.under)) {
+      return calcAplDirect(staked, bet.under as number[], flatCount);
+    }
     return staked;
   }
 
@@ -500,14 +519,54 @@ const renderDetailedSelection = (row: BetRow) => {
 
 const renderSportsSelectionDetails = (row: BetRow, dataMatches: Record<string, MatchInfo[]>) => {
   const gameId = row.gameId || "";
-  const selections = row.selections && typeof row.selections === "object"
-    ? (row.selections as Record<string, string[]>)
-    : {};
+  const selections = row.selections;
   const optionLabels = row.tab === "sports-draw" ? sportsDrawOptionLabels : sportsOptionLabels;
+
+  if (selections && isGroupedSportsSelections(selections as any)) {
+    return (
+      <div className="space-y-4">
+        {Object.entries(selections).map(([gid, group], index) => {
+          const groupLabel = String.fromCharCode(65 + index);
+          return (
+            <div key={gid} className="space-y-2">
+              <p className="text-sm font-semibold">
+                Group {groupLabel}: Under {gid.split("-")[0] || "-"}
+              </p>
+              <div className="space-y-2 ml-2">
+                {Object.entries(group).map(([matchNum, options]) => {
+                  const matches = dataMatches[gameId] || [];
+                  const match = matches.find((item) => item.number.toString() === matchNum.toString());
+                  return (
+                    <div key={matchNum} className="border rounded-md p-3 bg-card text-sm">
+                      <span className="font-semibold text-primary">#{matchNum}</span>
+                      {match && (
+                        <span className="text-muted-foreground ml-2">
+                          {match.home} vs {match.away}
+                        </span>
+                      )}
+                      <div className="mt-1 flex gap-2">
+                        {(options as string[]).map((opt) => (
+                          <span key={opt} className="px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-xs">
+                            {optionLabels[opt] || opt}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const flatSelections = (selections && typeof selections === "object" ? selections : {}) as Record<string, string[]>;
 
   return (
     <div className="space-y-2">
-      {Object.entries(selections)
+      {Object.entries(flatSelections)
         .map(([matchNum, odds]) => {
           const matches = dataMatches[gameId] || [];
           const match = matches.find((item) => item.number.toString() === matchNum.toString());

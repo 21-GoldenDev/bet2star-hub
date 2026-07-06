@@ -1,3 +1,7 @@
+import {
+  calculateSportsGroupedReward,
+  isGroupedSportsSelections,
+} from "./bets/sportsCombinations";
 import { Prize } from "./types/prize";
 
 export function formatLottoWeekLabel(week: number, gameName?: string | null): string {
@@ -131,9 +135,17 @@ export type TurboPrize = {
 export function calculateBetReward(bet: any, matches: any[], drawMode?: boolean): number {
   if (!bet || bet.status === "void" || bet.status !== "active") return 0;
 
-  const sportOptions = drawMode ? ["D"] : ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
-
   const selections = bet.selections || {};
+  const mode = typeof bet.mode === "string" ? bet.mode.toLowerCase() : "";
+
+  if (
+    (mode === "grouping" || mode === "one_banker") &&
+    isGroupedSportsSelections(selections)
+  ) {
+    return calculateSportsGroupedReward(bet, matches, drawMode);
+  }
+
+  const sportOptions = drawMode ? ["D"] : ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
   const matchNumbers = Object.keys(selections);
   const selectedMatchCount = matchNumbers.length;
 

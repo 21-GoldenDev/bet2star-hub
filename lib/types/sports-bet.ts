@@ -2,7 +2,11 @@ export interface SportsBetSelection {
   [match_number: number]: string[];
 }
 
-export type SportsBetMode = "direct" | "permutation";
+export type SportsBetMode = "direct" | "permutation" | "grouping" | "one_banker";
+
+export type SportsFlatSelections = Record<string, string[]>;
+export type SportsGroupedSelections = Record<string, SportsFlatSelections>;
+export type SportsBetSelections = SportsFlatSelections | SportsGroupedSelections;
 
 export interface SportsBet {
   id: string;
@@ -19,7 +23,7 @@ export interface SportsBet {
   terminal: string;
   bet_time: string;
   status: string;
-  selections: SportsBetSelection;
+  selections: SportsBetSelections;
   award?: number;
   same?: number;
   tsn?: string;
@@ -37,5 +41,5 @@ export interface CreateSportsBetInput {
   terminal: string;
   bet_time: string;
   status: string;
-  selections: SportsBetSelection;
+  selections: SportsBetSelections;
 }
