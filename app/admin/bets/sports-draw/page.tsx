@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Trash2, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
+import { calcSportsGroupedApl, flattenSportsMatchNumbers, isGroupedSportsSelections } from "@/lib/bets/sportsCombinations";
 import { useToast } from "@/hooks/use-toast";
 import useAdminRole from "@/hooks/use-admin-role";
 import { cn } from "@/lib/utils";
@@ -62,10 +63,18 @@ const combination = (n: number, r: number): number => {
 
 
 function calculateAplForSportsBet(bet: SportsBet) {
-  const numLines = bet.under.reduce((acc, val) => acc + combination(Object.values(bet.selections).length, val), 0);
+  const staked = Number(bet.staked) || 0;
+  if (isGroupedSportsSelections(bet.selections)) {
+    const groups: Record<string, string[]> = {};
+    for (const [key, group] of Object.entries(bet.selections)) {
+      groups[key] = Object.keys(group);
+    }
+    return calcSportsGroupedApl(staked, groups);
+  }
+  const flatCount = flattenSportsMatchNumbers(bet.selections || {}).length;
+  const numLines = (bet.under || []).reduce((acc, val) => acc + combination(flatCount, val), 0);
   if (numLines === 0) return 0;
-  const apl = (Number(bet.staked) || 0) / numLines;
-  return apl;
+  return staked / numLines;
 }
 
 const optionLabels: Record<string, string> = {
@@ -78,7 +87,7 @@ export default function SportsDrawPage() {
   const [loading, setLoading] = useState(true);
   const [weekFilter, setWeekFilter] = useState<number | "">("");
   const [weeksAll, setWeeksAll] = useState<number[]>([]);
-  const [gameFilter, setGameFilter] = useState<"all" | "direct" | "permutation">("all");
+  const [gameFilter, setGameFilter] = useState<"all" | "direct" | "permutation" | "grouping" | "one_banker">("all");
   const [sameBetFilter, setSameBetFilter] = useState<string>("");
   const [tsnFilter, setTsnFilter] = useState<string>("");
   const [betIdFilter, setBetIdFilter] = useState<string>("");

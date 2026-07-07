@@ -9,7 +9,7 @@ import {
 } from '@/lib/helpers';
 import { getGamePrizeException } from '@/lib/admin/syncTerminalPrizesFromGame';
 import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
-import { flattenSportsMatchNumbers } from '@/lib/bets/sportsCombinations';
+import { flattenSportsMatchNumbers, validateDrawOnlySelections } from '@/lib/bets/sportsCombinations';
 import { Prize } from '@/lib/types/prize';
 
 export async function OPTIONS(request: NextRequest) {
@@ -252,18 +252,33 @@ async function placeSportsDrawBet(
   betAmount: number,
   betData: any,
 ) {
-  const { selections, under, mode, sourceGameId } = betData;
+  const { under, mode } = betData;
+  let selections = betData.selections;
 
   const normalizedMode = typeof mode === 'string' ? mode.toLowerCase() : '';
-  if (!['direct', 'permutation'].includes(normalizedMode)) {
-    throw new Error('Invalid mode. Must be "direct" or "permutation"');
+  const allowedModes = ['direct', 'permutation', 'grouping', 'one_banker'];
+  if (!allowedModes.includes(normalizedMode)) {
+    throw new Error('Invalid mode. Must be "direct", "permutation", "grouping", or "one_banker"');
   }
 
-  if (normalizedMode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
+  if (normalizedMode === 'grouping') {
+    if (!betData.grouping?.selectedUs?.length || !betData.grouping?.groupSelections) {
+      throw new Error('Grouping mode requires grouping data');
+    }
+    selections = betData.grouping.groupSelections;
+    if (!Array.isArray(under) || under.length !== 1) {
+      throw new Error('For grouping mode, "under" must be an array with a single total-under value');
+    }
+  } else if (normalizedMode === 'one_banker') {
+    if (!selections || typeof selections !== 'object') {
+      throw new Error('One banker mode requires selections');
+    }
+    if (!Array.isArray(under) || under.length !== 1 || under[0] !== 2) {
+      throw new Error('For one_banker mode, "under" must be [2]');
+    }
+  } else if (normalizedMode === 'permutation' && (!Array.isArray(under) || under.length === 0)) {
     throw new Error('For permutation mode, "under" must be a non-empty array');
-  }
-
-  if (normalizedMode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
+  } else if (normalizedMode === 'direct' && (!Array.isArray(under) || under.length !== 1)) {
     throw new Error('For direct mode, "under" must be an array with a single value');
   }
 
@@ -271,11 +286,7 @@ async function placeSportsDrawBet(
     throw new Error('Invalid selections for sports draw');
   }
 
-  const hasOnlyDrawSelections = Object.values(selections).every((options: any) =>
-    Array.isArray(options) && options.length > 0 && options.every((opt) => opt === 'D')
-  );
-
-  if (!hasOnlyDrawSelections) {
+  if (!validateDrawOnlySelections(selections)) {
     throw new Error('Sports draw selections must contain only draw (D) options');
   }
 

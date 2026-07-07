@@ -13,6 +13,21 @@ export function isGroupedSportsSelections(
   return values.some((v) => v && typeof v === "object" && !Array.isArray(v));
 }
 
+export function validateDrawOnlySelections(
+  selections: SportsFlatSelections | SportsGroupedSelections,
+): boolean {
+  if (isGroupedSportsSelections(selections)) {
+    return Object.values(selections).every((group) =>
+      Object.values(group).every(
+        (opts) => Array.isArray(opts) && opts.length > 0 && opts.every((o) => o === "D"),
+      ),
+    );
+  }
+  return Object.values(selections).every(
+    (opts) => Array.isArray(opts) && opts.length > 0 && opts.every((o) => o === "D"),
+  );
+}
+
 export function flattenSportsMatchNumbers(
   selections: SportsFlatSelections | SportsGroupedSelections,
 ): number[] {
