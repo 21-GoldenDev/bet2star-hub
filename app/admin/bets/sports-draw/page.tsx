@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { Trash2, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { SportsBet } from "@/lib/types/sports-bet";
-import { calcSportsGroupedApl, flattenSportsMatchNumbers, isGroupedSportsSelections } from "@/lib/bets/sportsCombinations";
+import { calcSportsGroupedApl, calcSportsPermutationLines, flattenSportsMatchNumbers, isGroupedSportsSelections } from "@/lib/bets/sportsCombinations";
 import { useToast } from "@/hooks/use-toast";
 import useAdminRole from "@/hooks/use-admin-role";
 import { cn } from "@/lib/utils";
@@ -51,17 +51,6 @@ function formatDateIso(iso?: string) {
   return new Date(iso).toLocaleString();
 }
 
-const factorial = (n: number): number => {
-  if (n <= 1) return 1;
-  return n * factorial(n - 1);
-};
-
-const combination = (n: number, r: number): number => {
-  if (r > n) return 0;
-  return factorial(n) / (factorial(r) * factorial(n - r));
-};
-
-
 function calculateAplForSportsBet(bet: SportsBet) {
   const staked = Number(bet.staked) || 0;
   if (isGroupedSportsSelections(bet.selections)) {
@@ -72,7 +61,7 @@ function calculateAplForSportsBet(bet: SportsBet) {
     return calcSportsGroupedApl(staked, groups);
   }
   const flatCount = flattenSportsMatchNumbers(bet.selections || {}).length;
-  const numLines = (bet.under || []).reduce((acc, val) => acc + combination(flatCount, val), 0);
+  const numLines = calcSportsPermutationLines(flatCount, bet.under || []);
   if (numLines === 0) return 0;
   return staked / numLines;
 }

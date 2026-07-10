@@ -17,6 +17,10 @@ import SportsGrouping from "@/components/sports/Grouping";
 import SportsOneBanker from "@/components/sports/OneBanker";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
+import {
+  buildSportsPermutationLegOdds,
+  previewSportsPermutationWinnings,
+} from "@/lib/bets/sportsCombinations";
 
 type BetOptionKey = "H" | "D" | "A" | "1X" | "12" | "X2" | "O25" | "U25" | "GG";
 
@@ -160,70 +164,10 @@ const Football = () => {
 
   const totalOdds = selectedBets.reduce((acc, bet) => acc * bet.odds, 1);
 
-  const factorial = (n: number): number => {
-    if (n <= 1) return 1;
-    return n * factorial(n - 1);
-  };
-
-  const combination = (n: number, r: number): number => {
-    if (r > n) return 0;
-    return factorial(n) / (factorial(r) * factorial(n - r));
-  };
-
-  const generateCombinations = (array: any[], length: number): any[][] => {
-    if (length === 0) return [[]];
-    if (length > array.length) return [];
-    if (length === 1) return array.map(item => [item]);
-
-    const result: any[][] = [];
-    for (let i = 0; i <= array.length - length; i++) {
-      const head = array[i];
-      const tail = generateCombinations(array.slice(i + 1), length - 1);
-      result.push(...tail.map(combination => [head, ...combination]));
-    }
-    return result;
-  }
-
-  const calculatePermutationWinnings = () => {
-    if (selectedBets.length === 0 || matchAtLeast.length === 0 || betAmount <= 0) {
-      return null;
-    }
-
-    const numLines = matchAtLeast.reduce((acc, val) => acc + combination(selectedBets.length, val), 0);
-    if (numLines === 0) return null;
-
-    const apl = betAmount / numLines;
-    const allWinnings: number[] = [];
-
-    const selections: Record<number, number[]> = {};
-    selectedBets.forEach((bet) => {
-      if (!selections[bet.matchNumber]) {
-        selections[bet.matchNumber] = [];
-      }
-      selections[bet.matchNumber].push(bet.odds);
-    });
-    const odds = Object.values(selections).map(bet => bet.reduce((a, b) => a * b, 1));
-
-    for (let winCount of matchAtLeast) {
-      if (winCount > odds.length) continue;
-
-      const combinations = generateCombinations(odds, winCount);
-
-      for (const combo of combinations) {
-        const product = combo.reduce((acc, val) => acc * val, 1);
-        allWinnings.push(product * apl);
-      }
-    }
-
-    return {
-      min: Math.min(...allWinnings),
-      max: allWinnings.reduce((a, b) => a + b, 0),
-      numLines,
-      apl,
-    };
-  };
-
-  const permutationWinnings = calculatePermutationWinnings();
+  const permutationWinnings = useMemo(
+    () => previewSportsPermutationWinnings(betAmount, buildSportsPermutationLegOdds(selectedBets), matchAtLeast),
+    [betAmount, selectedBets, matchAtLeast],
+  );
 
   const toggleMatch = (m: number) => {
     if (matchAtLeast.includes(m)) setMatchAtLeast(matchAtLeast.filter((x) => x !== m));
@@ -656,6 +600,10 @@ const Football = () => {
 
                       {mode === "permutation" && permutationWinnings && betAmount > 0 && (
                         <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Lines:</span>
+                            <span className="font-semibold text-foreground">{permutationWinnings.numLines}</span>
+                          </div>
                           <div className="flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">APL:</span>
                             <span className="font-semibold text-foreground">₦{permutationWinnings.apl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>

@@ -93,6 +93,56 @@ export function calcSportsGroupedApl(
   return stake / lines;
 }
 
+export function calcSportsPermutationLines(legCount: number, unders: number[]): number {
+  if (legCount <= 0 || unders.length === 0) return 0;
+  return unders.reduce((sum, u) => sum + calcCombination(legCount, u), 0);
+}
+
+export function buildSportsPermutationLegOdds(
+  selections: Array<{ matchNumber: number; odds: number }>,
+): number[] {
+  const byMatch = new Map<number, number[]>();
+  for (const sel of selections) {
+    const arr = byMatch.get(sel.matchNumber) ?? [];
+    arr.push(sel.odds);
+    byMatch.set(sel.matchNumber, arr);
+  }
+  return Array.from(byMatch.values()).map((odds) => odds.reduce((a, b) => a * b, 1));
+}
+
+/** Permutation preview: APL = stake / lines; min = lowest line payout; max = sum of all line payouts if every line wins. */
+export function previewSportsPermutationWinnings(
+  stake: number,
+  legOdds: number[],
+  unders: number[],
+): { min: number; max: number; numLines: number; apl: number } | null {
+  if (stake <= 0 || legOdds.length === 0 || unders.length === 0) return null;
+
+  const numLines = calcSportsPermutationLines(legOdds.length, unders);
+  if (numLines <= 0) return null;
+
+  const apl = stake / numLines;
+  const allWinnings: number[] = [];
+
+  for (const u of unders) {
+    if (u <= 0 || u > legOdds.length) continue;
+    const combos = generateCombinations(legOdds, u);
+    for (const combo of combos) {
+      const product = combo.reduce((acc, val) => acc * val, 1);
+      allWinnings.push(product * apl);
+    }
+  }
+
+  if (allWinnings.length === 0) return null;
+
+  return {
+    min: Math.min(...allWinnings),
+    max: allWinnings.reduce((a, b) => a + b, 0),
+    numLines,
+    apl,
+  };
+}
+
 export function getCorrectSportOptions(homeGoal: number, awayGoal: number): string[] {
   const correct: string[] = [];
   if (homeGoal > awayGoal) correct.push("H");
