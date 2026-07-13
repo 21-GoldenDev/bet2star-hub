@@ -266,6 +266,7 @@ export function calculateSportsGroupedReward(
   return apl * multiplier;
 }
 
+/** Grouping preview: APL = stake / lines; min/max = apl × min/max U-combination product per group. */
 export function previewSportsGroupedWinnings(
   stake: number,
   groups: Record<string, SportsFlatSelections>,
@@ -294,29 +295,8 @@ export function previewSportsGroupedWinnings(
     return { u, matchNums, legOddsList, products };
   });
 
-  const max = apl * groupLegOdds.reduce((acc, g) => acc * g.products.reduce((a, b) => a + b, 0), 1);
-
-  let min = Infinity;
-  for (let failIdx = 0; failIdx < groupLegOdds.length; failIdx++) {
-    const g = groupLegOdds[failIdx];
-    if (g.u >= g.matchNums.length) continue;
-    for (let i = 0; i < g.matchNums.length; i++) {
-      const remaining = g.legOddsList.filter((_, idx) => idx !== i);
-      if (remaining.length < g.u) continue;
-      const combos = generateCombinations(remaining, g.u);
-      const failScenario = combos.map((c) => c.reduce((a, b) => a * b, 1));
-      const failSum = failScenario.reduce((a, b) => a + b, 0);
-      const otherProduct = groupLegOdds
-        .filter((_, idx) => idx !== failIdx)
-        .reduce((acc, og) => acc * og.products.reduce((a, b) => a + b, 0), 1);
-      const scenarioWin = apl * failSum * otherProduct;
-      if (scenarioWin > 0 && scenarioWin < min) min = scenarioWin;
-    }
-  }
-
-  if (!Number.isFinite(min)) {
-    min = Math.min(...groupLegOdds.flatMap((g) => g.products)) * apl;
-  }
+  const max = apl * groupLegOdds.reduce((acc, g) => acc * Math.max(...g.products), 1);
+  const min = apl * groupLegOdds.reduce((acc, g) => acc * Math.min(...g.products), 1);
 
   return { min, max, numLines, apl };
 }

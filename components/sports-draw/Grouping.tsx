@@ -9,7 +9,6 @@ import DrawMatchList from "./DrawMatchList";
 import { DrawBetSelection, DrawMatchRow } from "./types";
 import { Game } from "@/lib/types/game";
 import {
-  calcSportsGroupedApl,
   previewSportsGroupedWinnings,
 } from "@/lib/bets/sportsCombinations";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
@@ -110,13 +109,6 @@ const Grouping = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlace
     return set;
   }, [activeUId, groupSelections]);
 
-  const storageGroups = useMemo(() => {
-    const obj: Record<string, string[]> = {};
-    selectedUs.forEach((sel) => {
-      obj[`${sel.u}-${sel.id}`] = (groupSelections[sel.id] ?? []).map((b) => String(b.matchNumber));
-    });
-    return obj;
-  }, [selectedUs, groupSelections]);
 
   const winningsPreview = useMemo(() => {
     if (selectedUs.length < 2 || currentSum !== totalUnder) return null;
@@ -326,14 +318,17 @@ const Grouping = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlace
           </div>
         </div>
 
-        {isReady && (
+        {isReady && winningsPreview && (
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-2 text-muted-foreground">APL</div>
             <div className="text-lg font-bold text-center">
-              ₦{calcSportsGroupedApl(betAmount, storageGroups).toLocaleString("en-US", {
+              ₦{winningsPreview.apl.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
+            </div>
+            <div className="text-xs text-muted-foreground text-center mt-1">
+              {winningsPreview.numLines} lines
             </div>
           </div>
         )}

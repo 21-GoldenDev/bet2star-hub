@@ -9,7 +9,6 @@ import DrawMatchList from "./DrawMatchList";
 import { DrawBetSelection, DrawMatchRow } from "./types";
 import { Game } from "@/lib/types/game";
 import {
-  calcSportsGroupedApl,
   previewSportsGroupedWinnings,
 } from "@/lib/bets/sportsCombinations";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
@@ -212,14 +211,17 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlac
           </div>
         )}
 
-        {isReady && storageGroups && (
+        {isReady && winningsPreview && (
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-2 text-muted-foreground">APL</div>
             <div className="text-lg font-bold text-center">
-              ₦{calcSportsGroupedApl(betAmount, storageGroups).toLocaleString("en-US", {
+              ₦{winningsPreview.apl.toLocaleString("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
+            </div>
+            <div className="text-xs text-muted-foreground text-center mt-1">
+              {winningsPreview.numLines} lines
             </div>
           </div>
         )}
