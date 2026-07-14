@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
 import { computeLottoApl } from "@/lib/helpers";
 import { parseNumbers, parseNumberList, parsePosInput, pickString } from "@/lib/pos/parsePosInput";
+import { requirePosAuth } from "@/lib/pos/requirePosAuth";
 import { gameModes, type GameModeType } from "@/lib/types/gameMode";
+import { getServiceClient } from "@/lib/supabase/service";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
@@ -10,6 +12,12 @@ export async function OPTIONS(request: NextRequest) {
 
 async function handleAplRequest(request: NextRequest) {
   try {
+    const supabase = getServiceClient();
+    const auth = await requirePosAuth(request, supabase);
+    if (!auth.ok) {
+      return auth.response;
+    }
+
     const input = await parsePosInput(request);
 
     const gameMode = pickString(input, "gameMode", "game_mode", "gameType") as GameModeType;
