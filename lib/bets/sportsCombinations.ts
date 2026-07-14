@@ -267,10 +267,9 @@ export function calculateSportsGroupedReward(
 }
 
 /**
- * Grouping preview:
- * APL = stake / lines
- * Max = apl × (product of all odds in each group)
- * Min = apl × (minimum U-combination product in each group)
+ * Grouping preview: APL = stake / lines.
+ * Max = apl × (sum of U-combo products in each group) multiplied across groups.
+ * Min = apl × (lowest U-combo product in each group) multiplied across groups.
  */
 export function previewSportsGroupedWinnings(
   stake: number,
@@ -297,11 +296,12 @@ export function previewSportsGroupedWinnings(
     const legOddsList = matchNums.map((mn) => oddsMap[mn] ?? 1);
     const combos = generateCombinations(legOddsList, u);
     const products = combos.map((combo) => combo.reduce((a, b) => a * b, 1));
-    const allProduct = legOddsList.reduce((a, b) => a * b, 1);
-    return { u, matchNums, legOddsList, products, allProduct };
+    return { u, matchNums, legOddsList, products };
   });
 
-  const max = apl * groupLegOdds.reduce((acc, g) => acc * g.allProduct, 1);
+  const max =
+    apl *
+    groupLegOdds.reduce((acc, g) => acc * g.products.reduce((a, b) => a + b, 0), 1);
   const min = apl * groupLegOdds.reduce((acc, g) => acc * Math.min(...g.products), 1);
 
   return { min, max, numLines, apl };
