@@ -37,7 +37,7 @@ export async function resolvePosTerminal(
   }
 
   const allowed = Array.isArray(terminal.game_modes) ? terminal.game_modes : [];
-  if (allowed.length > 0 && !allowed.includes(product)) {
+  if (allowed.length === 0 || !allowed.includes(product)) {
     throw new PosError(
       POS_ERROR_CODES.PRODUCT_NOT_ALLOWED,
       `Terminal is not allowed to place ${product} bets`,

@@ -98,7 +98,8 @@ AGENT_INACTIVE        401  Assigned agent disabled
 TOKEN_REQUIRED        401  No Authorization Bearer token
 TOKEN_INVALID         401  Token bad or expired
 SERIAL_MISMATCH       403  Body serial does not match token terminal
-PRODUCT_NOT_ALLOWED   403  Terminal cannot play that product
+PRODUCT_NOT_ALLOWED   403  Product not in terminal allowed_products
+                           (missing or empty allowed_products means no products allowed)
 INSUFFICIENT_CREDIT   400  Not enough terminal credit
 MAX_STAKE_EXCEEDED    400  Stake above terminal max_stake
 NO_ACTIVE_GAME        404  No open game for that product
@@ -574,6 +575,7 @@ What happens on every place-bet call
 ------------------------------------
 1. Verify Bearer token and that the terminal is still active.
 2. Check the terminal is allowed to play that product.
+   If allowed_products / game_modes is missing or empty, no products are allowed.
 3. Check max stake and available credit.
 4. Resolve / validate the active game.
 5. Save the bet against the terminal.
