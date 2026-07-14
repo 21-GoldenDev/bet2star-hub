@@ -6,6 +6,7 @@ import {
   normalizeTerminalPrizeEntries,
 } from "@/lib/terminals/terminalPrize";
 import { createPosToken } from "@/lib/pos/posToken";
+import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 
 export type PosPrizeInfo = {
   prize_id: string;
@@ -49,7 +50,10 @@ export async function authenticatePosLogin(
 ): Promise<PosLoginResult> {
   const normalizedSerial = serialNumber.trim();
   if (!normalizedSerial || !password) {
-    throw new Error("Serial number and password are required.");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_REQUEST,
+      "Serial number and password are required.",
+    );
   }
 
   const { data: terminal, error: terminalError } = await supabase
@@ -61,20 +65,26 @@ export async function authenticatePosLogin(
     .maybeSingle();
 
   if (terminalError) {
-    throw new Error(terminalError.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, terminalError.message);
   }
 
   if (!terminal) {
-    throw new Error("Invalid serial number or password.");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_CREDENTIALS,
+      "Invalid serial number or password.",
+    );
   }
 
   const storedPassword = String(terminal.password || "");
   if (storedPassword !== password) {
-    throw new Error("Invalid serial number or password.");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_CREDENTIALS,
+      "Invalid serial number or password.",
+    );
   }
 
   if (terminal.status !== "active") {
-    throw new Error("Terminal is inactive.");
+    throw new PosError(POS_ERROR_CODES.TERMINAL_INACTIVE, "Terminal is inactive.");
   }
 
   const { data: agent, error: agentError } = await supabase
@@ -84,15 +94,15 @@ export async function authenticatePosLogin(
     .maybeSingle();
 
   if (agentError) {
-    throw new Error(agentError.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, agentError.message);
   }
 
   if (!agent) {
-    throw new Error("Assigned agent not found.");
+    throw new PosError(POS_ERROR_CODES.AGENT_INACTIVE, "Assigned agent not found.");
   }
 
   if (agent.status !== "active") {
-    throw new Error("Assigned agent is inactive.");
+    throw new PosError(POS_ERROR_CODES.AGENT_INACTIVE, "Assigned agent is inactive.");
   }
 
   const prizeEntries = normalizeTerminalPrizeEntries(terminal.prizes);
@@ -108,7 +118,7 @@ export async function authenticatePosLogin(
       .in("id", activePrizeIds);
 
     if (prizeError) {
-      throw new Error(prizeError.message);
+      throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, prizeError.message);
     }
 
     for (const row of prizeRows || []) {

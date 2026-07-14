@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GameType } from "@/lib/types/gameMode";
+import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 
 export type ActiveGameRow = {
   id: string;
@@ -28,16 +29,24 @@ export async function resolveActiveGame(
       .maybeSingle();
 
     if (error) {
-      throw new Error(error.message);
+      throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, error.message);
     }
 
     const game = data as ActiveGameRow | null;
     if (!game) {
-      throw new Error(`${type} game not found`);
+      throw new PosError(
+        POS_ERROR_CODES.GAME_NOT_FOUND,
+        `${type} game not found`,
+        { game_id: gameId, type },
+      );
     }
 
     if (game.start_time > now || game.end_time < now) {
-      throw new Error(`${type} game is not active`);
+      throw new PosError(
+        POS_ERROR_CODES.GAME_NOT_ACTIVE,
+        `${type} game is not active`,
+        { game_id: gameId, type },
+      );
     }
 
     return game;
@@ -53,12 +62,16 @@ export async function resolveActiveGame(
     .limit(1);
 
   if (error) {
-    throw new Error(error.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, error.message);
   }
 
   const game = (data?.[0] as ActiveGameRow | undefined) ?? null;
   if (!game) {
-    throw new Error(`No active ${type} game`);
+    throw new PosError(
+      POS_ERROR_CODES.NO_ACTIVE_GAME,
+      `No active ${type} game`,
+      { type },
+    );
   }
 
   return game;

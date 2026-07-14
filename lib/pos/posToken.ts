@@ -9,9 +9,11 @@ export type PosTokenPayload = {
 };
 
 function getSecret(): string {
-  const secret = process.env.POS_TOKEN_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.POS_TOKEN_SECRET?.trim();
   if (!secret) {
-    throw new Error("POS_TOKEN_SECRET is required.");
+    throw new Error(
+      "POS_TOKEN_SECRET is required. Set a dedicated secret; do not use SUPABASE_SERVICE_ROLE_KEY for POS tokens.",
+    );
   }
   return secret;
 }
@@ -31,22 +33,22 @@ export function createPosToken(terminalId: string, serialNumber: string): string
 }
 
 export function verifyPosToken(token: string): PosTokenPayload | null {
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature) {
-    return null;
-  }
-
-  const expected = sign(encoded);
-  const sigBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (
-    sigBuffer.length !== expectedBuffer.length ||
-    !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
-  ) {
-    return null;
-  }
-
   try {
+    const [encoded, signature] = token.split(".");
+    if (!encoded || !signature) {
+      return null;
+    }
+
+    const expected = sign(encoded);
+    const sigBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expected);
+    if (
+      sigBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
+    ) {
+      return null;
+    }
+
     const payload = JSON.parse(
       Buffer.from(encoded, "base64url").toString("utf8"),
     ) as PosTokenPayload;

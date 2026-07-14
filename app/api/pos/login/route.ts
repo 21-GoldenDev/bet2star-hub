@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
+import { handleCORS } from "@/app/api/middleware/cors";
 import { authenticatePosLogin } from "@/lib/pos/posLogin";
 import { parsePosInput, pickString } from "@/lib/pos/parsePosInput";
+import { posErrorResponse, posSuccess } from "@/lib/pos/posErrors";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
 }
 
-async function handleLoginRequest(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const input = await parsePosInput(request);
     const serialNumber = pickString(
@@ -22,33 +23,8 @@ async function handleLoginRequest(request: NextRequest) {
 
     const supabase = getServiceClient();
     const result = await authenticatePosLogin(supabase, serialNumber, password);
-
-    return addCORSHeaders(
-      NextResponse.json({
-        success: true,
-        data: result,
-      }),
-    );
+    return posSuccess(result);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Login failed";
-    const status =
-      message.includes("Invalid serial number") ||
-      message.includes("inactive")
-        ? 401
-        : message.includes("required")
-          ? 400
-          : 500;
-
-    return addCORSHeaders(
-      NextResponse.json({ error: message }, { status }),
-    );
+    return posErrorResponse(error);
   }
-}
-
-export async function GET(request: NextRequest) {
-  return handleLoginRequest(request);
-}
-
-export async function POST(request: NextRequest) {
-  return handleLoginRequest(request);
 }

@@ -1,372 +1,581 @@
-# POS API Reference
+POS API guide
 
-Base URL: `{origin}/api/pos`
 
-All POS endpoints (except **Login**) require:
+What this is for
+----------------
+POS terminals use these APIs to log in, see current games, preview APL (amount per line),
+and place bets on Lotto, Pools, Sports, and Football Pools.
 
-```http
-Authorization: Bearer <token>
-```
+Base path: /api/pos
 
-Tokens are issued by **Login** and expire after **24 hours**. Disabling a terminal in admin immediately blocks authenticated calls even if the token has not expired.
 
-CORS is enabled (`Access-Control-Allow-Origin: *`). Both `GET` and `POST` are accepted on most endpoints (JSON body and/or query params).
+Auth in plain words
+-------------------
+1. Call Login with serial_number and password.
+2. Save the token from the response.
+3. Send this header on every other POS call:
 
----
+   Authorization: Bearer YOUR_TOKEN_HERE
 
-## Authentication
+Token lifetime: about 24 hours.
+If an admin disables the terminal, authenticated calls fail immediately.
 
-### Login
+Important for production:
+  Set POS_TOKEN_SECRET in the server environment.
+  This must be a dedicated secret.
+  The server will not fall back to SUPABASE_SERVICE_ROLE_KEY.
 
-`POST /api/pos/login`  
-`GET /api/pos/login` (query params)
 
-**Auth:** none
+Typical cashier flow
+--------------------
+1. POST /api/pos/login
+2. GET /api/pos/{product}/active
+3. Optional: POST .../apl to preview APL
+4. POST .../bet to place the ticket
+5. Show remainingCredit, or refresh with GET /api/pos/me
 
-**Request**
 
-| Field | Aliases | Required | Description |
-|-------|---------|----------|-------------|
-| `serial_number` | `serialNumber`, `tsn`, `TSN` | yes | Terminal serial number |
-| `password` | `pin` | yes | Terminal password |
+Endpoint list
+-------------
+Login (no token)
+  POST /api/pos/login
 
-```json
-{
-  "serial_number": "346346346346aa",
-  "password": "346346346"
-}
-```
+Session refresh
+  GET /api/pos/me
 
-**Success `200`**
+Active game + fixtures
+  GET /api/pos/lotto/active
+  GET /api/pos/pools/active
+  GET /api/pos/sports/active
+  GET /api/pos/sports-draw/active
+  GET /api/pos/footballpools/active
 
-```json
-{
-  "success": true,
-  "data": {
-    "token": "<signed-token>",
-    "terminal": { "id": "...", "serial_number": "..." },
-    "agent": {
-      "id": "...",
-      "username": "...",
-      "first_name": "...",
-      "last_name": "...",
-      "status": "active"
-    },
-    "credit_limit": 50000,
-    "max_stake": 2000000,
-    "allowed_products": ["lotto", "pools", "sports", "sports_draw"],
-    "prizes": {
-      "active": [
-        {
-          "prize_id": "...",
-          "name": "Prize A",
-          "commission": 100,
-          "default": true,
-          "status": "active"
-        }
-      ],
-      "default": { "prize_id": "...", "name": "Prize A", "commission": 100, "default": true, "status": "active" }
-    },
-    "status": "active"
+Place bets (POST only)
+  POST /api/pos/lotto/bet
+  POST /api/pos/pools/bet
+  POST /api/pos/sports/bet
+  POST /api/pos/sports-draw/bet
+
+Preview APL
+  POST or GET /api/pos/lotto/apl
+  POST or GET /api/pos/pools/apl
+  POST or GET /api/pos/sports/apl
+  POST or GET /api/pos/sports-draw/apl
+
+
+Success response shape
+----------------------
+All successful POS calls return:
+
+  {
+    "success": true,
+    "data": { ... }
   }
-}
-```
 
-**Errors**
 
-| Status | Body | When |
-|--------|------|------|
-| `400` | `{ "error": "Serial number and password are required." }` | Missing fields |
-| `401` | `{ "error": "Invalid serial number or password." }` | Bad credentials / unknown TSN |
-| `401` | `{ "error": "Terminal is inactive." }` | Terminal status ≠ `active` |
-| `401` | `{ "error": "Assigned agent is inactive." }` | Agent disabled |
+Standard error response shape
+-----------------------------
+All failed POS calls return:
 
----
-
-### Session / Me
-
-`GET /api/pos/me`
-
-**Auth:** Bearer token required
-
-Returns current terminal credit, products, prizes, and agent (same shape as login `data` without `token`). Use after login or periodically to refresh credit / config.
-
----
-
-## Common auth errors (all protected routes)
-
-| Status | Error |
-|--------|-------|
-| `401` | `Authorization Bearer token is required.` |
-| `401` | `Invalid or expired token.` |
-| `401` | `Terminal is inactive.` |
-| `403` | `Serial number does not match authenticated terminal.` |
-
-On bet endpoints, if the body includes `tsn` / `serial_number`, it must match the authenticated terminal. Otherwise TSN is taken from the token.
-
----
-
-## Active games & fixtures
-
-`GET /api/pos/{product}/active`
-
-**Auth:** required
-
-**`product` values**
-
-| Path value | Game type |
-|------------|-----------|
-| `lotto` | lotto |
-| `pools` | pools |
-| `sports` | sports |
-| `sports-draw` | sports_draw (Football Pools) |
-| `footballpools` | alias of `sports-draw` |
-
-**Success**
-
-```json
-{
-  "success": true,
-  "data": {
-    "game": {
-      "id": "...",
-      "type": "sports",
-      "week": 12,
-      "start_time": "...",
-      "end_time": "...",
-      "visible_numbers": [1, 2, 3],
-      "prizes": [{ "id": "...", "name": "..." }]
-    },
-    "fixtures": []
+  {
+    "success": false,
+    "error": {
+      "code": "ERROR_CODE",
+      "message": "Human readable message",
+      "details": { ... }
+    }
   }
-}
-```
 
-- **lotto:** `fixtures` is `[]`; use `visible_numbers` for available ball numbers. `prizes` lists game prizes.
-- **pools:** `fixtures` = enabled week matches from `matches`.
-- **sports / sports-draw:** `fixtures` = rows from `sports` for that game (includes odds/`prizes` per match).
+details is optional.
 
-If no active game: `{ "game": null, "fixtures": [] }`.
 
----
+Error codes (common)
+--------------------
+INVALID_REQUEST       400  Missing or bad request fields
+INVALID_CREDENTIALS   401  Wrong serial_number or password
+TERMINAL_INACTIVE     401  Terminal disabled
+AGENT_INACTIVE        401  Assigned agent disabled
+TOKEN_REQUIRED        401  No Authorization Bearer token
+TOKEN_INVALID         401  Token bad or expired
+SERIAL_MISMATCH       403  Body serial does not match token terminal
+PRODUCT_NOT_ALLOWED   403  Terminal cannot play that product
+INSUFFICIENT_CREDIT   400  Not enough terminal credit
+MAX_STAKE_EXCEEDED    400  Stake above terminal max_stake
+NO_ACTIVE_GAME        404  No open game for that product
+GAME_NOT_ACTIVE       400  Provided gameId is outside its time window
+GAME_NOT_FOUND        404  Unknown gameId
+INVALID_MODE          400  Unknown gameMode / mode
+INVALID_STAKE         400  Stake missing or <= 0
+INVALID_SELECTIONS    400  Numbers / matches / selections invalid
+MATCH_UNAVAILABLE     400  Match void, processed, expired, or missing
+PRIZE_INACTIVE        400  Chosen prize is inactive on terminal
+TERMINAL_NOT_FOUND    404  Terminal missing
+CREDIT_DEDUCT_FAILED  500  Credit update failed (bet rolled back)
+BET_SAVE_FAILED       500  Could not save bet
+INTERNAL_ERROR        500  Unexpected server error
 
-## Lotto
+Example: insufficient credit
 
-### Place bet — `POST /api/pos/lotto/bet`
+  {
+    "success": false,
+    "error": {
+      "code": "INSUFFICIENT_CREDIT",
+      "message": "Insufficient terminal credit",
+      "details": {
+        "credit_limit": 100,
+        "stake": 500
+      }
+    }
+  }
 
-**Auth:** required
+Example: max stake exceeded
 
-| Field | Aliases | Required | Notes |
-|-------|---------|----------|-------|
-| `gameMode` | `game_mode`, `gameType` | yes | See modes below |
-| `stake` | `staked`, `betAmount` | yes | Deducted from terminal credit |
-| `under` | `matchAtLeast` | mode-dependent | Array of integers |
-| `numbers` | `selectedNumbers` | mode-dependent | Array or grouped object |
-| `prize` | `prize_id`, `prizeId` | recommended | Defaults to terminal default prize |
-| `gameId` | `game_id` | no | Defaults to current active lotto game |
-| `tsn` | `serial_number` | no | Must match token if sent |
+  {
+    "success": false,
+    "error": {
+      "code": "MAX_STAKE_EXCEEDED",
+      "message": "Maximum stake is 2000000",
+      "details": {
+        "max_stake": 2000000,
+        "stake": 2500000
+      }
+    }
+  }
 
-**Modes (`gameMode`)**
+Example: no active game
 
-| Mode | `numbers` | `under` |
-|------|-----------|---------|
-| `nap_perm` | `number[]` | required |
-| `turbo` | `number[]` | usually `[n]` |
-| `under1` / `under2` | `number[]` | optional |
-| `grouping` | object `{ "u-id": number[] }` | total under |
-| `one_banker` | single number / array → auto-expands to groupA/groupB | typically `[2]` |
-| `two_banker` | object or pre-shaped groups | yes |
+  {
+    "success": false,
+    "error": {
+      "code": "NO_ACTIVE_GAME",
+      "message": "No active lotto game",
+      "details": {
+        "type": "lotto"
+      }
+    }
+  }
 
-**Success**
 
-```json
-{
-  "success": true,
-  "data": {
-    "apl": 10.5,
-    "stake": 100,
+1) Login
+--------
+POST /api/pos/login
+Token: not needed
+
+Request:
+
+  {
+    "serial_number": "346346346346aa",
+    "password": "346346346"
+  }
+
+Accepted aliases: serialNumber, tsn, TSN, pin
+
+Success data includes: token, terminal, agent, credit_limit, max_stake,
+allowed_products, prizes (active + default), status.
+
+
+2) Session / Me
+---------------
+GET /api/pos/me
+Token: required
+
+Returns current credit, products, prizes, agent (like login, without a new token).
+
+
+3) Active game
+--------------
+GET /api/pos/{product}/active
+Token: required
+
+product: lotto | pools | sports | sports-draw | footballpools
+
+If none is running:
+
+  {
+    "success": true,
+    "data": {
+      "game": null,
+      "fixtures": []
+    }
+  }
+
+
+4) Lotto place bet (POST only)
+------------------------------
+POST /api/pos/lotto/bet
+Header: Authorization: Bearer TOKEN
+
+Common fields for all lotto modes:
+  gameMode   required
+  stake      required
+  prize      recommended (falls back to terminal default)
+  gameId     optional
+  under      mode-dependent (alias: matchAtLeast)
+
+Successful bet data includes:
+  apl, stake, gameMode, gameId, betId, betNumber, tsn, terminalId, remainingCredit, award
+
+
+Lotto — Direct / NAP/PERM (gameMode: nap_perm)
+
+  {
     "gameMode": "nap_perm",
-    "gameId": "...",
-    "betId": "...",
-    "betNumber": 42,
-    "tsn": "...",
-    "terminalId": "...",
-    "remainingCredit": 49900,
-    "award": 0
+    "stake": 5000,
+    "under": [3, 4],
+    "numbers": [5, 12, 18, 23, 41],
+    "prize": "PRIZE-UUID"
   }
-}
-```
 
-### Preview APL — `POST /api/pos/lotto/apl`
 
-Same stake/mode/numbers/under fields as bet (no prize/credit deduction). Returns `{ apl, stake, gameMode }`.
+Lotto — Turbo (gameMode: turbo)
 
----
-
-## Pools
-
-### Place bet — `POST /api/pos/pools/bet`
-
-**Auth:** required
-
-Same mode set as lotto. Use **matches** instead of numbers:
-
-| Field | Aliases | Notes |
-|-------|---------|-------|
-| `matches` | `selectedMatches`, `numbers` | `string[]` of match numbers, or grouped object |
-| `grouping` | | `{ selectedUs, groupSelections }` |
-| `twobanker` | `two_banker` | `{ groupAU, groupAMatches, totalUnder }` |
-| `onebanker` | `one_banker` | `{ groupAMatches }` |
-| `prize` | `prize_id`, `prizeId` | Terminal prize |
-| `gameMode`, `stake`, `under`, `gameId` | | Same as lotto |
-
-```json
-{
-  "gameMode": "nap_perm",
-  "stake": 200,
-  "under": [3],
-  "matches": ["1", "5", "12", "20"],
-  "prize": "<prize-uuid>"
-}
-```
-
-Credit is deducted from the terminal. Bet is stored in `bets_pools` with `terminal` set and `player: null`.
-
-### Preview APL — `POST /api/pos/pools/apl`
-
-Same shape as bet fields needed for APL; no credit change.
-
----
-
-## Sports
-
-### Place bet — `POST /api/pos/sports/bet`
-
-**Auth:** required
-
-| Field | Aliases | Required | Notes |
-|-------|---------|----------|-------|
-| `mode` | `gameMode`, `game_mode` | yes | `direct`, `permutation`, `grouping`, `one_banker` |
-| `stake` | `staked`, `betAmount` | yes | |
-| `under` | `matchAtLeast` | yes (rules below) | |
-| `selections` | | yes* | Flat or grouped selection map |
-| `grouping` | | grouping mode | `{ selectedUs, groupSelections }` |
-| `onebanker` | `one_banker` | one_banker | `{ selections }` |
-| `gameId` | `game_id` | no | Active sports game by default |
-
-**Mode rules**
-
-| Mode | `under` | Selections |
-|------|---------|------------|
-| `direct` | single value `[n]` | Flat `{ "12": ["H","D"], "15": ["A"] }` |
-| `permutation` | non-empty array | Flat selections |
-| `grouping` | single total-under `[n]` | Nested groups under `grouping.groupSelections` or `selections` |
-| `one_banker` | must be `[2]` | Nested `{ "1-groupA": {...}, "2-groupB": {...} }` |
-
-**Selection options:** `H`, `D`, `A`, `1X`, `12`, `X2`, `O25`, `U25`, `GG`
-
-Matches are validated (not void / not processed / not past `end_time`).
-
-Example (direct):
-
-```json
-{
-  "mode": "direct",
-  "stake": 500,
-  "under": [2],
-  "selections": {
-    "3": ["H"],
-    "8": ["D", "A"]
+  {
+    "gameMode": "turbo",
+    "stake": 5000,
+    "under": [3],
+    "numbers": [2, 9, 15, 27, 33]
   }
-}
-```
 
-**Success** includes `product: "sports"` plus standard bet fields (`apl`, `betId`, `betNumber`, `remainingCredit`, `award`, …).
+Note: turbo typically does not need a prize field.
 
-### Preview APL — `POST /api/pos/sports/apl`
 
-Requires `mode`, `stake`, `under`, `selections` (or grouping). No credit change.
+Lotto — Under 1 (gameMode: under1)
 
----
-
-## Football Pools (Sports Draw)
-
-Product code: `sports_draw`  
-URL prefix: `/api/pos/sports-draw`  
-Alias for active game: `/api/pos/footballpools/active`
-
-### Place bet — `POST /api/pos/sports-draw/bet`
-
-Same request shape as **Sports**, with one extra rule:
-
-> Every selected option must be `"D"` (draw only).
-
-Invalid mix (e.g. `"H"`) → `400`  
-`Sports draw selections must contain only draw (D) options`
-
-Example:
-
-```json
-{
-  "mode": "direct",
-  "stake": 300,
-  "under": [3],
-  "selections": {
-    "1": ["D"],
-    "4": ["D"],
-    "9": ["D"]
+  {
+    "gameMode": "under1",
+    "stake": 5000,
+    "numbers": [7, 14, 21],
+    "prize": "PRIZE-UUID"
   }
-}
-```
 
-Stored in `bets_sports_draw`. Success includes `product: "sports_draw"`.
 
-### Preview APL — `POST /api/pos/sports-draw/apl`
+Lotto — Under 2 (gameMode: under2)
 
-Same as sports APL, with draw-only validation.
+  {
+    "gameMode": "under2",
+    "stake": 5000,
+    "numbers": [3, 8, 19, 44],
+    "prize": "PRIZE-UUID"
+  }
 
----
 
-## Shared bet / credit behavior
+Lotto — Grouping (gameMode: grouping)
 
-For all place-bet endpoints:
+  {
+    "gameMode": "grouping",
+    "stake": 5000,
+    "under": [5],
+    "prize": "PRIZE-UUID",
+    "grouping": {
+      "selectedUs": [
+        { "id": "groupA", "u": 2 },
+        { "id": "groupB", "u": 3 }
+      ],
+      "groupSelections": {
+        "groupA": [1, 4, 9, 16],
+        "groupB": [2, 5, 11, 20, 30]
+      }
+    }
+  }
 
-1. Verify Bearer token and that terminal is still **active**.
-2. Ensure terminal `game_modes` allows the product (if configured).
-3. Enforce `max_stake` and available `credit_limit`.
-4. Resolve active game (or validate provided `gameId` is in time window).
-5. Insert bet with `terminal` + `player: null` + `status: "active"`.
-6. Deduct stake from `terminal.credit_limit` (rollback bet insert if deduct fails).
-7. If results/scores already exist, compute immediate `award` on the bet row.
 
-Winnings settlement for POS/terminal tickets is separate from online `profiles.balance` credit.
+Lotto — 1 Banker / 1 Against (gameMode: one_banker)
 
----
+  {
+    "gameMode": "one_banker",
+    "stake": 5000,
+    "under": [2],
+    "prize": "PRIZE-UUID",
+    "onebanker": {
+      "groupANumbers": [12, 25]
+    }
+  }
 
-## Endpoint index
+The server expands group B from the remaining visible numbers.
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| POST/GET | `/api/pos/login` | No | Authenticate terminal |
-| GET | `/api/pos/me` | Yes | Refresh terminal session |
-| GET | `/api/pos/{product}/active` | Yes | Active game + fixtures |
-| POST/GET | `/api/pos/lotto/bet` | Yes | Place lotto bet |
-| POST/GET | `/api/pos/lotto/apl` | Yes | Lotto APL preview |
-| POST/GET | `/api/pos/pools/bet` | Yes | Place pools bet |
-| POST/GET | `/api/pos/pools/apl` | Yes | Pools APL preview |
-| POST/GET | `/api/pos/sports/bet` | Yes | Place sports bet |
-| POST/GET | `/api/pos/sports/apl` | Yes | Sports APL preview |
-| POST/GET | `/api/pos/sports-draw/bet` | Yes | Place football pools bet |
-| POST/GET | `/api/pos/sports-draw/apl` | Yes | Football pools APL preview |
 
----
+Lotto — 2 Banker (gameMode: two_banker)
 
-## Client flow (recommended)
+  {
+    "gameMode": "two_banker",
+    "stake": 5000,
+    "under": [5],
+    "prize": "PRIZE-UUID",
+    "twobanker": {
+      "totalUnder": 5,
+      "groupAU": 2,
+      "groupANumbers": [8, 17]
+    }
+  }
 
-1. `POST /api/pos/login` → store `token`, `allowed_products`, `prizes`, `credit_limit`.
-2. For chosen product, `GET /api/pos/{product}/active` → game id + fixtures.
-3. Optionally `POST .../apl` to preview amount per line.
-4. `POST .../bet` with `Authorization: Bearer <token>`.
-5. Update UI credit from `data.remainingCredit`, or call `/api/pos/me`.
 
-Optional env: `POS_TOKEN_SECRET` (falls back to `SUPABASE_SERVICE_ROLE_KEY` for HMAC signing).
+5) Pools place bet (POST only)
+------------------------------
+POST /api/pos/pools/bet
+
+Same modes as lotto. Use matches (match numbers as strings) instead of numbers.
+
+
+Pools — Direct / NAP/PERM
+
+  {
+    "gameMode": "nap_perm",
+    "stake": 2000,
+    "under": [3],
+    "matches": ["1", "5", "12", "20"],
+    "prize": "PRIZE-UUID"
+  }
+
+
+Pools — Turbo
+
+  {
+    "gameMode": "turbo",
+    "stake": 2000,
+    "under": [3],
+    "matches": ["2", "7", "11", "18"]
+  }
+
+
+Pools — Under 1
+
+  {
+    "gameMode": "under1",
+    "stake": 2000,
+    "matches": ["3", "9", "14"],
+    "prize": "PRIZE-UUID"
+  }
+
+
+Pools — Under 2
+
+  {
+    "gameMode": "under2",
+    "stake": 2000,
+    "matches": ["1", "4", "8", "16"],
+    "prize": "PRIZE-UUID"
+  }
+
+
+Pools — Grouping
+
+  {
+    "gameMode": "grouping",
+    "stake": 2000,
+    "under": [5],
+    "prize": "PRIZE-UUID",
+    "grouping": {
+      "selectedUs": [
+        { "id": "groupA", "u": 2 },
+        { "id": "groupB", "u": 3 }
+      ],
+      "groupSelections": {
+        "groupA": ["1", "4", "9"],
+        "groupB": ["2", "5", "11", "20", "30"]
+      }
+    }
+  }
+
+
+Pools — 1 Banker
+
+  {
+    "gameMode": "one_banker",
+    "stake": 2000,
+    "under": [2],
+    "prize": "PRIZE-UUID",
+    "onebanker": {
+      "groupAMatches": ["7", "19"]
+    }
+  }
+
+
+Pools — 2 Banker
+
+  {
+    "gameMode": "two_banker",
+    "stake": 2000,
+    "under": [5],
+    "prize": "PRIZE-UUID",
+    "twobanker": {
+      "totalUnder": 5,
+      "groupAU": 2,
+      "groupAMatches": ["6", "15"]
+    }
+  }
+
+
+6) Sports place bet (POST only)
+-------------------------------
+POST /api/pos/sports/bet
+
+Modes: direct, permutation, grouping, one_banker
+
+Selection options: H, D, A, 1X, 12, X2, O25, U25, GG
+
+
+Sports — Direct
+
+  {
+    "mode": "direct",
+    "stake": 500,
+    "under": [2],
+    "selections": {
+      "3": ["H"],
+      "8": ["D", "A"]
+    }
+  }
+
+
+Sports — Permutation
+
+  {
+    "mode": "permutation",
+    "stake": 1000,
+    "under": [2, 3],
+    "selections": {
+      "1": ["H"],
+      "4": ["A"],
+      "9": ["D"],
+      "12": ["1X"]
+    }
+  }
+
+
+Sports — Grouping
+
+  {
+    "mode": "grouping",
+    "stake": 1500,
+    "under": [4],
+    "grouping": {
+      "selectedUs": [
+        { "id": "groupA", "u": 2 },
+        { "id": "groupB", "u": 2 }
+      ],
+      "groupSelections": {
+        "2-groupA": {
+          "3": ["H"],
+          "5": ["D"]
+        },
+        "2-groupB": {
+          "8": ["A"],
+          "10": ["12"]
+        }
+      }
+    }
+  }
+
+
+Sports — 1 Banker
+
+  {
+    "mode": "one_banker",
+    "stake": 1000,
+    "under": [2],
+    "onebanker": {
+      "selections": {
+        "1-groupA": {
+          "4": ["H"]
+        },
+        "1-groupB": {
+          "7": ["D"],
+          "11": ["A"],
+          "15": ["1X"]
+        }
+      }
+    }
+  }
+
+
+7) Football Pools / Sports Draw (POST only)
+-------------------------------------------
+POST /api/pos/sports-draw/bet
+
+Same shapes as Sports, but every option must be "D" only.
+
+
+Football Pools — Direct
+
+  {
+    "mode": "direct",
+    "stake": 300,
+    "under": [3],
+    "selections": {
+      "1": ["D"],
+      "4": ["D"],
+      "9": ["D"]
+    }
+  }
+
+
+Football Pools — Permutation
+
+  {
+    "mode": "permutation",
+    "stake": 500,
+    "under": [2, 3],
+    "selections": {
+      "2": ["D"],
+      "5": ["D"],
+      "8": ["D"],
+      "12": ["D"]
+    }
+  }
+
+
+Football Pools — Grouping
+
+  {
+    "mode": "grouping",
+    "stake": 800,
+    "under": [4],
+    "grouping": {
+      "selectedUs": [
+        { "id": "groupA", "u": 2 },
+        { "id": "groupB", "u": 2 }
+      ],
+      "groupSelections": {
+        "2-groupA": {
+          "1": ["D"],
+          "3": ["D"]
+        },
+        "2-groupB": {
+          "6": ["D"],
+          "9": ["D"]
+        }
+      }
+    }
+  }
+
+
+Football Pools — 1 Banker
+
+  {
+    "mode": "one_banker",
+    "stake": 600,
+    "under": [2],
+    "onebanker": {
+      "selections": {
+        "1-groupA": {
+          "2": ["D"]
+        },
+        "1-groupB": {
+          "5": ["D"],
+          "8": ["D"],
+          "14": ["D"]
+        }
+      }
+    }
+  }
+
+
+What happens on every place-bet call
+------------------------------------
+1. Verify Bearer token and that the terminal is still active.
+2. Check the terminal is allowed to play that product.
+3. Check max stake and available credit.
+4. Resolve / validate the active game.
+5. Save the bet against the terminal.
+6. Deduct stake from terminal credit (rollback bet if deduct fails).
+7. If results or scores already exist, set award immediately.

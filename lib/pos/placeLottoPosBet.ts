@@ -1,16 +1,35 @@
-import { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { computeLottoAward, computeLottoApl } from "@/lib/helpers";
-import { getDefaultTerminalPrizeId, isTerminalPrizeActive, normalizeTerminalPrizeEntries } from "@/lib/terminals/terminalPrize";
+import {
+  getDefaultTerminalPrizeId,
+  isTerminalPrizeActive,
+  normalizeTerminalPrizeEntries,
+} from "@/lib/terminals/terminalPrize";
 import type { GameModeType } from "@/lib/types/gameMode";
 import type { Prize } from "@/lib/types/prize";
+import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
+import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
+import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
 
-type PlaceLottoPosBetInput = {
+export type PlaceLottoPosBetInput = {
   tsn: string;
   gameId?: string;
   gameMode: GameModeType;
   stake: number;
   under: number[];
-  numbers: number[] | Record<string, number[]>;
+  numbers?: number[] | Record<string, number[]>;
+  grouping?: {
+    selectedUs: Array<{ id: string; u: number }>;
+    groupSelections: Record<string, number[]>;
+  };
+  twobanker?: {
+    groupAU: number;
+    groupANumbers: number[];
+    totalUnder: number;
+  };
+  onebanker?: {
+    groupANumbers: number[];
+  };
   prizeId?: string;
 };
 
@@ -26,49 +45,6 @@ export type PlaceLottoPosBetResult = {
   remainingCredit: number;
   award: number;
 };
-
-async function resolveActiveLottoGame(supabase: SupabaseClient, gameId?: string) {
-  const now = new Date().toISOString();
-
-  if (gameId) {
-    const { data: game, error } = await supabase
-      .from("games")
-      .select("id, start_time, end_time, visible_numbers")
-      .eq("id", gameId)
-      .eq("type", "lotto")
-      .single();
-
-    if (error || !game) {
-      throw new Error("Lotto game not found");
-    }
-
-    if (game.start_time > now || game.end_time < now) {
-      throw new Error("Lotto game is not active");
-    }
-
-    return game;
-  }
-
-  const { data: games, error } = await supabase
-    .from("games")
-    .select("id, start_time, end_time, visible_numbers")
-    .eq("type", "lotto")
-    .lte("start_time", now)
-    .gte("end_time", now)
-    .order("start_time", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const game = games?.[0];
-  if (!game) {
-    throw new Error("No active lotto game");
-  }
-
-  return game;
-}
 
 async function loadPrize(supabase: SupabaseClient, prizeId?: string): Promise<Prize | null> {
   if (!prizeId) return null;
@@ -96,48 +72,91 @@ async function computeAward(
   return Number.isFinite(award) ? award : 0;
 }
 
+function shapeNumbers(
+  input: PlaceLottoPosBetInput,
+  visibleNumbers: number[],
+): number[] | Record<string, number[]> {
+  const { gameMode, numbers, grouping, twobanker, onebanker } = input;
+
+  if (gameMode === "nap_perm" || gameMode === "turbo" || gameMode === "under1" || gameMode === "under2") {
+    if (!Array.isArray(numbers) || numbers.length === 0) {
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_SELECTIONS,
+        "numbers must be a non-empty array for this game mode",
+      );
+    }
+    return numbers;
+  }
+
+  if (gameMode === "grouping") {
+    if (grouping?.selectedUs?.length && grouping.groupSelections) {
+      const numbersObj: Record<string, number[]> = {};
+      for (const sel of grouping.selectedUs) {
+        numbersObj[`${sel.u}-${sel.id}`] = grouping.groupSelections[sel.id] || [];
+      }
+      return numbersObj;
+    }
+    if (numbers && typeof numbers === "object" && !Array.isArray(numbers)) {
+      return numbers;
+    }
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "Grouping mode requires grouping data or numbers object",
+    );
+  }
+
+  if (gameMode === "two_banker") {
+    if (twobanker?.groupANumbers) {
+      const groupBU = twobanker.totalUnder - twobanker.groupAU;
+      const groupBNumbers = visibleNumbers.filter((n) => !twobanker.groupANumbers.includes(n));
+      return {
+        [`${twobanker.groupAU}-groupA`]: twobanker.groupANumbers,
+        [`${groupBU}-groupB`]: groupBNumbers,
+      };
+    }
+    if (numbers && typeof numbers === "object" && !Array.isArray(numbers)) {
+      return numbers;
+    }
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "two_banker mode requires twobanker data or numbers object",
+    );
+  }
+
+  if (gameMode === "one_banker") {
+    const groupA =
+      onebanker?.groupANumbers ||
+      (Array.isArray(numbers) ? numbers : null);
+    if (groupA && groupA.length > 0) {
+      const groupBNumbers = visibleNumbers.filter((n) => !groupA.includes(n));
+      return {
+        "1-groupA": groupA,
+        "1-groupB": groupBNumbers,
+      };
+    }
+    if (numbers && typeof numbers === "object" && !Array.isArray(numbers)) {
+      return numbers;
+    }
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "one_banker mode requires onebanker data or numbers",
+    );
+  }
+
+  throw new PosError(POS_ERROR_CODES.INVALID_MODE, `Unsupported game mode: ${gameMode}`);
+}
+
 export async function placeLottoPosBet(
   supabase: SupabaseClient,
   input: PlaceLottoPosBetInput,
 ): Promise<PlaceLottoPosBetResult> {
-  const { tsn, gameId, gameMode, stake, under, numbers, prizeId } = input;
+  const { tsn, gameId, gameMode, stake, under, prizeId } = input;
 
-  const { data: terminal, error: terminalError } = await supabase
-    .from("terminal")
-    .select("id, serial_number, status, credit_limit, max_stake, game_modes, prizes")
-    .eq("serial_number", tsn)
-    .maybeSingle();
-
-  if (terminalError) {
-    throw new Error(terminalError.message);
-  }
-
-  if (!terminal) {
-    throw new Error("Terminal not found");
-  }
-
-  if (terminal.status !== "active") {
-    throw new Error("Terminal is inactive");
-  }
-
-  const allowedGameTypes = Array.isArray(terminal.game_modes) ? terminal.game_modes : [];
-  if (allowedGameTypes.length > 0 && !allowedGameTypes.includes("lotto")) {
-    throw new Error("Terminal is not allowed to place lotto bets");
-  }
-
-  const maxStake = Number(terminal.max_stake || 0);
-  if (maxStake > 0 && stake > maxStake) {
-    throw new Error(`Maximum stake is ${maxStake}`);
-  }
-
-  const currentCredit = Number(terminal.credit_limit || 0);
-  if (currentCredit < stake) {
-    throw new Error("Insufficient terminal credit");
-  }
-
-  const now = new Date().toISOString();
-  const game = await resolveActiveLottoGame(supabase, gameId);
+  const terminal = await resolvePosTerminal(supabase, tsn, "lotto", stake);
+  const game = await resolveActiveGame(supabase, "lotto", gameId);
   const resolvedGameId = game.id;
+  const visibleNumbers: number[] =
+    game.visible_numbers || Array.from({ length: 99 }, (_, i) => i + 1);
 
   const terminalPrizes = normalizeTerminalPrizeEntries(terminal.prizes);
   let resolvedPrizeId = prizeId || getDefaultTerminalPrizeId(terminal.prizes) || undefined;
@@ -145,11 +164,16 @@ export async function placeLottoPosBet(
   if (resolvedPrizeId) {
     const prizeEntry = terminalPrizes.find((p) => p.prize_id === resolvedPrizeId);
     if (prizeEntry && !isTerminalPrizeActive(prizeEntry)) {
-      throw new Error("Selected prize is inactive on this terminal");
+      throw new PosError(
+        POS_ERROR_CODES.PRIZE_INACTIVE,
+        "Selected prize is inactive on this terminal",
+        { prize_id: resolvedPrizeId },
+      );
     }
   }
 
-  const apl = computeLottoApl(gameMode, stake, under, numbers);
+  const numbersObj = shapeNumbers(input, visibleNumbers);
+  const apl = computeLottoApl(gameMode, stake, under, numbersObj);
 
   const { data: existingBets, error: countError } = await supabase
     .from("bets_lotto")
@@ -159,21 +183,11 @@ export async function placeLottoPosBet(
     .limit(1);
 
   if (countError) {
-    throw new Error(countError.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, countError.message);
   }
 
   const nextNumber = existingBets?.length ? existingBets[0].bet_id + 1 : 1;
-
-  let numbersObj: Record<string, number[]> | number[] = Array.isArray(numbers) ? numbers : numbers;
-
-  if (gameMode === "one_banker" && Array.isArray(numbers) && numbers.length === 1) {
-    const visibleNumbers: number[] = game.visible_numbers || Array.from({ length: 99 }, (_, i) => i + 1);
-    const groupBNumbers = visibleNumbers.filter((n) => !numbers.includes(n));
-    numbersObj = {
-      "1-groupA": numbers,
-      "1-groupB": groupBNumbers,
-    };
-  }
+  const now = new Date().toISOString();
 
   const { data: bet, error: insertError } = await supabase
     .from("bets_lotto")
@@ -195,18 +209,21 @@ export async function placeLottoPosBet(
     .single();
 
   if (insertError || !bet) {
-    throw new Error(insertError?.message || "Failed to save bet");
+    throw new PosError(
+      POS_ERROR_CODES.BET_SAVE_FAILED,
+      insertError?.message || "Failed to save bet",
+    );
   }
 
-  const { error: creditError } = await supabase
-    .from("terminal")
-    .update({ credit_limit: currentCredit - stake })
-    .eq("id", terminal.id);
-
-  if (creditError) {
-    await supabase.from("bets_lotto").delete().eq("id", bet.id);
-    throw new Error("Failed to deduct terminal credit");
-  }
+  const remainingCredit = await deductTerminalCredit(
+    supabase,
+    terminal.id,
+    terminal.credit_limit,
+    stake,
+    async () => {
+      await supabase.from("bets_lotto").delete().eq("id", bet.id);
+    },
+  );
 
   const award = await computeAward(supabase, resolvedGameId, bet, resolvedPrizeId);
   if (award > 0) {
@@ -222,7 +239,7 @@ export async function placeLottoPosBet(
     betNumber: nextNumber,
     tsn: terminal.serial_number,
     terminalId: terminal.id,
-    remainingCredit: currentCredit - stake,
+    remainingCredit,
     award,
   };
 }

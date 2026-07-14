@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GameType } from "@/lib/types/gameMode";
+import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 
 export type PosTerminalRow = {
   id: string;
@@ -24,30 +25,42 @@ export async function resolvePosTerminal(
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, error.message);
   }
 
   if (!terminal) {
-    throw new Error("Terminal not found");
+    throw new PosError(POS_ERROR_CODES.TERMINAL_NOT_FOUND, "Terminal not found");
   }
 
   if (terminal.status !== "active") {
-    throw new Error("Terminal is inactive");
+    throw new PosError(POS_ERROR_CODES.TERMINAL_INACTIVE, "Terminal is inactive.");
   }
 
   const allowed = Array.isArray(terminal.game_modes) ? terminal.game_modes : [];
   if (allowed.length > 0 && !allowed.includes(product)) {
-    throw new Error(`Terminal is not allowed to place ${product} bets`);
+    throw new PosError(
+      POS_ERROR_CODES.PRODUCT_NOT_ALLOWED,
+      `Terminal is not allowed to place ${product} bets`,
+      { product, allowed_products: allowed },
+    );
   }
 
   const maxStake = Number(terminal.max_stake || 0);
   if (maxStake > 0 && stake > maxStake) {
-    throw new Error(`Maximum stake is ${maxStake}`);
+    throw new PosError(
+      POS_ERROR_CODES.MAX_STAKE_EXCEEDED,
+      `Maximum stake is ${maxStake}`,
+      { max_stake: maxStake, stake },
+    );
   }
 
   const currentCredit = Number(terminal.credit_limit || 0);
   if (currentCredit < stake) {
-    throw new Error("Insufficient terminal credit");
+    throw new PosError(
+      POS_ERROR_CODES.INSUFFICIENT_CREDIT,
+      "Insufficient terminal credit",
+      { credit_limit: currentCredit, stake },
+    );
   }
 
   return {
@@ -72,7 +85,10 @@ export async function deductTerminalCredit(
 
   if (error) {
     await rollback();
-    throw new Error("Failed to deduct terminal credit");
+    throw new PosError(
+      POS_ERROR_CODES.CREDIT_DEDUCT_FAILED,
+      "Failed to deduct terminal credit",
+    );
   }
 
   return remaining;

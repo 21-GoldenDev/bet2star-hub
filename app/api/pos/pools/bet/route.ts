@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
+import { NextRequest } from "next/server";
+import { handleCORS } from "@/app/api/middleware/cors";
 import { placePoolsPosBet } from "@/lib/pos/placePoolsPosBet";
 import {
   parseMatches,
@@ -8,15 +8,16 @@ import {
   parseJsonObject,
   pickString,
 } from "@/lib/pos/parsePosInput";
+import { PosError, POS_ERROR_CODES, posErrorResponse, posSuccess } from "@/lib/pos/posErrors";
 import { requirePosAuth } from "@/lib/pos/requirePosAuth";
 import { gameModes, type GameModeType } from "@/lib/types/gameMode";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export async function OPTIONS(request: NextRequest) {
-  return handleCORS(request) || new NextResponse(null, { status: 200 });
+  return handleCORS(request) || new Response(null, { status: 200 });
 }
 
-async function handleBetRequest(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = getServiceClient();
     const auth = await requirePosAuth(request, supabase);
@@ -27,11 +28,9 @@ async function handleBetRequest(request: NextRequest) {
     const input = await parsePosInput(request);
     const requestedTsn = pickString(input, "tsn", "TSN", "serial_number", "terminal");
     if (requestedTsn && requestedTsn !== auth.payload.serial_number) {
-      return addCORSHeaders(
-        NextResponse.json(
-          { error: "Serial number does not match authenticated terminal." },
-          { status: 403 },
-        ),
+      throw new PosError(
+        POS_ERROR_CODES.SERIAL_MISMATCH,
+        "Serial number does not match authenticated terminal.",
       );
     }
 
@@ -41,26 +40,29 @@ async function handleBetRequest(request: NextRequest) {
     const prizeId = pickString(input, "prize", "prize_id", "prizeId") || undefined;
     const under = parseNumberList(input.under ?? input.matchAtLeast);
     const matches = parseMatches(input.matches ?? input.selectedMatches ?? input.numbers);
-    const grouping = parseJsonObject(input.grouping) as PlaceGrouping | null;
-    const twobanker = parseJsonObject(input.twobanker ?? input.two_banker) as PlaceTwoBanker | null;
-    const onebanker = parseJsonObject(input.onebanker ?? input.one_banker) as PlaceOneBanker | null;
+    const grouping = parseJsonObject(input.grouping) as {
+      selectedUs: Array<{ id: string; u: number }>;
+      groupSelections: Record<string, string[]>;
+    } | null;
+    const twobanker = parseJsonObject(input.twobanker ?? input.two_banker) as {
+      groupAU: number;
+      groupAMatches: string[];
+      totalUnder: number;
+    } | null;
+    const onebanker = parseJsonObject(input.onebanker ?? input.one_banker) as {
+      groupAMatches: string[];
+    } | null;
 
     if (!gameMode || !(gameMode in gameModes)) {
-      return addCORSHeaders(
-        NextResponse.json(
-          {
-            error: "Invalid or missing gameMode",
-            supportedModes: Object.keys(gameModes),
-          },
-          { status: 400 },
-        ),
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_MODE,
+        "Invalid or missing gameMode",
+        { supportedModes: Object.keys(gameModes) },
       );
     }
 
     if (!Number.isFinite(stake) || stake <= 0) {
-      return addCORSHeaders(
-        NextResponse.json({ error: "Invalid stake amount" }, { status: 400 }),
-      );
+      throw new PosError(POS_ERROR_CODES.INVALID_STAKE, "Invalid stake amount");
     }
 
     const result = await placePoolsPosBet(supabase, {
@@ -76,38 +78,8 @@ async function handleBetRequest(request: NextRequest) {
       prizeId,
     });
 
-    return addCORSHeaders(NextResponse.json({ success: true, data: result }));
+    return posSuccess(result);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to place bet";
-    const status =
-      message.includes("not found")
-        ? 404
-        : message.includes("inactive")
-          ? 401
-          : 400;
-    return addCORSHeaders(NextResponse.json({ error: message }, { status }));
+    return posErrorResponse(error);
   }
-}
-
-type PlaceGrouping = {
-  selectedUs: Array<{ id: string; u: number }>;
-  groupSelections: Record<string, string[]>;
-};
-
-type PlaceTwoBanker = {
-  groupAU: number;
-  groupAMatches: string[];
-  totalUnder: number;
-};
-
-type PlaceOneBanker = {
-  groupAMatches: string[];
-};
-
-export async function GET(request: NextRequest) {
-  return handleBetRequest(request);
-}
-
-export async function POST(request: NextRequest) {
-  return handleBetRequest(request);
 }

@@ -9,6 +9,7 @@ import {
   type SportsGroupedSelections,
 } from "@/lib/bets/sportsCombinations";
 import { calculateBetReward } from "@/lib/helpers";
+import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
 import type { GameType } from "@/lib/types/gameMode";
@@ -50,7 +51,11 @@ function normalizeMode(mode: string): SportsPosMode {
   const normalized = mode.toLowerCase() as SportsPosMode;
   const allowed: SportsPosMode[] = ["direct", "permutation", "grouping", "one_banker"];
   if (!allowed.includes(normalized)) {
-    throw new Error('Invalid mode. Must be "direct", "permutation", "grouping", or "one_banker"');
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_MODE,
+      'Invalid mode. Must be "direct", "permutation", "grouping", or "one_banker"',
+      { supportedModes: allowed },
+    );
   }
   return normalized;
 }
@@ -67,10 +72,16 @@ function resolveSelections(
       selections = input.grouping.groupSelections;
     }
     if (!selections || typeof selections !== "object") {
-      throw new Error("Grouping mode requires grouping data or selections");
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_SELECTIONS,
+        "Grouping mode requires grouping data or selections",
+      );
     }
     if (!Array.isArray(under) || under.length !== 1) {
-      throw new Error('For grouping mode, "under" must be an array with a single total-under value');
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_SELECTIONS,
+        'For grouping mode, "under" must be an array with a single total-under value',
+      );
     }
     return selections;
   }
@@ -78,24 +89,36 @@ function resolveSelections(
   if (mode === "one_banker") {
     selections = input.onebanker?.selections || selections;
     if (!selections || typeof selections !== "object") {
-      throw new Error("One banker mode requires selections");
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_SELECTIONS,
+        "One banker mode requires selections",
+      );
     }
     if (!Array.isArray(under) || under.length !== 1 || under[0] !== 2) {
-      throw new Error('For one_banker mode, "under" must be [2]');
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_SELECTIONS,
+        'For one_banker mode, "under" must be [2]',
+      );
     }
     return selections;
   }
 
   if (mode === "permutation" && (!Array.isArray(under) || under.length === 0)) {
-    throw new Error('For permutation mode, "under" must be a non-empty array');
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      'For permutation mode, "under" must be a non-empty array',
+    );
   }
 
   if (mode === "direct" && (!Array.isArray(under) || under.length !== 1)) {
-    throw new Error('For direct mode, "under" must be an array with a single value');
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      'For direct mode, "under" must be an array with a single value',
+    );
   }
 
   if (!selections || typeof selections !== "object") {
-    throw new Error("Invalid selections");
+    throw new PosError(POS_ERROR_CODES.INVALID_SELECTIONS, "Invalid selections");
   }
 
   return selections;
@@ -109,7 +132,7 @@ async function validateSportsSelectionsAvailability(
   const selectedNumbers = flattenSportsMatchNumbers(selections);
 
   if (selectedNumbers.length === 0) {
-    throw new Error("No matches selected");
+    throw new PosError(POS_ERROR_CODES.INVALID_SELECTIONS, "No matches selected");
   }
 
   const { data: selectedMatches, error } = await supabase
@@ -119,25 +142,40 @@ async function validateSportsSelectionsAvailability(
     .in("number", selectedNumbers);
 
   if (error) {
-    throw new Error(error.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, error.message);
   }
 
   if (!selectedMatches || selectedMatches.length !== selectedNumbers.length) {
-    throw new Error("One or more selected matches are unavailable");
+    throw new PosError(
+      POS_ERROR_CODES.MATCH_UNAVAILABLE,
+      "One or more selected matches are unavailable",
+    );
   }
 
   const now = Date.now();
   for (const match of selectedMatches) {
     if (match.status === "void") {
-      throw new Error(`Match ${match.number} is inactive`);
+      throw new PosError(
+        POS_ERROR_CODES.MATCH_UNAVAILABLE,
+        `Match ${match.number} is inactive`,
+        { match_number: match.number },
+      );
     }
     if (Boolean(match.processed)) {
-      throw new Error(`Match ${match.number} has been processed`);
+      throw new PosError(
+        POS_ERROR_CODES.MATCH_UNAVAILABLE,
+        `Match ${match.number} has been processed`,
+        { match_number: match.number },
+      );
     }
     if (match.end_time) {
       const end = new Date(match.end_time).getTime();
       if (Number.isFinite(end) && end <= now) {
-        throw new Error(`Match ${match.number} has expired and can no longer be played`);
+        throw new PosError(
+          POS_ERROR_CODES.MATCH_UNAVAILABLE,
+          `Match ${match.number} has expired and can no longer be played`,
+          { match_number: match.number },
+        );
       }
     }
   }
@@ -150,7 +188,7 @@ export function computeSportsPosApl(
   selections: SportsFlatSelections | SportsGroupedSelections,
 ): number {
   if (stake <= 0) {
-    throw new Error("Stake must be greater than zero");
+    throw new PosError(POS_ERROR_CODES.INVALID_STAKE, "Stake must be greater than zero");
   }
 
   if (mode === "grouping" || mode === "one_banker") {
@@ -176,7 +214,10 @@ export function computeSportsPosApl(
   const legCount = flattenSportsMatchNumbers(selections).length;
   const lines = calcSportsPermutationLines(legCount, under);
   if (lines <= 0) {
-    throw new Error("Unable to compute APL for selections");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "Unable to compute APL for selections",
+    );
   }
   return stake / lines;
 }
@@ -229,7 +270,10 @@ export async function placeSportsPosBet(
   const selections = resolveSelections(mode, under, input);
 
   if (product === "sports_draw" && !validateDrawOnlySelections(selections)) {
-    throw new Error("Sports draw selections must contain only draw (D) options");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "Sports draw selections must contain only draw (D) options",
+    );
   }
 
   await validateSportsSelectionsAvailability(supabase, resolvedGameId, selections);
@@ -245,7 +289,7 @@ export async function placeSportsPosBet(
     .limit(1);
 
   if (countError) {
-    throw new Error(countError.message);
+    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, countError.message);
   }
 
   const nextNumber = existingBets?.length ? existingBets[0].number + 1 : 1;
@@ -270,7 +314,10 @@ export async function placeSportsPosBet(
     .single();
 
   if (insertError || !bet) {
-    throw new Error(insertError?.message || "Failed to save bet");
+    throw new PosError(
+      POS_ERROR_CODES.BET_SAVE_FAILED,
+      insertError?.message || "Failed to save bet",
+    );
   }
 
   const remainingCredit = await deductTerminalCredit(

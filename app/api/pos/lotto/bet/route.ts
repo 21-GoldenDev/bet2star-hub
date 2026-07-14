@@ -1,16 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
-import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
+import { NextRequest } from "next/server";
+import { handleCORS } from "@/app/api/middleware/cors";
 import { placeLottoPosBet } from "@/lib/pos/placeLottoPosBet";
-import { parseNumbers, parseNumberList, parsePosInput, pickString } from "@/lib/pos/parsePosInput";
+import {
+  parseNumbers,
+  parseNumberList,
+  parsePosInput,
+  parseJsonObject,
+  pickString,
+} from "@/lib/pos/parsePosInput";
+import { PosError, POS_ERROR_CODES, posErrorResponse, posSuccess } from "@/lib/pos/posErrors";
 import { requirePosAuth } from "@/lib/pos/requirePosAuth";
 import { gameModes, type GameModeType } from "@/lib/types/gameMode";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export async function OPTIONS(request: NextRequest) {
-  return handleCORS(request) || new NextResponse(null, { status: 200 });
+  return handleCORS(request) || new Response(null, { status: 200 });
 }
 
-async function handleBetRequest(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const supabase = getServiceClient();
     const auth = await requirePosAuth(request, supabase);
@@ -19,77 +26,60 @@ async function handleBetRequest(request: NextRequest) {
     }
 
     const input = await parsePosInput(request);
-
     const requestedTsn = pickString(input, "tsn", "TSN", "serial_number", "terminal");
     if (requestedTsn && requestedTsn !== auth.payload.serial_number) {
-      return addCORSHeaders(
-        NextResponse.json(
-          { error: "Serial number does not match authenticated terminal." },
-          { status: 403 },
-        ),
+      throw new PosError(
+        POS_ERROR_CODES.SERIAL_MISMATCH,
+        "Serial number does not match authenticated terminal.",
       );
     }
 
-    const tsn = auth.payload.serial_number;
     const gameId = pickString(input, "gameId", "game_id") || undefined;
     const gameMode = pickString(input, "gameMode", "game_mode", "gameType") as GameModeType;
     const stake = Number(input.stake ?? input.staked ?? input.betAmount);
     const prizeId = pickString(input, "prize", "prize_id", "prizeId") || undefined;
     const under = parseNumberList(input.under ?? input.matchAtLeast);
     const numbers = parseNumbers(input.numbers ?? input.selectedNumbers);
+    const grouping = parseJsonObject(input.grouping) as {
+      selectedUs: Array<{ id: string; u: number }>;
+      groupSelections: Record<string, number[]>;
+    } | null;
+    const twobanker = parseJsonObject(input.twobanker ?? input.two_banker) as {
+      groupAU: number;
+      groupANumbers: number[];
+      totalUnder: number;
+    } | null;
+    const onebanker = parseJsonObject(input.onebanker ?? input.one_banker) as {
+      groupANumbers: number[];
+    } | null;
 
     if (!gameMode || !(gameMode in gameModes)) {
-      return addCORSHeaders(
-        NextResponse.json(
-          {
-            error: "Invalid or missing gameMode",
-            supportedModes: Object.keys(gameModes),
-          },
-          { status: 400 },
-        ),
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_MODE,
+        "Invalid or missing gameMode",
+        { supportedModes: Object.keys(gameModes) },
       );
     }
 
     if (!Number.isFinite(stake) || stake <= 0) {
-      return addCORSHeaders(
-        NextResponse.json({ error: "Invalid stake amount" }, { status: 400 }),
-      );
+      throw new PosError(POS_ERROR_CODES.INVALID_STAKE, "Invalid stake amount");
     }
 
     const result = await placeLottoPosBet(supabase, {
-      tsn,
+      tsn: auth.payload.serial_number,
       gameId,
       gameMode,
       stake,
       under: under.filter((u) => u > 0),
       numbers,
+      grouping: grouping || undefined,
+      twobanker: twobanker || undefined,
+      onebanker: onebanker || undefined,
       prizeId,
     });
 
-    return addCORSHeaders(
-      NextResponse.json({
-        success: true,
-        data: result,
-      }),
-    );
+    return posSuccess(result);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to place bet";
-    const status =
-      message.includes("not found")
-        ? 404
-        : message.includes("inactive")
-          ? 401
-          : 400;
-    return addCORSHeaders(
-      NextResponse.json({ error: message }, { status }),
-    );
+    return posErrorResponse(error);
   }
-}
-
-export async function GET(request: NextRequest) {
-  return handleBetRequest(request);
-}
-
-export async function POST(request: NextRequest) {
-  return handleBetRequest(request);
 }

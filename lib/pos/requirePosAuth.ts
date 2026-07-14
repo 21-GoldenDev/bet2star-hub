@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { addCORSHeaders } from "@/app/api/middleware/cors";
 import { verifyPosToken, type PosTokenPayload } from "@/lib/pos/posToken";
+import { PosError, POS_ERROR_CODES, posErrorResponse } from "@/lib/pos/posErrors";
 
 export type PosAuthResult =
   | { ok: true; payload: PosTokenPayload }
@@ -28,24 +28,35 @@ export async function requirePosAuth(
   if (!token) {
     return {
       ok: false,
-      response: addCORSHeaders(
-        NextResponse.json(
-          { error: "Authorization Bearer token is required." },
-          { status: 401 },
+      response: posErrorResponse(
+        new PosError(
+          POS_ERROR_CODES.TOKEN_REQUIRED,
+          "Authorization Bearer token is required.",
         ),
       ),
     };
   }
 
-  const payload = verifyPosToken(token);
+  let payload;
+  try {
+    payload = verifyPosToken(token);
+  } catch (error) {
+    return {
+      ok: false,
+      response: posErrorResponse(
+        new PosError(
+          POS_ERROR_CODES.INTERNAL_ERROR,
+          error instanceof Error ? error.message : "Token verification failed",
+        ),
+      ),
+    };
+  }
+
   if (!payload) {
     return {
       ok: false,
-      response: addCORSHeaders(
-        NextResponse.json(
-          { error: "Invalid or expired token." },
-          { status: 401 },
-        ),
+      response: posErrorResponse(
+        new PosError(POS_ERROR_CODES.TOKEN_INVALID, "Invalid or expired token."),
       ),
     };
   }
@@ -59,8 +70,8 @@ export async function requirePosAuth(
   if (error) {
     return {
       ok: false,
-      response: addCORSHeaders(
-        NextResponse.json({ error: error.message }, { status: 500 }),
+      response: posErrorResponse(
+        new PosError(POS_ERROR_CODES.INTERNAL_ERROR, error.message),
       ),
     };
   }
@@ -68,8 +79,8 @@ export async function requirePosAuth(
   if (!terminal) {
     return {
       ok: false,
-      response: addCORSHeaders(
-        NextResponse.json({ error: "Terminal not found." }, { status: 401 }),
+      response: posErrorResponse(
+        new PosError(POS_ERROR_CODES.TERMINAL_NOT_FOUND, "Terminal not found."),
       ),
     };
   }
@@ -77,8 +88,8 @@ export async function requirePosAuth(
   if (terminal.serial_number !== payload.serial_number) {
     return {
       ok: false,
-      response: addCORSHeaders(
-        NextResponse.json({ error: "Invalid or expired token." }, { status: 401 }),
+      response: posErrorResponse(
+        new PosError(POS_ERROR_CODES.TOKEN_INVALID, "Invalid or expired token."),
       ),
     };
   }
@@ -86,8 +97,8 @@ export async function requirePosAuth(
   if (terminal.status !== "active") {
     return {
       ok: false,
-      response: addCORSHeaders(
-        NextResponse.json({ error: "Terminal is inactive." }, { status: 401 }),
+      response: posErrorResponse(
+        new PosError(POS_ERROR_CODES.TERMINAL_INACTIVE, "Terminal is inactive."),
       ),
     };
   }

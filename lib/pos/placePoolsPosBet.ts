@@ -9,6 +9,7 @@ import {
 } from "@/lib/terminals/terminalPrize";
 import type { GameModeType } from "@/lib/types/gameMode";
 import type { Prize } from "@/lib/types/prize";
+import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
 
@@ -83,8 +84,11 @@ function shapeMatches(
   const { gameMode, matches, grouping, twobanker, onebanker } = input;
 
   if (gameMode === "nap_perm" || gameMode === "turbo" || gameMode === "under1" || gameMode === "under2") {
-    if (!Array.isArray(matches)) {
-      throw new Error("matches must be an array for this game mode");
+    if (!Array.isArray(matches) || matches.length === 0) {
+      throw new PosError(
+        POS_ERROR_CODES.INVALID_SELECTIONS,
+        "matches must be a non-empty array for this game mode",
+      );
     }
     return matches;
   }
@@ -100,7 +104,10 @@ function shapeMatches(
     if (matches && typeof matches === "object" && !Array.isArray(matches)) {
       return matches;
     }
-    throw new Error("Grouping mode requires grouping data or matches object");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "Grouping mode requires grouping data or matches object",
+    );
   }
 
   if (gameMode === "two_banker") {
@@ -115,7 +122,10 @@ function shapeMatches(
     if (matches && typeof matches === "object" && !Array.isArray(matches)) {
       return matches;
     }
-    throw new Error("two_banker mode requires twobanker data or matches object");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "two_banker mode requires twobanker data or matches object",
+    );
   }
 
   if (gameMode === "one_banker") {
@@ -131,10 +141,13 @@ function shapeMatches(
     if (matches && typeof matches === "object" && !Array.isArray(matches)) {
       return matches;
     }
-    throw new Error("one_banker mode requires onebanker data or matches");
+    throw new PosError(
+      POS_ERROR_CODES.INVALID_SELECTIONS,
+      "one_banker mode requires onebanker data or matches",
+    );
   }
 
-  throw new Error(`Unsupported game mode: ${gameMode}`);
+  throw new PosError(POS_ERROR_CODES.INVALID_MODE, `Unsupported game mode: ${gameMode}`);
 }
 
 export async function placePoolsPosBet(
@@ -168,7 +181,11 @@ export async function placePoolsPosBet(
   if (resolvedPrizeId) {
     const prizeEntry = terminalPrizes.find((p) => p.prize_id === resolvedPrizeId);
     if (prizeEntry && !isTerminalPrizeActive(prizeEntry)) {
-      throw new Error("Selected prize is inactive on this terminal");
+      throw new PosError(
+        POS_ERROR_CODES.PRIZE_INACTIVE,
+        "Selected prize is inactive on this terminal",
+        { prize_id: resolvedPrizeId },
+      );
     }
   }
 
@@ -209,7 +226,10 @@ export async function placePoolsPosBet(
     .single();
 
   if (insertError || !bet) {
-    throw new Error(insertError?.message || "Failed to save bet");
+    throw new PosError(
+      POS_ERROR_CODES.BET_SAVE_FAILED,
+      insertError?.message || "Failed to save bet",
+    );
   }
 
   const remainingCredit = await deductTerminalCredit(
