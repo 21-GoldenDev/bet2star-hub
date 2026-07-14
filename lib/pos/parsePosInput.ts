@@ -69,3 +69,62 @@ export function pickString(input: Record<string, unknown>, ...keys: string[]): s
   }
   return "";
 }
+
+export function parseMatchList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map(String).map((s) => s.trim()).filter(Boolean);
+  }
+  if (typeof value === "string" && value.trim()) {
+    if (value.trim().startsWith("[")) {
+      try {
+        return parseMatchList(JSON.parse(value));
+      } catch {
+        // fall through
+      }
+    }
+    return value.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
+export function parseMatches(value: unknown): string[] | Record<string, string[]> {
+  if (typeof value === "string" && value.trim().startsWith("{")) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parseMatches(parsed);
+      }
+    } catch {
+      return parseMatchList(value);
+    }
+  }
+
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const result: Record<string, string[]> = {};
+    for (const [key, items] of Object.entries(value as Record<string, unknown>)) {
+      result[key] = parseMatchList(items);
+    }
+    return result;
+  }
+
+  return parseMatchList(value);
+}
+
+export function parseJsonObject<T extends Record<string, unknown> = Record<string, unknown>>(
+  value: unknown,
+): T | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as T;
+  }
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as T;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
