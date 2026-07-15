@@ -3,11 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminRoleFromRequest } from "@/lib/admin/role";
 
 const SETTINGS_ID = "general";
+const DEFAULT_MAX_BET = 100000;
+const DEFAULT_MAX_WIN = 10000000;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
   process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 );
+
+function isMissingColumnError(message: string) {
+  return message.includes("does not exist") || message.includes("schema cache");
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,16 +24,35 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("platform_settings")
-      .select("max_bet_amount")
+      .select("max_bet_amount, max_win_amount")
       .eq("id", SETTINGS_ID)
       .maybeSingle();
 
     if (error) {
+      if (isMissingColumnError(error.message)) {
+        const { data: betOnly, error: betError } = await supabase
+          .from("platform_settings")
+          .select("max_bet_amount")
+          .eq("id", SETTINGS_ID)
+          .maybeSingle();
+
+        if (betError) {
+          throw betError;
+        }
+
+        return NextResponse.json({
+          maxBetAmount: Number(betOnly?.max_bet_amount ?? DEFAULT_MAX_BET),
+          maxWinAmount: DEFAULT_MAX_WIN,
+          warning:
+            "max_win_amount column is missing. Run the latest database migration.",
+        });
+      }
       throw error;
     }
 
     return NextResponse.json({
-      maxBetAmount: Number(data?.max_bet_amount ?? 100000),
+      maxBetAmount: Number(data?.max_bet_amount ?? DEFAULT_MAX_BET),
+      maxWinAmount: Number(data?.max_win_amount ?? DEFAULT_MAX_WIN),
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -46,10 +71,18 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
     const maxBetAmount = Number(body.maxBetAmount);
+    const maxWinAmount = Number(body.maxWinAmount);
 
     if (!Number.isFinite(maxBetAmount) || maxBetAmount < 0) {
       return NextResponse.json(
         { error: "Max bet amount must be 0 or greater." },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isFinite(maxWinAmount) || maxWinAmount < 0) {
+      return NextResponse.json(
+        { error: "Max winning amount must be 0 or greater." },
         { status: 400 }
       );
     }
@@ -59,10 +92,20 @@ export async function PUT(request: NextRequest) {
       .upsert({
         id: SETTINGS_ID,
         max_bet_amount: maxBetAmount,
+        max_win_amount: maxWinAmount,
         updated_at: new Date().toISOString(),
       });
 
     if (settingsError) {
+      if (isMissingColumnError(settingsError.message)) {
+        return NextResponse.json(
+          {
+            error:
+              "max_win_amount column is missing. Run the latest database migration.",
+          },
+          { status: 500 }
+        );
+      }
       throw settingsError;
     }
 
@@ -96,6 +139,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       maxBetAmount,
+      maxWinAmount,
       terminalsUpdated,
     });
   } catch (error: any) {

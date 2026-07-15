@@ -24,7 +24,7 @@ export default function SettingsPage() {
     maintenanceMode: false,
     maintenanceMessage: "",
     maxBetAmount: 100000,
-    maxWinAmount: 100,
+    maxWinAmount: 10000000,
     withdrawalFee: 2.5,
     depositFee: 1.0,
     transactionTimeout: 30,
@@ -78,16 +78,20 @@ export default function SettingsPage() {
         }
 
         const loadedMaxBet = Number(result.maxBetAmount);
+        const loadedMaxWin = Number(result.maxWinAmount);
         setSettings((prev) => ({
           ...prev,
           maxBetAmount: Number.isFinite(loadedMaxBet)
             ? loadedMaxBet
             : prev.maxBetAmount,
+          maxWinAmount: Number.isFinite(loadedMaxWin)
+            ? loadedMaxWin
+            : prev.maxWinAmount,
         }));
       } catch (error: any) {
         toast({
           title: "Failed to load settings",
-          description: error?.message || "Could not load max bet amount.",
+          description: error?.message || "Could not load betting limits.",
           variant: "destructive",
         });
       } finally {
@@ -139,13 +143,28 @@ export default function SettingsPage() {
       return;
     }
 
+    if (
+      !Number.isFinite(settings.maxWinAmount) ||
+      settings.maxWinAmount < 0
+    ) {
+      toast({
+        title: "Invalid amount",
+        description: "Max winning amount must be 0 or greater.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGeneralSaveLoading(true);
 
     try {
       const response = await fetch("/api/admin/settings/general", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ maxBetAmount: settings.maxBetAmount }),
+        body: JSON.stringify({
+          maxBetAmount: settings.maxBetAmount,
+          maxWinAmount: settings.maxWinAmount,
+        }),
       });
       const result = await response.json();
 
@@ -155,7 +174,7 @@ export default function SettingsPage() {
 
       toast({
         title: "Settings saved",
-        description: `Max bet amount saved. Max stake set to ₦${settings.maxBetAmount.toLocaleString()} on ${result.terminalsUpdated ?? 0} terminals.`,
+        description: `Betting limits saved. Max stake set to ₦${settings.maxBetAmount.toLocaleString()} on ${result.terminalsUpdated ?? 0} terminals.`,
       });
     } catch (error: any) {
       toast({
