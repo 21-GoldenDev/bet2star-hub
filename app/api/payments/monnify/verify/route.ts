@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyPayment, isPaymentPaid } from "@/lib/payments/monnify";
 import { creditCompletedDeposit } from "@/lib/payments/creditDeposit";
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
 
 export async function OPTIONS(request: NextRequest) {
@@ -10,7 +11,10 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const reference = request.nextUrl.searchParams.get("reference");
+    const searchParams = request.nextUrl.searchParams;
+    const reference =
+      searchParams.get("reference") ||
+      searchParams.get("paymentReference");
 
     if (!reference) {
       return addCORSHeaders(
@@ -35,40 +39,31 @@ export async function GET(request: NextRequest) {
     const paymentData = verification.data;
 
     if (!isPaymentPaid(paymentData.paymentStatus)) {
+      const status = (paymentData.paymentStatus || "pending").toLowerCase();
       return addCORSHeaders(
         NextResponse.json({
           success: false,
-          status: (paymentData.paymentStatus || "pending").toLowerCase(),
+          status: status === "paid" ? "pending" : status,
           message: `Payment status: ${paymentData.paymentStatus}`,
         })
       );
     }
 
-    const supabase = await createSupabaseServer();
+    const amount = Number(paymentData.amountPaid ?? paymentData.amount);
+    const supabaseAuth = await createSupabaseServer();
     const {
       data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    } = await supabaseAuth.auth.getUser();
 
-    if (authError || !user) {
-      return addCORSHeaders(
-        NextResponse.json({
-          success: true,
-          status: "pending",
-          message:
-            "Payment successful but balance update pending. Please contact support.",
-          data: paymentData,
-        })
-      );
-    }
-
-    const amount = Number(paymentData.amountPaid ?? paymentData.amount);
+    // Prefer session user; if cookies are missing (e.g. wrong redirect host),
+    // still credit via service role using the pending transaction row.
+    const supabase = user ? supabaseAuth : getServiceClient();
 
     try {
       const credited = await creditCompletedDeposit(supabase, {
         reference,
         amount,
-        userId: user.id,
+        userId: user?.id,
         paymentChannel: paymentData.paymentMethod || null,
         metadata: {
           transactionReference: paymentData.transactionReference,

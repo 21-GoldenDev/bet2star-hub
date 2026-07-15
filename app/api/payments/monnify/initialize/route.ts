@@ -10,6 +10,28 @@ export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
 }
 
+function resolveSiteUrl(request: NextRequest): string {
+  const origin = request.headers.get("origin");
+  if (origin && /^https?:\/\//i.test(origin)) {
+    return origin.replace(/\/$/, "");
+  }
+
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      // ignore
+    }
+  }
+
+  const configured = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(
+    /\/$/,
+    ""
+  );
+  return configured;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -56,16 +78,17 @@ export async function POST(request: NextRequest) {
     }
 
     const reference = generatePaymentReference("DEP");
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+    const siteUrl = resolveSiteUrl(request);
+
+    // Leave query string for Monnify to append paymentReference / paymentStatus
+    const redirectUrl = siteUrl ? `${siteUrl}/payment-status` : undefined;
 
     const result = await initializePayment({
       email,
       amount: nairaAmount,
       name: customerName || user.user_metadata?.full_name || email.split("@")[0],
       paymentReference: reference,
-      redirectUrl: siteUrl
-        ? `${siteUrl}/payment-status?reference=${reference}`
-        : undefined,
+      redirectUrl,
       paymentDescription: "Wallet deposit",
       metaData: {
         type: "deposit",

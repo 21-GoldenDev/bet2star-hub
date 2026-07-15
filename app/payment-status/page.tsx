@@ -14,7 +14,10 @@ function PaymentStatusContent() {
   const [details, setDetails] = useState<any>(null);
 
   useEffect(() => {
-    const reference = searchParams.get("reference");
+    // Monnify redirects with paymentReference; we also accept our own `reference`
+    const reference =
+      searchParams.get("paymentReference") ||
+      searchParams.get("reference");
 
     if (!reference) {
       setStatus("failed");
@@ -42,7 +45,9 @@ function PaymentStatusContent() {
         setDetails(result.data);
       } else {
         setStatus("failed");
-        setMessage(result.message || "Payment verification failed");
+        setMessage(
+          result.message || result.error || "Payment verification failed"
+        );
         setDetails(result.data);
       }
     } catch (error: any) {

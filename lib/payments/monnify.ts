@@ -169,8 +169,9 @@ export async function verifyPayment(
 }> {
   try {
     const accessToken = await getAccessToken();
+    // v2 is the current query API; fall back handled by caller if needed
     const url = new URL(
-      `${getBaseUrl()}/api/v1/merchant/transactions/query`
+      `${getBaseUrl()}/api/v2/merchant/transactions/query`
     );
     url.searchParams.set("paymentReference", paymentReference);
 
