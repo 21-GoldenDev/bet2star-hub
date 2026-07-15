@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -11,7 +11,14 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import {
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Column<T> {
   key: keyof T;
@@ -74,9 +81,42 @@ export default function DataTable<T extends { id?: string | number }>({
   }
 
   // Paginate data
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
   const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  const pageItems = useMemo(() => {
+    if (totalPages <= 1) return [] as Array<number | "ellipsis">;
+
+    const siblingCount = 2;
+    const pages = new Set<number>();
+    pages.add(1);
+    pages.add(totalPages);
+
+    for (let page = safePage - siblingCount; page <= safePage + siblingCount; page += 1) {
+      if (page >= 1 && page <= totalPages) pages.add(page);
+    }
+
+    // Prefer showing the first few pages when near the start (matches « ‹ 1 2 3 4 5 … N »)
+    if (safePage <= siblingCount + 2) {
+      for (let page = 1; page <= Math.min(5, totalPages); page += 1) {
+        pages.add(page);
+      }
+    }
+
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+    const items: Array<number | "ellipsis"> = [];
+
+    sorted.forEach((page, index) => {
+      if (index > 0 && page - sorted[index - 1] > 1) {
+        items.push("ellipsis");
+      }
+      items.push(page);
+    });
+
+    return items;
+  }, [safePage, totalPages]);
 
   const handleSort = (key: keyof T) => {
     if (sortKey === key) {
@@ -85,6 +125,10 @@ export default function DataTable<T extends { id?: string | number }>({
       setSortKey(key);
       setSortOrder("asc");
     }
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(totalPages, page)));
   };
 
   return (
@@ -158,28 +202,77 @@ export default function DataTable<T extends { id?: string | number }>({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages} ({filteredData.length} results)
+            Page {safePage} of {totalPages} ({filteredData.length} results)
           </p>
-          <div className="flex gap-2">
+          <nav aria-label="Pagination" className="inline-flex items-center overflow-hidden rounded-md border border-border">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              className="h-9 w-9 rounded-none border-r border-border px-0"
+              onClick={() => goToPage(1)}
+              disabled={safePage === 1}
+              aria-label="First page"
+            >
+              <ChevronFirst className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 rounded-none border-r border-border px-0"
+              onClick={() => goToPage(safePage - 1)}
+              disabled={safePage === 1}
+              aria-label="Previous page"
             >
               <ChevronLeft className="w-4 h-4" />
             </Button>
+            {pageItems.map((item, index) =>
+              item === "ellipsis" ? (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="flex h-9 min-w-9 items-center justify-center border-r border-border px-2 text-sm text-muted-foreground"
+                >
+                  …
+                </span>
+              ) : (
+                <Button
+                  key={item}
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-9 min-w-9 rounded-none border-r border-border px-3",
+                    item === safePage &&
+                      "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground",
+                  )}
+                  onClick={() => goToPage(item)}
+                  aria-current={item === safePage ? "page" : undefined}
+                >
+                  {item}
+                </Button>
+              ),
+            )}
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              className="h-9 w-9 rounded-none border-r border-border px-0"
+              onClick={() => goToPage(safePage + 1)}
+              disabled={safePage === totalPages}
+              aria-label="Next page"
             >
               <ChevronRight className="w-4 h-4" />
             </Button>
-          </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 rounded-none px-0"
+              onClick={() => goToPage(totalPages)}
+              disabled={safePage === totalPages}
+              aria-label="Last page"
+            >
+              <ChevronLast className="w-4 h-4" />
+            </Button>
+          </nav>
         </div>
       )}
     </div>
