@@ -203,6 +203,19 @@ export default function AdminSidebar() {
                           </div>
                         </Link>
 
+                        <Link href="/admin/bets/winners" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/winners"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Winner List</span>
+                          </div>
+                        </Link>
+
                         {isAdmin && (
                           <Link href="/admin/bets/void" onClick={() => setIsOpen(false)}>
                             <div
@@ -626,6 +639,18 @@ export default function AdminSidebar() {
                   )}
                 >
                   Football Pool
+                </div>
+              </Link>
+              <Link href="/admin/bets/winners" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/winners"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Winner List
                 </div>
               </Link>
               {isAdmin && (
