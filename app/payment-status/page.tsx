@@ -27,7 +27,9 @@ function PaymentStatusContent() {
 
   const verifyPayment = async (reference: string) => {
     try {
-      const response = await fetch(`/api/payments/paystack/verify?reference=${reference}`);
+      const response = await fetch(
+        `/api/payments/monnify/verify?reference=${encodeURIComponent(reference)}`
+      );
       const result = await response.json();
 
       if (result.success && result.status === "success") {

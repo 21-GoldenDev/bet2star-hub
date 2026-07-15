@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { ArrowLeft } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { getUserProfile } from "@/lib/auth";
-import PaystackPayment from "@/components/payments/PaystackPayment";
+import MonnifyPayment from "@/components/payments/MonnifyPayment";
 import ManualDepositForm from "@/components/payments/ManualDepositForm";
 import DepositBankDetailsCard from "@/components/payments/DepositBankDetailsCard";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +47,7 @@ const Deposit = () => {
         const formattedDeposits = (transactions || []).map((tx: any) => ({
           id: tx.id,
           amount: tx.amount,
-          method: tx.payment_method || 'Paystack',
+          method: tx.payment_method || 'Monnify',
           status: tx.status,
           date: new Date(tx.created_at).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -138,12 +138,12 @@ const Deposit = () => {
           </p>
         </div>
 
-        {/* Paystack Payment */}
+        {/* Online deposit via Monnify */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-semibold text-foreground mb-4">
             Make a Deposit (Online)
           </h2>
-          <PaystackPayment
+          <MonnifyPayment
             userEmail={user.email!}
             onSuccess={handlePaymentSuccess}
           />
