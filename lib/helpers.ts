@@ -2,6 +2,7 @@ import {
   calculateSportsGroupedReward,
   isGroupedSportsSelections,
 } from "./bets/sportsCombinations";
+import { capWinAmount } from "./bets/capWinAmount";
 import { Prize } from "./types/prize";
 
 export function formatLottoWeekLabel(week: number, gameName?: string | null): string {
@@ -132,7 +133,12 @@ export type TurboPrize = {
   data?: Record<string, number>;
 };
 
-export function calculateBetReward(bet: any, matches: any[], drawMode?: boolean): number {
+export function calculateBetReward(
+  bet: any,
+  matches: any[],
+  drawMode?: boolean,
+  maxWinAmount?: number | null,
+): number {
   if (!bet || bet.status === "void" || bet.status !== "active") return 0;
 
   const selections = bet.selections || {};
@@ -142,7 +148,7 @@ export function calculateBetReward(bet: any, matches: any[], drawMode?: boolean)
     (mode === "grouping" || mode === "one_banker") &&
     isGroupedSportsSelections(selections)
   ) {
-    return calculateSportsGroupedReward(bet, matches, drawMode);
+    return calculateSportsGroupedReward(bet, matches, drawMode, maxWinAmount);
   }
 
   const sportOptions = drawMode ? ["D"] : ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"];
@@ -199,7 +205,7 @@ export function calculateBetReward(bet: any, matches: any[], drawMode?: boolean)
 
   const apl = (bet.staked || 0) / totalWays;
 
-  return apl * winning;
+  return capWinAmount(apl * winning, maxWinAmount);
 }
 
 export function computeLottoAward(

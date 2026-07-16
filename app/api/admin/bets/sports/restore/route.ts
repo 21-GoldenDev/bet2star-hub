@@ -1,6 +1,7 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAdminRoleFromRequest } from "@/lib/admin/role";
 import { calculateBetReward } from "@/lib/helpers";
+import { readMaxWinAmount } from "@/lib/settings/maxWinAmount.server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
@@ -41,7 +42,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Recalculate award based on current match results
-    const award = calculateBetReward({ ...bet, status: "active" }, matches || []);
+    const maxWinAmount = await readMaxWinAmount(supabase);
+    const award = calculateBetReward(
+      { ...bet, status: "active" },
+      matches || [],
+      false,
+      maxWinAmount,
+    );
 
     // Update bet: restore status and recalculated award
     const { error } = await supabase

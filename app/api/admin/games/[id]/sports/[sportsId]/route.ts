@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { calculateBetReward } from "@/lib/helpers";
+import { readMaxWinAmount } from "@/lib/settings/maxWinAmount.server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -233,12 +234,15 @@ export async function PUT(
             ? applySportsDrawOdds(matches, extractSportsDrawOddsMap(game.prize_ids))
             : matches;
 
+          const maxWinAmount = await readMaxWinAmount(supabase);
+          const isDraw = game.type === "sports_draw";
+
           for (const bet of betsData) {
             let award = 0;
             if (bet.status === "void") {
               award = bet.staked || 0;
             } else {
-              award = calculateBetReward(bet, finalMatches, game.type === "sports_draw") || 0;
+              award = calculateBetReward(bet, finalMatches, isDraw, maxWinAmount) || 0;
             }
 
             const { error: updateBetError } = await supabase

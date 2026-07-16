@@ -1,10 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminRoleFromRequest } from "@/lib/admin/role";
+import { DEFAULT_MAX_WIN_AMOUNT } from "@/lib/bets/capWinAmount";
 
 const SETTINGS_ID = "general";
 const DEFAULT_MAX_BET = 100000;
-const DEFAULT_MAX_WIN = 10000000;
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
           maxBetAmount: Number(betOnly?.max_bet_amount ?? DEFAULT_MAX_BET),
-          maxWinAmount: DEFAULT_MAX_WIN,
+          maxWinAmount: DEFAULT_MAX_WIN_AMOUNT,
           warning:
             "max_win_amount column is missing. Run the latest database migration.",
         });
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       maxBetAmount: Number(data?.max_bet_amount ?? DEFAULT_MAX_BET),
-      maxWinAmount: Number(data?.max_win_amount ?? DEFAULT_MAX_WIN),
+      maxWinAmount: Number(data?.max_win_amount ?? DEFAULT_MAX_WIN_AMOUNT),
     });
   } catch (error: any) {
     return NextResponse.json(

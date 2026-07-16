@@ -11,6 +11,7 @@ import { getGamePrizeException } from '@/lib/admin/syncTerminalPrizesFromGame';
 import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
 import { flattenSportsMatchNumbers, validateDrawOnlySelections } from '@/lib/bets/sportsCombinations';
 import { Prize } from '@/lib/types/prize';
+import { readMaxWinAmount } from '@/lib/settings/maxWinAmount.server';
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
@@ -589,7 +590,8 @@ async function computeSportsAward(
 
     if (!allSelectedHaveScores) return 0;
 
-    return calculateBetReward(bet, matchesWithScores, drawMode) || 0;
+    const maxWinAmount = await readMaxWinAmount(supabase);
+    return calculateBetReward(bet, matchesWithScores, drawMode, maxWinAmount) || 0;
   } catch (err) {
     console.error('Sports award calc error:', err);
     return 0;

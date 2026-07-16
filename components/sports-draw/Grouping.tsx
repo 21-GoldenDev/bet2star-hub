@@ -25,10 +25,11 @@ interface Props {
   drawOddsMap: Record<number, number>;
   matchNumberMap: Map<string, number>;
   activeGame: Game;
+  maxWinAmount?: number | null;
   onBetPlaced: () => void;
 }
 
-const Grouping = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlaced }: Props) => {
+const Grouping = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmount, onBetPlaced }: Props) => {
   const { user } = useSupabaseUser();
   const [totalUnder, setTotalUnder] = useState(3);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
@@ -122,8 +123,8 @@ const Grouping = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlace
         oddsMap[String(b.matchNumber)] = b.odds;
       });
     });
-    return previewSportsGroupedWinnings(betAmount, groups, oddsMap);
-  }, [selectedUs, currentSum, totalUnder, groupSelections, betAmount]);
+    return previewSportsGroupedWinnings(betAmount, groups, oddsMap, maxWinAmount);
+  }, [selectedUs, currentSum, totalUnder, groupSelections, betAmount, maxWinAmount]);
 
   const nextGroup = useMemo(() => {
     const remaining = totalUnder - currentSum;

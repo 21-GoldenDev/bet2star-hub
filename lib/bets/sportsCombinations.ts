@@ -1,3 +1,5 @@
+import { capWinAmount } from "./capWinAmount";
+
 export const SPORT_OPTIONS = ["H", "D", "A", "1X", "12", "X2", "O25", "U25", "GG"] as const;
 export type SportOptionKey = (typeof SPORT_OPTIONS)[number];
 
@@ -115,6 +117,7 @@ export function previewSportsPermutationWinnings(
   stake: number,
   legOdds: number[],
   unders: number[],
+  maxWinAmount?: number | null,
 ): { min: number; max: number; numLines: number; apl: number } | null {
   if (stake <= 0 || legOdds.length === 0 || unders.length === 0) return null;
 
@@ -136,8 +139,11 @@ export function previewSportsPermutationWinnings(
   if (allWinnings.length === 0) return null;
 
   return {
-    min: Math.min(...allWinnings),
-    max: allWinnings.reduce((a, b) => a + b, 0),
+    min: capWinAmount(Math.min(...allWinnings), maxWinAmount),
+    max: capWinAmount(
+      allWinnings.reduce((a, b) => a + b, 0),
+      maxWinAmount,
+    ),
     numLines,
     apl,
   };
@@ -229,6 +235,7 @@ export function calculateSportsGroupedReward(
   },
   matches: any[],
   drawMode?: boolean,
+  maxWinAmount?: number | null,
 ): number {
   if (!bet || bet.status === "void" || bet.status !== "active") return 0;
 
@@ -263,7 +270,7 @@ export function calculateSportsGroupedReward(
   }
 
   const apl = (bet.staked || 0) / totalLines;
-  return apl * multiplier;
+  return capWinAmount(apl * multiplier, maxWinAmount);
 }
 
 /**
@@ -275,6 +282,7 @@ export function previewSportsGroupedWinnings(
   stake: number,
   groups: Record<string, SportsFlatSelections>,
   oddsMap: Record<string, number>,
+  maxWinAmount?: number | null,
 ): { min: number; max: number; numLines: number; apl: number } | null {
   const groupKeys = Object.keys(groups);
   if (groupKeys.length === 0 || stake <= 0) return null;
@@ -304,5 +312,10 @@ export function previewSportsGroupedWinnings(
     groupLegOdds.reduce((acc, g) => acc * g.products.reduce((a, b) => a + b, 0), 1);
   const min = apl * groupLegOdds.reduce((acc, g) => acc * Math.min(...g.products), 1);
 
-  return { min, max, numLines, apl };
+  return {
+    min: capWinAmount(min, maxWinAmount),
+    max: capWinAmount(max, maxWinAmount),
+    numLines,
+    apl,
+  };
 }

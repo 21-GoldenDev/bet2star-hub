@@ -12,6 +12,7 @@ import { calculateBetReward } from "@/lib/helpers";
 import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
+import { readMaxWinAmount } from "@/lib/settings/maxWinAmount.server";
 import type { GameType } from "@/lib/types/gameMode";
 
 export type SportsPosMode = "direct" | "permutation" | "grouping" | "one_banker";
@@ -251,7 +252,8 @@ async function computeSportsAward(
 
   if (!allSelectedHaveScores) return 0;
 
-  return calculateBetReward(bet, matchesWithScores, drawMode) || 0;
+  const maxWinAmount = await readMaxWinAmount(supabase);
+  return calculateBetReward(bet, matchesWithScores, drawMode, maxWinAmount) || 0;
 }
 
 export async function placeSportsPosBet(

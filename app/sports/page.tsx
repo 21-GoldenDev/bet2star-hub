@@ -21,6 +21,7 @@ import {
   buildSportsPermutationLegOdds,
   previewSportsPermutationWinnings,
 } from "@/lib/bets/sportsCombinations";
+import { capWinAmount, DEFAULT_MAX_WIN_AMOUNT } from "@/lib/bets/capWinAmount";
 
 type BetOptionKey = "H" | "D" | "A" | "1X" | "12" | "X2" | "O25" | "U25" | "GG";
 
@@ -51,6 +52,24 @@ const Football = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [maxWinAmount, setMaxWinAmount] = useState(DEFAULT_MAX_WIN_AMOUNT);
+
+  useEffect(() => {
+    const loadBettingLimits = async () => {
+      try {
+        const response = await fetch("/api/settings/betting-limits");
+        const result = await response.json();
+        if (!response.ok) return;
+        const loaded = Number(result.maxWinAmount);
+        if (Number.isFinite(loaded) && loaded >= 0) {
+          setMaxWinAmount(loaded);
+        }
+      } catch {
+        // keep default
+      }
+    };
+    loadBettingLimits();
+  }, []);
 
   useEffect(() => {
     const maxValidValue = selectedBets.length - 1;
@@ -165,8 +184,19 @@ const Football = () => {
   const totalOdds = selectedBets.reduce((acc, bet) => acc * bet.odds, 1);
 
   const permutationWinnings = useMemo(
-    () => previewSportsPermutationWinnings(betAmount, buildSportsPermutationLegOdds(selectedBets), matchAtLeast),
-    [betAmount, selectedBets, matchAtLeast],
+    () =>
+      previewSportsPermutationWinnings(
+        betAmount,
+        buildSportsPermutationLegOdds(selectedBets),
+        matchAtLeast,
+        maxWinAmount,
+      ),
+    [betAmount, selectedBets, matchAtLeast, maxWinAmount],
+  );
+
+  const possibleWinning = useMemo(
+    () => capWinAmount(betAmount * totalOdds, maxWinAmount),
+    [betAmount, totalOdds, maxWinAmount],
   );
 
   const toggleMatch = (m: number) => {
@@ -374,6 +404,7 @@ const Football = () => {
                   groupedMatches={groupedMatches}
                   matchNumberMap={matchNumberMap}
                   activeGame={activeGame}
+                  maxWinAmount={maxWinAmount}
                   onBetPlaced={() => {}}
                 />
               ) : mode === "one_banker" ? (
@@ -382,6 +413,7 @@ const Football = () => {
                   groupedMatches={groupedMatches}
                   matchNumberMap={matchNumberMap}
                   activeGame={activeGame}
+                  maxWinAmount={maxWinAmount}
                   onBetPlaced={() => {}}
                 />
               ) : (
@@ -593,7 +625,7 @@ const Football = () => {
                         <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                           <div className="flex justify-between items-center mt-2">
                             <span className="text-sm font-medium text-foreground">Possible Winning:</span>
-                            <span className="font-bold text-lg text-primary">₦{(betAmount * totalOdds).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-bold text-lg text-primary">₦{possibleWinning.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       )}

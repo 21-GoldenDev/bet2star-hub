@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { calculateBetReward } from "@/lib/helpers";
+import { readMaxWinAmount } from "@/lib/settings/maxWinAmount.server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -84,12 +85,15 @@ export async function GET(
       ? extractSportsDrawOddsMap(game.prize_ids)
       : {};
     const normalizedMatches = applySportsDrawOdds(matches || [], drawOddsMap);
+    const maxWinAmount = await readMaxWinAmount(supabase);
+    const isDraw = game.type === "sports_draw";
 
     const totalBetAmount = (bets || []).reduce((sum, bet) => sum + (bet.staked || 0), 0);
 
     // Calculate total reward using helper
     const totalReward = (bets || []).reduce(
-      (sum, bet) => sum + calculateBetReward(bet, normalizedMatches),
+      (sum, bet) =>
+        sum + calculateBetReward(bet, normalizedMatches, isDraw, maxWinAmount),
       0
     );
 

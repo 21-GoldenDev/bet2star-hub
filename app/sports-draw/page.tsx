@@ -15,6 +15,7 @@ import SportsDrawOneBanker from "@/components/sports-draw/OneBanker";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
 import { previewSportsPermutationWinnings } from "@/lib/bets/sportsCombinations";
+import { capWinAmount, DEFAULT_MAX_WIN_AMOUNT } from "@/lib/bets/capWinAmount";
 
 type BetOptionKey = "D";
 
@@ -57,6 +58,24 @@ const SportsDrawPage = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
+  const [maxWinAmount, setMaxWinAmount] = useState(DEFAULT_MAX_WIN_AMOUNT);
+
+  useEffect(() => {
+    const loadBettingLimits = async () => {
+      try {
+        const response = await fetch("/api/settings/betting-limits");
+        const result = await response.json();
+        if (!response.ok) return;
+        const loaded = Number(result.maxWinAmount);
+        if (Number.isFinite(loaded) && loaded >= 0) {
+          setMaxWinAmount(loaded);
+        }
+      } catch {
+        // keep default
+      }
+    };
+    loadBettingLimits();
+  }, []);
 
   useEffect(() => {
     const maxValidValue = selectedBets.length - 1;
@@ -160,8 +179,14 @@ const SportsDrawPage = () => {
         betAmount,
         selectedBets.map((bet) => bet.odds),
         matchAtLeast,
+        maxWinAmount,
       ),
-    [betAmount, selectedBets, matchAtLeast],
+    [betAmount, selectedBets, matchAtLeast, maxWinAmount],
+  );
+
+  const possibleWinning = useMemo(
+    () => capWinAmount(betAmount * totalOdds, maxWinAmount),
+    [betAmount, totalOdds, maxWinAmount],
   );
 
   const toggleMatch = (m: number) => {
@@ -324,6 +349,7 @@ const SportsDrawPage = () => {
                   drawOddsMap={drawOddsMap}
                   matchNumberMap={matchNumberMap}
                   activeGame={activeGame}
+                  maxWinAmount={maxWinAmount}
                   onBetPlaced={() => {}}
                 />
               ) : mode === "one_banker" ? (
@@ -332,6 +358,7 @@ const SportsDrawPage = () => {
                   drawOddsMap={drawOddsMap}
                   matchNumberMap={matchNumberMap}
                   activeGame={activeGame}
+                  maxWinAmount={maxWinAmount}
                   onBetPlaced={() => {}}
                 />
               ) : (
@@ -471,7 +498,7 @@ const SportsDrawPage = () => {
                         <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
                           <div className="flex justify-between items-center mt-2">
                             <span className="text-sm font-medium text-foreground">Possible Winning:</span>
-                            <span className="font-bold text-lg text-primary">₦{(betAmount * totalOdds).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            <span className="font-bold text-lg text-primary">₦{possibleWinning.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
                       )}

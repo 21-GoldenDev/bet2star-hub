@@ -1,6 +1,7 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAdminRoleFromRequest } from "@/lib/admin/role";
 import { calculateBetReward } from "@/lib/helpers";
+import { readMaxWinAmount } from "@/lib/settings/maxWinAmount.server";
 import { NextRequest, NextResponse } from "next/server";
 
 function extractSportsDrawOddsMap(prizeIds: any): Record<number, number> {
@@ -77,7 +78,13 @@ export async function POST(request: NextRequest) {
 
     const drawOddsMap = extractSportsDrawOddsMap(drawGame.prize_ids);
     const normalizedMatches = applySportsDrawOdds(matches || [], drawOddsMap);
-    const award = calculateBetReward({ ...bet, status: "active" }, normalizedMatches, true);
+    const maxWinAmount = await readMaxWinAmount(supabase);
+    const award = calculateBetReward(
+      { ...bet, status: "active" },
+      normalizedMatches,
+      true,
+      maxWinAmount,
+    );
 
     const { error } = await supabase
       .from("bets_sports_draw")

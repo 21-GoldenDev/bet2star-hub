@@ -18,10 +18,11 @@ interface Props {
   drawOddsMap: Record<number, number>;
   matchNumberMap: Map<string, number>;
   activeGame: Game;
+  maxWinAmount?: number | null;
   onBetPlaced: () => void;
 }
 
-const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlaced }: Props) => {
+const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmount, onBetPlaced }: Props) => {
   const { user } = useSupabaseUser();
   const [selections, setSelections] = useState<DrawBetSelection[]>([]);
   const [bankerMatchId, setBankerMatchId] = useState<string | null>(null);
@@ -67,8 +68,8 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, onBetPlac
       groups["2-groupB"][String(b.matchNumber)] = ["D"];
       oddsMap[String(b.matchNumber)] = b.odds;
     });
-    return previewSportsGroupedWinnings(betAmount, groups, oddsMap);
-  }, [storageGroups, groupABets, groupBBets, betAmount]);
+    return previewSportsGroupedWinnings(betAmount, groups, oddsMap, maxWinAmount);
+  }, [storageGroups, groupABets, groupBBets, betAmount, maxWinAmount]);
 
   const isReady = bankerMatchId !== null && groupABets.length === 1 && groupBBets.length >= 2 && betAmount > 0;
 
