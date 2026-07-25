@@ -45,7 +45,7 @@ async function fetchAll<T extends { id: string }>(
     if (error) throw error;
     if (!data?.length) break;
 
-    rows.push(...(data as T[]));
+    rows.push(...(data as unknown as T[]));
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }

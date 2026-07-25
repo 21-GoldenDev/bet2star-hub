@@ -24,6 +24,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Table,
   TableBody,
   TableCell,
@@ -31,7 +44,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Edit, Search, Power } from "lucide-react";
+import { Plus, Trash2, Edit, Search, Power, Check, ChevronsUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -51,6 +64,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 type TerminalFormState = {
   serial_number: string;
@@ -81,6 +95,7 @@ export default function TerminalsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAgentId, setFilterAgentId] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [agentPickerOpen, setAgentPickerOpen] = useState(false);
   const [formData, setFormData] = useState<TerminalFormState>({
     serial_number: "",
     agent_id: "",
@@ -292,6 +307,7 @@ export default function TerminalsPage() {
     });
     setPrizeRows([{ prize_id: "", commission: 0, status: "active", default: false }]);
     setEditingId(null);
+    setAgentPickerOpen(false);
   };
 
   const handleEdit = (terminal: Terminal) => {
@@ -500,21 +516,57 @@ export default function TerminalsPage() {
                   </div>
                   <div>
                     <Label htmlFor="agent_id">Assign to Agent</Label>
-                    <Select
-                      value={formData.agent_id}
-                      onValueChange={handleAgentChange}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an agent" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {agents.map((agent) => (
-                          <SelectItem key={agent.id} value={agent.id}>
-                            {agent.username}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={agentPickerOpen} onOpenChange={setAgentPickerOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="agent_id"
+                          type="button"
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={agentPickerOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {formData.agent_id
+                            ? agents.find((a) => a.id === formData.agent_id)?.username ??
+                              "Select an agent"
+                            : "Select an agent"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-(--radix-popover-trigger-width) p-0"
+                        align="start"
+                      >
+                        <Command>
+                          <CommandInput placeholder="Search agent..." />
+                          <CommandList>
+                            <CommandEmpty>No agent found.</CommandEmpty>
+                            <CommandGroup>
+                              {agents.map((agent) => (
+                                <CommandItem
+                                  key={agent.id}
+                                  value={`${agent.username} ${agent.first_name} ${agent.last_name}`}
+                                  onSelect={() => {
+                                    handleAgentChange(agent.id);
+                                    setAgentPickerOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      formData.agent_id === agent.id
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  {agent.username}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </div>
 

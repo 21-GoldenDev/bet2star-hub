@@ -30,7 +30,7 @@ interface Props {
 function buildMultipleMaxStakes(
   gameType: Props["gameType"],
   maxStakes: MaxStake[]
-) {
+): Record<string, string> {
   if (gameType === "pools") {
     return {
       match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toString() || "",
