@@ -529,7 +529,7 @@ const renderSportsSelectionDetails = (row: BetRow, dataMatches: Record<string, M
   if (selections && isGroupedSportsSelections(selections as any)) {
     return (
       <div className="space-y-4">
-        {sortedSelectionGroupEntries(selections).map(([gid, group], index) => {
+        {sortedSelectionGroupEntries(selections as Record<string, Record<string, string[]>>).map(([gid, group], index) => {
           return (
             <div key={gid} className="space-y-2">
               <p className="text-sm font-semibold">
