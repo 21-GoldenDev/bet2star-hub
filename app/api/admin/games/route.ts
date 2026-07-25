@@ -130,6 +130,35 @@ export async function POST(request: NextRequest) {
     const trimmedGameName =
       type === "lotto" && typeof gameName === "string" ? gameName.trim() : "";
 
+    // Previous game: latest same-type game with an earlier start_time
+    let previousGame: {
+      week: number;
+      max_stake: unknown;
+      max_prize: unknown;
+      visible_numbers: number[] | null;
+    } | null = null;
+
+    if (type === "lotto" || type === "pools" || type === "sports_draw") {
+      const { data } = await supabase
+        .from("games")
+        .select("week, max_stake, max_prize, visible_numbers")
+        .eq("type", type)
+        .lt("start_time", startTime)
+        .order("start_time", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      previousGame = data;
+    }
+
+    const resolveMaxPrize = () => {
+      if (type === "sports") return SPORTS_DEFAULT_MAX_PRIZE;
+      if (type === "sports_draw") {
+        return previousGame?.max_prize ?? SPORTS_DRAW_DEFAULT_MAX_PRIZE;
+      }
+      return null;
+    };
+
     const { data, error } = await supabase
       .from("games")
       .insert([
@@ -140,12 +169,11 @@ export async function POST(request: NextRequest) {
           end_time: endTime,
           results: results || null,
           game_name: trimmedGameName || null,
-          max_prize:
-            type === "sports"
-              ? SPORTS_DEFAULT_MAX_PRIZE
-              : type === "sports_draw"
-                ? SPORTS_DRAW_DEFAULT_MAX_PRIZE
-                : null,
+          max_stake: previousGame?.max_stake ?? null,
+          ...(type === "lotto"
+            ? { visible_numbers: previousGame?.visible_numbers ?? null }
+            : {}),
+          max_prize: resolveMaxPrize(),
         },
       ])
       .select()
@@ -156,25 +184,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === "pools") {
-      const { data: previousPoolsGame } = await supabase
-        .from("games")
-        .select("week")
-        .eq("type", "pools")
-        .lt("week", week)
-        .order("week", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      let latestWeekTemplates: Array<{
+        number: number;
+        home: string;
+        away: string;
+        status: "enable" | "disable";
+      }> = [];
 
-      let latestWeekTemplates: Array<{ number: number; home: string; away: string }> = [];
-
-      if (previousPoolsGame) {
+      if (previousGame) {
         const { data: previousWeekMatches } = await supabase
           .from("matches")
-          .select("number, home, away")
-          .eq("week", previousPoolsGame.week)
+          .select("number, home, away, status")
+          .eq("week", previousGame.week)
           .order("number", { ascending: true });
 
-        latestWeekTemplates = previousWeekMatches || [];
+        latestWeekTemplates = (previousWeekMatches || []).map((match) => ({
+          number: match.number,
+          home: match.home,
+          away: match.away,
+          status: match.status === "disable" ? "disable" : "enable",
+        }));
       }
 
       const defaultMatches = buildDefaultPoolsMatches(week, latestWeekTemplates);

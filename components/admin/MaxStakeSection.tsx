@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,34 @@ interface Props {
   onRefresh: () => void;
 }
 
+function buildMultipleMaxStakes(
+  gameType: Props["gameType"],
+  maxStakes: MaxStake[]
+) {
+  if (gameType === "pools") {
+    return {
+      match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toString() || "",
+      match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toString() || "",
+      match3plus:
+        maxStakes
+          .find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
+          ?.max_amount?.toString() || "",
+    };
+  }
+  if (gameType === "sports" || gameType === "sports_draw") {
+    return {
+      match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toString() || "",
+      match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toString() || "",
+      match3: maxStakes.find((s) => s.match_at_least === 3)?.max_amount?.toString() || "",
+      match4plus:
+        maxStakes
+          .find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4)
+          ?.max_amount?.toString() || "",
+    };
+  }
+  return {};
+}
+
 export default function MaxStakeSection({
   gameId,
   gameType,
@@ -41,30 +69,20 @@ export default function MaxStakeSection({
   const { toast } = useToast();
 
   // For lotto: single max stake
-  const [singleMaxStake, setSingleMaxStake] = useState<string>(
-    maxStakes.length > 0 && gameType === "lotto" ? maxStakes[0].max_amount.toString() : ""
-  );
+  const [singleMaxStake, setSingleMaxStake] = useState<string>("");
 
   // For pools and sports: multiple max stakes based on matchAtLeast
-  const [multipleMaxStakes, setMultipleMaxStakes] = useState(() => {
-    if (gameType === "pools") {
-      return {
-        match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
-        match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
-        match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
-          ?.max_amount || "",
-      };
-    } else if (isSportsLike) {
-      return {
-        match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount || "",
-        match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount || "",
-        match3: maxStakes.find((s) => s.match_at_least === 3)?.max_amount || "",
-        match4plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4)
-          ?.max_amount || "",
-      };
-    }
-    return {};
-  });
+  const [multipleMaxStakes, setMultipleMaxStakes] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setIsEditing(false);
+    setSingleMaxStake(
+      maxStakes.length > 0 && gameType === "lotto"
+        ? maxStakes[0].max_amount.toString()
+        : ""
+    );
+    setMultipleMaxStakes(buildMultipleMaxStakes(gameType, maxStakes));
+  }, [gameId, gameType, maxStakes]);
 
   const updateMaxStakes = async () => {
     try {
@@ -339,27 +357,12 @@ export default function MaxStakeSection({
               <Button
                 onClick={() => {
                   setIsEditing(false);
-                  // Reset to original values
-                  if (gameType === "pools") {
-                    setMultipleMaxStakes({
-                      match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount.toString() || "",
-                      match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount.toString() || "",
-                      match3plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 3)
-                        ?.max_amount.toString() || "",
-                    });
-                  } else if (isSportsLike) {
-                    setMultipleMaxStakes({
-                      match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount.toString() || "",
-                      match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount.toString() || "",
-                      match3: maxStakes.find((s) => s.match_at_least === 3)?.max_amount.toString() || "",
-                      match4plus: maxStakes.find((s) => (s.match_at_least ?? null) === null || (s.match_at_least ?? 0) >= 4)
-                        ?.max_amount.toString() || "",
-                    });
-                  } else {
-                    setSingleMaxStake(
-                      maxStakes.length > 0 && gameType === "lotto" ? maxStakes[0].max_amount.toString() : ""
-                    );
-                  }
+                  setSingleMaxStake(
+                    maxStakes.length > 0 && gameType === "lotto"
+                      ? maxStakes[0].max_amount.toString()
+                      : ""
+                  );
+                  setMultipleMaxStakes(buildMultipleMaxStakes(gameType, maxStakes));
                 }}
                 variant="outline"
                 disabled={submitting}

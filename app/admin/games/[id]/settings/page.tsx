@@ -240,6 +240,7 @@ export default function GameSettingsPage() {
       {game && <GameStatsCards stats={stats} />}
       {game && (
         <MaxStakeSection
+          key={gameId}
           gameId={gameId}
           gameType={game.type as "lotto" | "pools" | "sports" | "sports_draw"}
           maxStakes={maxStakes}

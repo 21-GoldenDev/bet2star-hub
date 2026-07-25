@@ -4,6 +4,7 @@ export type PoolsMatchTemplate = {
   number: number;
   home: string;
   away: string;
+  status?: "enable" | "disable";
 };
 
 export type PoolsMatchRecord = {
@@ -23,7 +24,7 @@ export function buildDefaultPoolsMatches(
   number: number;
   home: string;
   away: string;
-  status: "enable";
+  status: "enable" | "disable";
   week: number;
 }> {
   const templateByNumber = new Map(
@@ -38,7 +39,7 @@ export function buildDefaultPoolsMatches(
       number,
       home: template?.home?.trim() || `Home Team ${number}`,
       away: template?.away?.trim() || `Away Team ${number}`,
-      status: "enable" as const,
+      status: template?.status === "disable" ? ("disable" as const) : ("enable" as const),
       week,
     };
   });
