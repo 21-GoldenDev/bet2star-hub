@@ -31,6 +31,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { DateRange } from "react-day-picker";
 import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
+import {
+  formatSelectionGroupLabel,
+  sortedSelectionGroupEntries,
+} from "@/lib/bets/groupSelections";
 import { cn } from "@/lib/utils";
 
 interface DeletedBet {
@@ -1112,9 +1116,9 @@ export default function VoidBetsPage() {
 
                           return (
                             <div className="space-y-3">
-                              {Object.entries(value).map(([gid, items], index) => (
+                              {sortedSelectionGroupEntries(value as Record<string, string[] | number[]>).map(([gid, items], index) => (
                                 <div key={gid} className="space-y-2">
-                                  <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0]}</p>
+                                  <p className="text-sm font-semibold">{formatSelectionGroupLabel(gid, index)}: Under {gid.split("-")[0]}</p>
                                   <div className="flex flex-wrap gap-2 ml-2">
                                     {items
                                       .sort((a: string | number, b: string | number) => compareStringOrNumber(a, b))

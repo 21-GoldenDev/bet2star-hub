@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  buildOneBankerLottoNumbers,
+  buildTwoBankerLottoNumbers,
+} from "@/lib/bets/groupSelections";
 import { computeLottoAward, computeLottoApl } from "@/lib/helpers";
 import {
   getDefaultTerminalPrizeId,
@@ -107,14 +111,24 @@ function shapeNumbers(
 
   if (gameMode === "two_banker") {
     if (twobanker?.groupANumbers) {
-      const groupBU = twobanker.totalUnder - twobanker.groupAU;
-      const groupBNumbers = visibleNumbers.filter((n) => !twobanker.groupANumbers.includes(n));
-      return {
-        [`${twobanker.groupAU}-groupA`]: twobanker.groupANumbers,
-        [`${groupBU}-groupB`]: groupBNumbers,
-      };
+      return buildTwoBankerLottoNumbers(
+        visibleNumbers,
+        twobanker.groupAU,
+        twobanker.groupANumbers,
+        twobanker.totalUnder,
+      );
     }
     if (numbers && typeof numbers === "object" && !Array.isArray(numbers)) {
+      const groupAEntry = Object.entries(numbers).find(([key]) => /groupA$/i.test(key));
+      const groupBKey = Object.keys(numbers).find((key) => /groupB$/i.test(key));
+      if (groupAEntry && groupBKey) {
+        const groupA = groupAEntry[1].map(Number).filter((n) => Number.isFinite(n));
+        const groupASet = new Set(groupA);
+        return {
+          [groupAEntry[0]]: groupA,
+          [groupBKey]: visibleNumbers.filter((n) => !groupASet.has(n)),
+        };
+      }
       return numbers;
     }
     throw new PosError(
@@ -128,13 +142,13 @@ function shapeNumbers(
       onebanker?.groupANumbers ||
       (Array.isArray(numbers) ? numbers : null);
     if (groupA && groupA.length > 0) {
-      const groupBNumbers = visibleNumbers.filter((n) => !groupA.includes(n));
-      return {
-        "1-groupA": groupA,
-        "1-groupB": groupBNumbers,
-      };
+      return buildOneBankerLottoNumbers(visibleNumbers, groupA);
     }
     if (numbers && typeof numbers === "object" && !Array.isArray(numbers)) {
+      const groupAEntry = Object.entries(numbers).find(([key]) => /groupA$/i.test(key));
+      if (groupAEntry) {
+        return buildOneBankerLottoNumbers(visibleNumbers, groupAEntry[1]);
+      }
       return numbers;
     }
     throw new PosError(

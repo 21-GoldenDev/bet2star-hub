@@ -8,6 +8,12 @@ import {
   computePoolsAward,
 } from '@/lib/helpers';
 import { getGamePrizeException } from '@/lib/admin/syncTerminalPrizesFromGame';
+import {
+  buildOneBankerLottoNumbers,
+  buildOneBankerPoolsMatches,
+  buildTwoBankerLottoNumbers,
+  buildTwoBankerPoolsMatches,
+} from '@/lib/bets/groupSelections';
 import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
 import { flattenSportsMatchNumbers, validateDrawOnlySelections } from '@/lib/bets/sportsCombinations';
 import { Prize } from '@/lib/types/prize';
@@ -421,19 +427,10 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
     });
   } else if (gameMode === "two_banker") {
     const { groupAU, groupANumbers, totalUnder } = betData.twobanker;
-    const groupBU = totalUnder - groupAU;
-    const groupBNumbers = visibleNumbers.filter((n) => !groupANumbers.includes(n));
-    numbersObj = {
-      [`${groupAU}-groupA`]: groupANumbers,
-      [`${groupBU}-groupB`]: groupBNumbers,
-    };
+    numbersObj = buildTwoBankerLottoNumbers(visibleNumbers, groupAU, groupANumbers, totalUnder);
   } else if (gameMode === "one_banker") {
     const { groupANumbers } = betData.onebanker;
-    const groupBNumbers = visibleNumbers.filter((n) => !groupANumbers.includes(n));
-    numbersObj = {
-      [`1-groupA`]: groupANumbers,
-      [`1-groupB`]: groupBNumbers,
-    };
+    numbersObj = buildOneBankerLottoNumbers(visibleNumbers, groupANumbers);
   } else {
     numbersObj = selectedNumbers;
   }
@@ -514,19 +511,10 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
     });
   } else if (gameMode === "two_banker") {
     const { groupAU, groupAMatches, totalUnder } = betData.twobanker;
-    const groupBU = totalUnder - groupAU;
-    const groupBMatches = visibleMatches.filter((n) => !groupAMatches.includes(n));
-    matchesObj = {
-      [`${groupAU}-groupA`]: groupAMatches,
-      [`${groupBU}-groupB`]: groupBMatches,
-    };
+    matchesObj = buildTwoBankerPoolsMatches(visibleMatches, groupAU, groupAMatches, totalUnder);
   } else if (gameMode === "one_banker") {
     const { groupAMatches } = betData.onebanker;
-    const groupBMatches = visibleMatches.filter((n) => !groupAMatches.includes(n));
-    matchesObj = {
-      [`1-groupA`]: groupAMatches,
-      [`1-groupB`]: groupBMatches,
-    };
+    matchesObj = buildOneBankerPoolsMatches(visibleMatches, groupAMatches);
   } else {
     matchesObj = selectedMatches;
   }

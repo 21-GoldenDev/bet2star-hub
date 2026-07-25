@@ -36,6 +36,10 @@ import useAdminRole from "@/hooks/use-admin-role";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
 import { canVoidBetWithinWindow } from "@/lib/bets/voidWindow";
+import {
+  formatSelectionGroupLabel,
+  sortedSelectionGroupEntries,
+} from "@/lib/bets/groupSelections";
 
 function formatDateIso(iso?: string) {
   if (!iso) return "";
@@ -825,9 +829,9 @@ export default function LottoPage() {
                   }
                   return (
                     <div className="space-y-3">
-                      {Object.entries(value).map(([gid, nums], index) => (
+                      {sortedSelectionGroupEntries(value).map(([gid, nums], index) => (
                         <div key={gid} className="space-y-2">
-                          <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0]}</p>
+                          <p className="text-sm font-semibold">{formatSelectionGroupLabel(gid, index)}: Under {gid.split("-")[0]}</p>
                           <div className="flex flex-wrap gap-2 ml-2">
                             {nums.sort((a, b) => a - b).map((num) => (
                               <span

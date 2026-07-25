@@ -6,6 +6,10 @@ import Link from "next/link";
 import { ArrowLeft, Eye, Trash2 } from "lucide-react";
 import useSupabaseUser from "@/hooks/use-supabase-user";
 import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
+import {
+  formatSelectionGroupLabel,
+  sortedSelectionGroupEntries,
+} from "@/lib/bets/groupSelections";
 import { calcSportsGroupedApl, flattenSportsMatchNumbers, isGroupedSportsSelections } from "@/lib/bets/sportsCombinations";
 import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -490,13 +494,13 @@ const renderDetailedSelection = (row: BetRow) => {
   if (value && typeof value === "object") {
     return (
       <div className="space-y-3">
-        {Object.entries(value as Record<string, unknown>).map(([gid, items], index) => {
+        {sortedSelectionGroupEntries(value as Record<string, unknown>).map(([gid, items], index) => {
           const list = Array.isArray(items) ? [...items] : [];
           list.sort((a, b) => compareMixed(a as string | number, b as string | number));
 
           return (
             <div key={gid} className="space-y-2">
-              <p className="text-sm font-semibold">Group {index + 1}: Under {gid.split("-")[0] || "-"}</p>
+              <p className="text-sm font-semibold">{formatSelectionGroupLabel(gid, index)}: Under {gid.split("-")[0] || "-"}</p>
               <div className="flex flex-wrap gap-2 ml-2">
                 {list.map((item, itemIndex) => (
                   <span
@@ -525,12 +529,11 @@ const renderSportsSelectionDetails = (row: BetRow, dataMatches: Record<string, M
   if (selections && isGroupedSportsSelections(selections as any)) {
     return (
       <div className="space-y-4">
-        {Object.entries(selections).map(([gid, group], index) => {
-          const groupLabel = String.fromCharCode(65 + index);
+        {sortedSelectionGroupEntries(selections).map(([gid, group], index) => {
           return (
             <div key={gid} className="space-y-2">
               <p className="text-sm font-semibold">
-                Group {groupLabel}: Under {gid.split("-")[0] || "-"}
+                {formatSelectionGroupLabel(gid, index)}: Under {gid.split("-")[0] || "-"}
               </p>
               <div className="space-y-2 ml-2">
                 {Object.entries(group).map(([matchNum, options]) => {

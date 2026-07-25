@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getGamePrizeException } from "@/lib/admin/syncTerminalPrizesFromGame";
+import {
+  buildOneBankerPoolsMatches,
+  buildTwoBankerPoolsMatches,
+} from "@/lib/bets/groupSelections";
 import { computePoolsAward, computeLottoApl } from "@/lib/helpers";
 import { dedupePoolsMatchesByNumber } from "@/lib/pools/defaultMatches";
 import {
@@ -112,14 +116,24 @@ function shapeMatches(
 
   if (gameMode === "two_banker") {
     if (twobanker?.groupAMatches) {
-      const groupBU = twobanker.totalUnder - twobanker.groupAU;
-      const groupBMatches = visibleMatches.filter((n) => !twobanker.groupAMatches.includes(n));
-      return {
-        [`${twobanker.groupAU}-groupA`]: twobanker.groupAMatches,
-        [`${groupBU}-groupB`]: groupBMatches,
-      };
+      return buildTwoBankerPoolsMatches(
+        visibleMatches,
+        twobanker.groupAU,
+        twobanker.groupAMatches,
+        twobanker.totalUnder,
+      );
     }
     if (matches && typeof matches === "object" && !Array.isArray(matches)) {
+      const groupAEntry = Object.entries(matches).find(([key]) => /groupA$/i.test(key));
+      const groupBKey = Object.keys(matches).find((key) => /groupB$/i.test(key));
+      if (groupAEntry && groupBKey) {
+        const groupA = groupAEntry[1].map(String);
+        const groupASet = new Set(groupA);
+        return {
+          [groupAEntry[0]]: groupA,
+          [groupBKey]: visibleMatches.filter((n) => !groupASet.has(n)),
+        };
+      }
       return matches;
     }
     throw new PosError(
@@ -132,13 +146,13 @@ function shapeMatches(
     const groupA = onebanker?.groupAMatches
       || (Array.isArray(matches) ? matches : null);
     if (groupA && groupA.length > 0) {
-      const groupBMatches = visibleMatches.filter((n) => !groupA.includes(n));
-      return {
-        "1-groupA": groupA,
-        "1-groupB": groupBMatches,
-      };
+      return buildOneBankerPoolsMatches(visibleMatches, groupA);
     }
     if (matches && typeof matches === "object" && !Array.isArray(matches)) {
+      const groupAEntry = Object.entries(matches).find(([key]) => /groupA$/i.test(key));
+      if (groupAEntry) {
+        return buildOneBankerPoolsMatches(visibleMatches, groupAEntry[1]);
+      }
       return matches;
     }
     throw new PosError(
