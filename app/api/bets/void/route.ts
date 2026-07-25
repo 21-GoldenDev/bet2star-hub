@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { betIncludesInvisibleNumbers } from "@/lib/bets/lottoNumbers";
 import { betIncludesDisabledMatches } from "@/lib/bets/poolsMatches";
+import { betIncludesVoidSportsMatches } from "@/lib/bets/sportsMatches";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -104,6 +105,33 @@ export async function POST(request: NextRequest) {
         if (betIncludesDisabledMatches(betData.matches, week, disabledMatchNumbersByWeek)) {
           return NextResponse.json(
             { error: "This bet cannot be deleted because it includes disabled matches" },
+            { status: 403 },
+          );
+        }
+      }
+    } else if (tab === "sports" || tab === "sports-draw") {
+      const serviceClient = getServiceClient();
+      const gameId = betData.game_id;
+
+      if (typeof gameId === "string" && gameId.trim()) {
+        const { data: voidMatches, error: voidMatchesError } = await serviceClient
+          .from("sports")
+          .select("number")
+          .eq("game_id", gameId)
+          .eq("status", "void");
+
+        if (voidMatchesError) {
+          console.error("Failed to fetch void sports matches:", voidMatchesError);
+          return NextResponse.json({ error: "Failed to validate bet" }, { status: 500 });
+        }
+
+        const voidMatchNumbersByGameId = {
+          [gameId]: (voidMatches || []).map((match) => match.number),
+        };
+
+        if (betIncludesVoidSportsMatches(betData.selections, gameId, voidMatchNumbersByGameId)) {
+          return NextResponse.json(
+            { error: "This bet cannot be deleted because it includes deactivated matches" },
             { status: 403 },
           );
         }

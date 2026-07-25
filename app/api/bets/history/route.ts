@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { betIncludesInvisibleNumbers } from "@/lib/bets/lottoNumbers";
 import { betIncludesDisabledMatches, resolvePoolsBetWeek } from "@/lib/bets/poolsMatches";
+import { betIncludesVoidSportsMatches } from "@/lib/bets/sportsMatches";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
@@ -546,6 +547,28 @@ export async function GET(request: NextRequest) {
         const canDelete = week == null
           ? true
           : !betIncludesDisabledMatches(bet.matches, week, disabledMatchNumbers);
+
+        return { ...bet, canDelete };
+      });
+    }
+
+    if ((tabParam === "sports" || tabParam === "sports-draw") && Array.isArray(data)) {
+      const voidMatchNumbersByGameId: Record<string, number[]> = {};
+
+      for (const [gameId, matchList] of Object.entries(matches)) {
+        if (!Array.isArray(matchList)) continue;
+        voidMatchNumbersByGameId[gameId] = matchList
+          .filter((match: any) => match?.status === "void")
+          .map((match: any) => match.number)
+          .filter((number: unknown) => typeof number === "number" && Number.isFinite(number));
+      }
+
+      responseData = data.map((bet: any) => {
+        const canDelete = !betIncludesVoidSportsMatches(
+          bet.selections,
+          bet.game_id,
+          voidMatchNumbersByGameId,
+        );
 
         return { ...bet, canDelete };
       });
