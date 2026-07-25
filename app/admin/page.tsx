@@ -37,6 +37,12 @@ interface VoidStats {
   dismissedRequests: number;
 }
 
+interface ClearPlacedBetsStats {
+  totalVoidBets: number;
+  currentWeekVoidBets: number;
+  currentWeekBets: number;
+}
+
 interface RecentUser {
   user_id: string;
   full_name: string;
@@ -70,6 +76,11 @@ export default function AdminDashboard() {
     approvedRequests: 0,
     dismissedRequests: 0,
   });
+  const [clearPlacedBetsStats, setClearPlacedBetsStats] = useState<ClearPlacedBetsStats>({
+    totalVoidBets: 0,
+    currentWeekVoidBets: 0,
+    currentWeekBets: 0,
+  });
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +102,13 @@ export default function AdminDashboard() {
       const data = await response.json();
       setStats(data.stats);
       setVoidStats(data.voidStats);
+      setClearPlacedBetsStats(
+        data.clearPlacedBetsStats ?? {
+          totalVoidBets: 0,
+          currentWeekVoidBets: 0,
+          currentWeekBets: 0,
+        }
+      );
       setChartData(data.chartData);
       setRecentUsers(data.recentUsers);
     } catch (error) {
@@ -210,6 +228,33 @@ export default function AdminDashboard() {
             icon={TrendingUp}
             description="Net profit/loss"
           />
+        </div>
+      </div>
+
+      {/* Clear Placed Bets */}
+      <div className="overflow-hidden rounded border border-border bg-card">
+        <h2 className="bg-primary px-4 py-2 text-base font-bold uppercase tracking-wide text-primary-foreground">
+          Clear Placed Bets
+        </h2>
+        <div className="grid grid-cols-1 gap-6 px-4 py-8 sm:grid-cols-3">
+          <div className="text-center">
+            <p className="text-3xl font-bold text-primary">
+              {clearPlacedBetsStats.totalVoidBets.toLocaleString()}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Total Void Bets</p>
+          </div>
+          <div className="text-center">
+            <p className="text-3xl font-bold text-green-600">
+              {clearPlacedBetsStats.currentWeekVoidBets.toLocaleString()}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Current Week Void Bets</p>
+          </div>
+          <div className="text-center">
+            <p className="text-3xl font-bold text-red-500">
+              {clearPlacedBetsStats.currentWeekBets.toLocaleString()}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Current Week Bets</p>
+          </div>
         </div>
       </div>
 

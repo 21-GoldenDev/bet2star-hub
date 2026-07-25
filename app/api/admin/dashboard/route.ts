@@ -193,7 +193,7 @@ export async function GET(request: NextRequest) {
     // Chart data: Group bets by week
     const chartData = generateChartData(allBets, profiles);
 
-    // Void bets statistics - count bets with status='void' from already fetched data
+    // Void bets statistics - count bets with status='void' from already fetched data (current week / active games)
     const voidLottoCount = lottoBets?.filter(bet => bet.status === "void").length || 0;
     const voidPoolsCount = poolsBets?.filter(bet => bet.status === "void").length || 0;
     const voidSportsCount = sportsBets?.filter(bet => bet.status === "void").length || 0;
@@ -202,6 +202,34 @@ export async function GET(request: NextRequest) {
     const approvedRequests = voidLottoCount + voidPoolsCount + voidSportsCount + voidSportsDrawCount;
     const totalRequests = approvedRequests;
     const dismissedRequests = 0;
+    const currentWeekVoidBets = approvedRequests;
+    const currentWeekBets = totalBetsCount;
+
+    // Total void bets (all-time), respecting game type filter
+    const voidCountQueries: PromiseLike<{ count: number | null }>[] = [];
+    if (gameTypeFilter === "all" || gameTypeFilter === "lotto") {
+      voidCountQueries.push(
+        supabase.from("bets_lotto").select("*", { count: "exact", head: true }).eq("status", "void")
+      );
+    }
+    if (gameTypeFilter === "all" || gameTypeFilter === "pools") {
+      voidCountQueries.push(
+        supabase.from("bets_pools").select("*", { count: "exact", head: true }).eq("status", "void")
+      );
+    }
+    if (gameTypeFilter === "all" || gameTypeFilter === "sports") {
+      voidCountQueries.push(
+        supabase.from("bets_sport").select("*", { count: "exact", head: true }).eq("status", "void")
+      );
+    }
+    if (gameTypeFilter === "all" || gameTypeFilter === "sports_draw") {
+      voidCountQueries.push(
+        supabase.from("bets_sports_draw").select("*", { count: "exact", head: true }).eq("status", "void")
+      );
+    }
+
+    const voidCountResults = await Promise.all(voidCountQueries);
+    const totalVoidBets = voidCountResults.reduce((sum, result) => sum + (result.count || 0), 0);
 
     return NextResponse.json({
       stats: {
@@ -220,6 +248,11 @@ export async function GET(request: NextRequest) {
         totalRequests,
         approvedRequests,
         dismissedRequests,
+      },
+      clearPlacedBetsStats: {
+        totalVoidBets,
+        currentWeekVoidBets,
+        currentWeekBets,
       },
       chartData,
       recentUsers: recentUsers || [],
