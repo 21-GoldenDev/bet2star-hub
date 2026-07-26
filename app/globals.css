@@ -187,6 +187,28 @@ body {
   filter: invert(100%);
 }
 
+@media print {
+  @page {
+    margin: 10mm;
+    size: auto;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  body * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  .sports-print-sheet {
+    display: block !important;
+  }
+}
+
 /* Light mode - for admin pages */
 .light {
   --background: hsl(210 40% 98%);

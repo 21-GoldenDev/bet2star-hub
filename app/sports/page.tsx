@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { Clock } from "lucide-react";
+import { Clock, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Game } from "@/lib/types/game";
 import { SportsMatch } from "@/lib/types/sports";
 import BettingAccessGate from "@/components/BettingAccessGate";
 import SportsGrouping from "@/components/sports/Grouping";
 import SportsOneBanker from "@/components/sports/OneBanker";
+import PrintMatchesDialog from "@/components/sports/PrintMatchesDialog";
+import PrintableMatchSheet from "@/components/sports/PrintableMatchSheet";
 import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
 import {
@@ -53,6 +55,7 @@ const Football = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPlacingBet, setIsPlacingBet] = useState(false);
   const [maxWinAmount, setMaxWinAmount] = useState(DEFAULT_MAX_WIN_AMOUNT);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   useEffect(() => {
     const loadBettingLimits = async () => {
@@ -321,10 +324,16 @@ const Football = () => {
     return map;
   }, [matches]);
 
+  const handlePrintMatches = () => {
+    setPrintDialogOpen(false);
+    // Let the dialog close before opening the browser print UI
+    window.setTimeout(() => window.print(), 150);
+  };
+
   return (
     <>
       <BettingAccessGate />
-      <div className="min-h-screen pt-24 pb-8 px-4">
+      <div className="min-h-screen pt-24 pb-8 px-4 print:hidden">
         <div className="container mx-auto max-w-7xl">
           {/* Header */}
           <div className="text-center mb-10 animate-slide-up">
@@ -338,6 +347,19 @@ const Football = () => {
             <p className="text-muted-foreground">
               Select your predictions and place your bets on top matches.
             </p>
+            {activeGame && matches.length > 0 && (
+              <div className="mt-5 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPrintDialogOpen(true)}
+                  className="gap-2"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print Matches
+                </Button>
+              </div>
+            )}
           </div>
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
@@ -669,6 +691,24 @@ const Football = () => {
           )}
         </div>
       </div>
+
+      {activeGame && matches.length > 0 && (
+        <>
+          <PrintMatchesDialog
+            open={printDialogOpen}
+            onOpenChange={setPrintDialogOpen}
+            matchCount={matches.length}
+            leagueCount={Object.keys(groupedMatches).length}
+            onPrint={handlePrintMatches}
+          />
+          <PrintableMatchSheet
+            matches={matches}
+            groupedMatches={groupedMatches}
+            gameWeek={activeGame.week}
+            gameName={activeGame.game_name}
+          />
+        </>
+      )}
     </>
   );
 };

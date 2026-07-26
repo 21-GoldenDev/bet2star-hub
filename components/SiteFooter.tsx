@@ -12,7 +12,7 @@ export default function SiteFooter() {
   }
 
   return (
-    <footer className="py-12 px-4 border-t border-border/50 mt-auto">
+    <footer className="py-12 px-4 border-t border-border/50 mt-auto print:hidden">
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-2">
