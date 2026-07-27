@@ -61,22 +61,23 @@ export default function PrintableMatchSheet({
         </div>
       </header>
 
-      <table className="w-full border-collapse table-fixed text-[16px] leading-tight">
-        <colgroup>
-          <col className="w-[5%]" />
-          <col className="w-[11%]" />
-          <col className="w-[20%]" />
-          {OPTION_KEYS.map((key) => (
-            <col key={key} className="w-[7%]" />
-          ))}
-        </colgroup>
+      <div className="print-table-wrap w-full border border-black">
+        <table className="w-full max-w-full border-collapse table-fixed text-[16px] leading-tight">
+          <colgroup>
+            <col className="w-[4%]" />
+            <col className="w-[10%]" />
+            <col className="w-[18%]" />
+            {OPTION_KEYS.map((key) => (
+              <col key={key} className="w-[7.5%]" />
+            ))}
+          </colgroup>
         <thead>
           <tr>
-            <th className="border border-black px-0.5 py-2 text-left font-bold">Qbet</th>
-            <th className="border border-black px-0.5 py-2 text-center font-bold">Time</th>
-            <th className="border border-black px-0.5 py-2 text-left font-bold">Event</th>
+            <th className="print-cell border border-black px-0.5 py-2 text-left font-bold">Qbet</th>
+            <th className="print-cell border border-black px-0.5 py-2 text-center font-bold">Time</th>
+            <th className="print-cell border border-black px-0.5 py-2 text-left font-bold">Event</th>
             {OPTION_KEYS.map((key) => (
-              <th key={key} className="border border-black px-0.5 py-2 text-center font-bold">
+              <th key={key} className="print-cell border border-black px-0.5 py-2 text-center font-bold">
                 {printOptionLabels[key]}
               </th>
             ))}
@@ -88,20 +89,20 @@ export default function PrintableMatchSheet({
               <tr>
                 <td
                   colSpan={colCount}
-                  className="border border-black bg-neutral-100 px-1 py-2 text-left text-[16px] font-bold"
+                  className="print-cell border border-black bg-neutral-100 px-1 py-2 text-left text-[16px] font-bold"
                 >
                   {league}
                 </td>
               </tr>
               {leagueMatches.map((match) => (
                 <tr key={match.id}>
-                  <td className="border border-black px-0.5 py-1 text-center font-bold">
+                  <td className="print-cell border border-black px-0.5 py-1 text-center font-bold">
                     {match.number}
                   </td>
-                  <td className="border border-black px-0.5 py-1 text-center font-semibold whitespace-nowrap">
+                  <td className="print-cell border border-black px-0.5 py-1 text-center font-semibold whitespace-nowrap">
                     {formatKickoff(match.start_time ?? match.end_time)}
                   </td>
-                  <td className="border border-black px-0.5 py-1 font-semibold leading-snug break-words">
+                  <td className="print-cell border border-black px-0.5 py-1 font-semibold leading-snug break-words">
                     {match.homeTeam} - {match.awayTeam}
                   </td>
                   {OPTION_KEYS.map((key, idx) => {
@@ -109,7 +110,7 @@ export default function PrintableMatchSheet({
                     return (
                       <td
                         key={`${match.id}-${key}`}
-                        className="border border-black px-0.3 py-1 text-center font-bold"
+                        className="print-cell border border-black px-0.5 py-1 text-center font-bold"
                       >
                         {odds.toFixed(2)}
                       </td>
@@ -120,7 +121,8 @@ export default function PrintableMatchSheet({
             </Fragment>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

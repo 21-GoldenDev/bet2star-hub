@@ -206,6 +206,45 @@ body {
 
   .sports-print-sheet {
     display: block !important;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .sports-print-sheet .print-table-wrap {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    border: 1px solid #000 !important;
+    overflow: hidden;
+  }
+
+  .sports-print-sheet table {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    /* Fallback frame when cell borders clip at page edge */
+    box-shadow: inset 0 0 0 1px #000;
+  }
+
+  .sports-print-sheet .print-cell {
+    box-sizing: border-box;
+    border: 1px solid #000 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .sports-print-sheet th:first-child,
+  .sports-print-sheet td:first-child {
+    border-left: 1px solid #000 !important;
+  }
+
+  .sports-print-sheet th:last-child,
+  .sports-print-sheet td:last-child {
+    border-right: 1px solid #000 !important;
   }
 
   .sports-print-sheet th,
