@@ -44,7 +44,7 @@ export default function PrintMatchesDialog({
             browser print dialog to choose printer, pages, and color.
           </p>
           <ul className="space-y-1 text-xs">
-            <li>· Markets: 1 / X / 2 / 1X / 12 / X2 / Over 2.5 / Under 2.5 / GG</li>
+            <li>· Markets: 1 / X / 2 / 1X / 12 / X2 / Ov2.5 / Un2.5 / GG</li>
             <li>· Tip: choose Black and white for clearest odds tables</li>
           </ul>
         </div>

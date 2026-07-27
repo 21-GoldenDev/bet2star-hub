@@ -92,7 +92,7 @@ export async function PUT(
     if (league_id !== undefined) {
       const { data: leagueData, error: leagueError } = await supabase
         .from("sports_leagues")
-        .select("id, name")
+        .select("id, name, country:sports_countries(name)")
         .eq("id", league_id)
         .single();
 
@@ -100,8 +100,9 @@ export async function PUT(
         return NextResponse.json({ error: "Invalid league selected" }, { status: 400 });
       }
 
+      const countryName = (leagueData as any).country?.name as string | undefined;
       updateData.league_id = leagueData.id;
-      updateData.league = leagueData.name;
+      updateData.league = countryName ? `${countryName}/${leagueData.name}` : leagueData.name;
     }
     if (number !== undefined) updateData.number = number;
     if (home !== undefined) updateData.home = home;

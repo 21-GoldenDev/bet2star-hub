@@ -72,13 +72,16 @@ export async function POST(
 
     const { data: leagueData, error: leagueError } = await supabase
       .from("sports_leagues")
-      .select("id, name")
+      .select("id, name, country:sports_countries(name)")
       .eq("id", league_id)
       .single();
 
     if (leagueError || !leagueData) {
       return NextResponse.json({ error: "Invalid league selected" }, { status: 400 });
     }
+
+    const countryName = (leagueData as any).country?.name as string | undefined;
+    const leagueLabel = countryName ? `${countryName}/${leagueData.name}` : leagueData.name;
 
     const defaultPrizes = game.type === "sports_draw"
       ? [1]
@@ -104,7 +107,7 @@ export async function POST(
       .insert([
         {
           game_id: id,
-          league: leagueData.name,
+          league: leagueLabel,
           league_id: leagueData.id,
           number,
           home,

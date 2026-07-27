@@ -11,7 +11,6 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { Clock, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { Game } from "@/lib/types/game";
-import { SportsMatch } from "@/lib/types/sports";
 import BettingAccessGate from "@/components/BettingAccessGate";
 import SportsGrouping from "@/components/sports/Grouping";
 import SportsOneBanker from "@/components/sports/OneBanker";
@@ -81,33 +80,55 @@ const Football = () => {
 
   const fetchMatches = useCallback(async (gameId: string) => {
     try {
-      const { data, error } = await supabase
+      let rows: any[] | null = null;
+
+      const joined = await supabase
         .from("sports")
-        .select("*")
+        .select("*, sports_leagues(name, sports_countries(name))")
         .eq("game_id", gameId)
         .neq("status", "void")
         .order("number", { ascending: true });
 
-      if (error) throw error;
+      if (joined.error) {
+        const fallback = await supabase
+          .from("sports")
+          .select("*")
+          .eq("game_id", gameId)
+          .neq("status", "void")
+          .order("number", { ascending: true });
+        if (fallback.error) throw fallback.error;
+        rows = fallback.data;
+      } else {
+        rows = joined.data;
+      }
 
       const now = Date.now();
-      const available = (data || []).filter((m: any) => {
+      const available = (rows || []).filter((m: any) => {
         const expired = m.end_time ? new Date(m.end_time).getTime() <= now : false;
         return !expired && !Boolean(m.processed);
       });
 
-      const formattedMatches: Match[] = available.map((m: SportsMatch) => ({
-        id: m.id,
-        number: m.number,
-        league: m.league,
-        homeTeam: m.home,
-        awayTeam: m.away,
-        prizes: m.prizes,
-        status: m.status,
-        processed: m.processed,
-        start_time: m.start_time,
-        end_time: m.end_time,
-      }));
+      const formattedMatches: Match[] = available.map((m: any) => {
+        const nestedLeague = m.sports_leagues?.name as string | undefined;
+        const nestedCountry = m.sports_leagues?.sports_countries?.name as string | undefined;
+        const leagueLabel =
+          nestedCountry && nestedLeague
+            ? `${nestedCountry}/${nestedLeague}`
+            : (m.league as string);
+
+        return {
+          id: m.id,
+          number: m.number,
+          league: leagueLabel,
+          homeTeam: m.home,
+          awayTeam: m.away,
+          prizes: m.prizes,
+          status: m.status,
+          processed: m.processed,
+          start_time: m.start_time,
+          end_time: m.end_time,
+        };
+      });
 
       setMatches(formattedMatches);
     } catch (error) {
