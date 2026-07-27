@@ -1,8 +1,8 @@
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const supabase = await createSupabaseServer();
+  const supabase = getServiceClient();
   try {
     const now = new Date().toISOString();
 
@@ -14,13 +14,14 @@ export async function GET() {
       .gte("end_time", now)
       .order("start_time", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === "PGRST116") {
-        return NextResponse.json({ game: null }, { status: 200 });
-      }
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!data) {
+      return NextResponse.json({ game: null }, { status: 200 });
     }
 
     const { data: prizesData, error: prizesError } = await supabase

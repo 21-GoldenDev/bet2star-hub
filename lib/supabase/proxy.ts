@@ -2,12 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAnonKey } from './keys'
 
-// Protected routes that require authentication
+// Protected routes that require authentication.
+// Game pages (/lotto, /pools, /sports, /sports-draw) are public to browse;
+// placing bets still requires login via /api/bets/place.
 const protectedRoutes = [
-  '/lotto',
-  '/pools',
-  '/sports',
-  '/sports-draw',
   '/profile',
   '/transactions',
   '/deposit',
@@ -54,9 +52,8 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Public routes
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
+  const isProtectedRoute = protectedRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
 
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));

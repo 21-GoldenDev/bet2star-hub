@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx"
 import { toast } from "sonner";
+import { handleUnauthorizedBet } from "@/lib/bets/handleUnauthorizedBet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -103,6 +104,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, visibleNumbers = [], maxStake }:
       const data = await response.json();
 
       if (!response.ok) {
+        if (handleUnauthorizedBet(response, "/lotto")) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }

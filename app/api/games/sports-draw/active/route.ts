@@ -1,10 +1,8 @@
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
-// Removed resolveSourceSportsGame function - sports_draw now manages its own matches
-
 export async function GET() {
-  const supabase = await createSupabaseServer();
+  const supabase = getServiceClient();
 
   try {
     const now = new Date().toISOString();
@@ -24,12 +22,24 @@ export async function GET() {
     }
 
     if (!drawGame) {
-      return NextResponse.json({ game: null }, { status: 200 });
+      return NextResponse.json({ game: null, matches: [] }, { status: 200 });
+    }
+
+    const { data: matches, error: matchesError } = await supabase
+      .from("sports")
+      .select("*")
+      .eq("game_id", drawGame.id)
+      .neq("status", "void")
+      .order("number", { ascending: true });
+
+    if (matchesError) {
+      return NextResponse.json({ error: matchesError.message }, { status: 500 });
     }
 
     return NextResponse.json(
       {
         game: drawGame,
+        matches: matches ?? [],
       },
       { status: 200 }
     );

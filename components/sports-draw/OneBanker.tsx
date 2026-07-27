@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ interface Props {
 }
 
 const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmount, onBetPlaced }: Props) => {
+  const router = useRouter();
   const { user } = useSupabaseUser();
   const [selections, setSelections] = useState<DrawBetSelection[]>([]);
   const [bankerMatchId, setBankerMatchId] = useState<string | null>(null);
@@ -77,6 +79,7 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmo
     if (!isReady || !storageGroups) return;
     if (!user) {
       toast.error("Please sign in to place a bet");
+      router.push("/auth?redirectTo=/sports-draw");
       return;
     }
     if (activeGame.max_stake?.amount && betAmount > activeGame.max_stake.amount) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,6 @@ import { SportsMatch } from "@/lib/types/sports";
 import BettingAccessGate from "@/components/BettingAccessGate";
 import SportsDrawGrouping from "@/components/sports-draw/Grouping";
 import SportsDrawOneBanker from "@/components/sports-draw/OneBanker";
-import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
 import { previewSportsPermutationWinnings } from "@/lib/bets/sportsCombinations";
 import { capWinAmount, DEFAULT_MAX_WIN_AMOUNT } from "@/lib/bets/capWinAmount";
@@ -48,6 +48,7 @@ const extractSportsDrawOddsMap = (prizeIds: any): Record<number, number> => {
 };
 
 const SportsDrawPage = () => {
+  const router = useRouter();
   const { user } = useSupabaseUser();
   const [selectedBets, setSelectedBets] = useState<BetSelection[]>([]);
   const [betAmount, setBetAmount] = useState<number>(5000);
@@ -82,33 +83,20 @@ const SportsDrawPage = () => {
     setMatchAtLeast((prev) => prev.filter((val) => val <= maxValidValue));
   }, [selectedBets.length]);
 
-  const fetchMatches = useCallback(async (gameId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("sports")
-        .select("*")
-        .eq("game_id", gameId)
-        .neq("status", "void")
-        .order("number", { ascending: true });
+  const formatMatches = useCallback((rows: SportsMatch[] | null | undefined): Match[] => {
+    const formattedMatches: Match[] = (rows || []).map((m) => ({
+      id: m.id,
+      number: m.number,
+      league: m.league,
+      homeTeam: m.home,
+      awayTeam: m.away,
+      prizes: m.prizes,
+      status: m.status,
+      start_time: m.start_time,
+      end_time: m.end_time,
+    }));
 
-      if (error) throw error;
-
-      const formattedMatches: Match[] = (data || []).map((m: SportsMatch) => ({
-        id: m.id,
-        number: m.number,
-        league: m.league,
-        homeTeam: m.home,
-        awayTeam: m.away,
-        prizes: m.prizes,
-        status: m.status,
-        start_time: m.start_time,
-        end_time: m.end_time,
-      }));
-
-      setMatches(formattedMatches.slice(0, 49));
-    } catch (error) {
-      console.error("Error fetching sports draw matches:", error);
-    }
+    return formattedMatches.slice(0, 49);
   }, []);
 
   const refreshSportsDrawData = useCallback(
@@ -124,7 +112,7 @@ const SportsDrawPage = () => {
         if (!game?.id) {
           setMatches([]);
         } else {
-          await fetchMatches(game.id);
+          setMatches(formatMatches(data.matches));
         }
       } catch (error) {
         console.error("Error fetching active sports draw game:", error);
@@ -132,7 +120,7 @@ const SportsDrawPage = () => {
         if (!options?.silent) setIsLoading(false);
       }
     },
-    [fetchMatches],
+    [formatMatches],
   );
 
   useEffect(() => {
@@ -222,6 +210,7 @@ const SportsDrawPage = () => {
 
     if (!user) {
       toast.error("Please sign in to place a bet");
+      router.push("/auth?redirectTo=/sports-draw");
       return;
     }
 

@@ -1,8 +1,8 @@
-import { createSupabaseServer } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const supabase = await createSupabaseServer();
+  const supabase = getServiceClient();
   try {
     const now = new Date().toISOString();
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import clsx from "clsx"
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { handleUnauthorizedBet } from "@/lib/bets/handleUnauthorizedBet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -113,6 +114,7 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: P
       const data = await response.json();
 
       if (!response.ok) {
+        if (handleUnauthorizedBet(response, "/pools")) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }

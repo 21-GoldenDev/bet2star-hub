@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import clsx from "clsx"
 import { toast } from "sonner";
+import { handleUnauthorizedBet } from "@/lib/bets/handleUnauthorizedBet";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { Prize } from "@/lib/types/prize";
@@ -74,6 +75,7 @@ const Under1 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: P
       const data = await response.json();
 
       if (!response.ok) {
+        if (handleUnauthorizedBet(response, "/pools")) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }

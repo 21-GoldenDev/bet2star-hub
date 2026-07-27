@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ interface Props {
 }
 
 const Grouping = ({ matches, groupedMatches, matchNumberMap, activeGame, maxWinAmount, onBetPlaced }: Props) => {
+  const router = useRouter();
   const { user } = useSupabaseUser();
   const [totalUnder, setTotalUnder] = useState(3);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
@@ -164,6 +166,7 @@ const Grouping = ({ matches, groupedMatches, matchNumberMap, activeGame, maxWinA
     if (!isReady) return;
     if (!user) {
       toast.error("Please sign in to place a bet");
+      router.push("/auth?redirectTo=/sports");
       return;
     }
     if (activeGame.max_stake?.amount && betAmount > activeGame.max_stake.amount) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime";
 import clsx from "clsx";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,6 @@ import SportsGrouping from "@/components/sports/Grouping";
 import SportsOneBanker from "@/components/sports/OneBanker";
 import PrintMatchesDialog from "@/components/sports/PrintMatchesDialog";
 import PrintableMatchSheet from "@/components/sports/PrintableMatchSheet";
-import supabase from "@/lib/supabase/client";
 import { useSupabaseUser } from "@/hooks/use-supabase-user";
 import {
   buildSportsPermutationLegOdds,
@@ -44,6 +44,7 @@ interface Match {
 type BetSelection = { matchId: string; matchNumber: number; option: BetOptionKey; odds: number };
 
 const Football = () => {
+  const router = useRouter();
   const { user } = useSupabaseUser();
   const [selectedBets, setSelectedBets] = useState<BetSelection[]>([]);
   const [betAmount, setBetAmount] = useState<number>(5000);
@@ -78,62 +79,34 @@ const Football = () => {
     setMatchAtLeast(prev => prev.filter(val => val <= maxValidValue));
   }, [selectedBets.length]);
 
-  const fetchMatches = useCallback(async (gameId: string) => {
-    try {
-      let rows: any[] | null = null;
+  const formatMatches = useCallback((rows: any[] | null | undefined): Match[] => {
+    const now = Date.now();
+    const available = (rows || []).filter((m: any) => {
+      const expired = m.end_time ? new Date(m.end_time).getTime() <= now : false;
+      return !expired && !Boolean(m.processed);
+    });
 
-      const joined = await supabase
-        .from("sports")
-        .select("*, sports_leagues(name, sports_countries(name))")
-        .eq("game_id", gameId)
-        .neq("status", "void")
-        .order("number", { ascending: true });
+    return available.map((m: any) => {
+      const nestedLeague = m.sports_leagues?.name as string | undefined;
+      const nestedCountry = m.sports_leagues?.sports_countries?.name as string | undefined;
+      const leagueLabel =
+        nestedCountry && nestedLeague
+          ? `${nestedCountry}/${nestedLeague}`
+          : (m.league as string);
 
-      if (joined.error) {
-        const fallback = await supabase
-          .from("sports")
-          .select("*")
-          .eq("game_id", gameId)
-          .neq("status", "void")
-          .order("number", { ascending: true });
-        if (fallback.error) throw fallback.error;
-        rows = fallback.data;
-      } else {
-        rows = joined.data;
-      }
-
-      const now = Date.now();
-      const available = (rows || []).filter((m: any) => {
-        const expired = m.end_time ? new Date(m.end_time).getTime() <= now : false;
-        return !expired && !Boolean(m.processed);
-      });
-
-      const formattedMatches: Match[] = available.map((m: any) => {
-        const nestedLeague = m.sports_leagues?.name as string | undefined;
-        const nestedCountry = m.sports_leagues?.sports_countries?.name as string | undefined;
-        const leagueLabel =
-          nestedCountry && nestedLeague
-            ? `${nestedCountry}/${nestedLeague}`
-            : (m.league as string);
-
-        return {
-          id: m.id,
-          number: m.number,
-          league: leagueLabel,
-          homeTeam: m.home,
-          awayTeam: m.away,
-          prizes: m.prizes,
-          status: m.status,
-          processed: m.processed,
-          start_time: m.start_time,
-          end_time: m.end_time,
-        };
-      });
-
-      setMatches(formattedMatches);
-    } catch (error) {
-      console.error("Error fetching matches:", error);
-    }
+      return {
+        id: m.id,
+        number: m.number,
+        league: leagueLabel,
+        homeTeam: m.home,
+        awayTeam: m.away,
+        prizes: m.prizes,
+        status: m.status,
+        processed: m.processed,
+        start_time: m.start_time,
+        end_time: m.end_time,
+      };
+    });
   }, []);
 
   const refreshSportsData = useCallback(
@@ -147,7 +120,7 @@ const Football = () => {
         if (!data.game) {
           setMatches([]);
         } else {
-          await fetchMatches(data.game.id);
+          setMatches(formatMatches(data.matches));
         }
       } catch (error) {
         console.error("Error fetching active game:", error);
@@ -155,7 +128,7 @@ const Football = () => {
         if (!options?.silent) setIsLoading(false);
       }
     },
-    [fetchMatches],
+    [formatMatches],
   );
 
   useEffect(() => {
@@ -256,6 +229,7 @@ const Football = () => {
 
     if (!user) {
       toast.error("Please sign in to place a bet");
+      router.push("/auth?redirectTo=/sports");
       return;
     }
 

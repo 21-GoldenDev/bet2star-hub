@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import clsx from "clsx";
 import { toast } from "sonner";
+import { handleUnauthorizedBet } from "@/lib/bets/handleUnauthorizedBet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -153,6 +154,7 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }:
       const data = await response.json();
 
       if (!response.ok) {
+        if (handleUnauthorizedBet(response, "/pools")) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }
