@@ -14,6 +14,7 @@ import type { Prize } from "@/lib/types/prize";
 import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
+import { getNextBetNumber } from "@/lib/bets/nextBetNumber";
 
 export type PlaceLottoPosBetInput = {
   tsn: string;
@@ -189,18 +190,15 @@ export async function placeLottoPosBet(
   const numbersObj = shapeNumbers(input, visibleNumbers);
   const apl = computeLottoApl(gameMode, stake, under, numbersObj);
 
-  const { data: existingBets, error: countError } = await supabase
-    .from("bets_lotto")
-    .select("bet_id")
-    .eq("game_id", resolvedGameId)
-    .order("bet_id", { ascending: false })
-    .limit(1);
-
-  if (countError) {
-    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, countError.message);
+  let nextNumber: number;
+  try {
+    nextNumber = await getNextBetNumber(supabase);
+  } catch (error) {
+    throw new PosError(
+      POS_ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : "Failed to allocate bet number",
+    );
   }
-
-  const nextNumber = existingBets?.length ? existingBets[0].bet_id + 1 : 1;
   const now = new Date().toISOString();
 
   const { data: bet, error: insertError } = await supabase

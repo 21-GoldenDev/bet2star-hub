@@ -207,6 +207,11 @@ body {
   .sports-print-sheet {
     display: block !important;
   }
+
+  .sports-print-sheet th,
+  .sports-print-sheet td {
+    min-height: 2rem;
+  }
 }
 
 /* Light mode - for admin pages */

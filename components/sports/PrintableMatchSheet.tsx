@@ -72,11 +72,11 @@ export default function PrintableMatchSheet({
         </colgroup>
         <thead>
           <tr>
-            <th className="border border-black px-0.5 py-0.5 text-left font-bold">Qbet</th>
-            <th className="border border-black px-0.5 py-0.5 text-center font-bold">Time</th>
-            <th className="border border-black px-0.5 py-0.5 text-left font-bold">Event</th>
+            <th className="border border-black px-0.5 py-2 text-left font-bold">Qbet</th>
+            <th className="border border-black px-0.5 py-2 text-center font-bold">Time</th>
+            <th className="border border-black px-0.5 py-2 text-left font-bold">Event</th>
             {OPTION_KEYS.map((key) => (
-              <th key={key} className="border border-black px-0.5 py-0.5 text-center font-bold">
+              <th key={key} className="border border-black px-0.5 py-2 text-center font-bold">
                 {printOptionLabels[key]}
               </th>
             ))}
@@ -88,20 +88,20 @@ export default function PrintableMatchSheet({
               <tr>
                 <td
                   colSpan={colCount}
-                  className="border border-black bg-neutral-100 px-1 py-0.5 text-left text-[14px] font-bold"
+                  className="border border-black bg-neutral-100 px-1 py-2.5 text-left text-[14px] font-bold"
                 >
                   {league}
                 </td>
               </tr>
               {leagueMatches.map((match) => (
                 <tr key={match.id}>
-                  <td className="border border-black px-0.5 py-0.5 text-center font-bold">
+                  <td className="border border-black px-0.5 py-2.5 text-center font-bold">
                     {match.number}
                   </td>
-                  <td className="border border-black px-0.5 py-0.5 text-center font-semibold whitespace-nowrap">
+                  <td className="border border-black px-0.5 py-2.5 text-center font-semibold whitespace-nowrap">
                     {formatKickoff(match.start_time ?? match.end_time)}
                   </td>
-                  <td className="border border-black px-0.5 py-0.5 font-semibold leading-snug break-words">
+                  <td className="border border-black px-0.5 py-2.5 font-semibold leading-snug break-words">
                     {match.homeTeam} - {match.awayTeam}
                   </td>
                   {OPTION_KEYS.map((key, idx) => {
@@ -109,7 +109,7 @@ export default function PrintableMatchSheet({
                     return (
                       <td
                         key={`${match.id}-${key}`}
-                        className="border border-black px-0.5 py-0.5 text-center font-bold"
+                        className="border border-black px-0.5 py-2.5 text-center font-bold"
                       >
                         {odds.toFixed(2)}
                       </td>

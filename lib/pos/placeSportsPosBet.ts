@@ -12,6 +12,7 @@ import { calculateBetReward } from "@/lib/helpers";
 import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
+import { getNextBetNumber } from "@/lib/bets/nextBetNumber";
 import { readMaxWinAmount } from "@/lib/settings/maxWinAmount.server";
 import type { GameType } from "@/lib/types/gameMode";
 
@@ -283,18 +284,15 @@ export async function placeSportsPosBet(
   const apl = computeSportsPosApl(mode, stake, under, selections);
   const table = product === "sports" ? "bets_sport" : "bets_sports_draw";
 
-  const { data: existingBets, error: countError } = await supabase
-    .from(table)
-    .select("number")
-    .eq("game_id", resolvedGameId)
-    .order("number", { ascending: false })
-    .limit(1);
-
-  if (countError) {
-    throw new PosError(POS_ERROR_CODES.INTERNAL_ERROR, countError.message);
+  let nextNumber: number;
+  try {
+    nextNumber = await getNextBetNumber(supabase);
+  } catch (error) {
+    throw new PosError(
+      POS_ERROR_CODES.INTERNAL_ERROR,
+      error instanceof Error ? error.message : "Failed to allocate bet number",
+    );
   }
-
-  const nextNumber = existingBets?.length ? existingBets[0].number + 1 : 1;
   const now = new Date().toISOString();
 
   const { data: bet, error: insertError } = await supabase

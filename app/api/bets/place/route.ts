@@ -18,6 +18,7 @@ import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
 import { flattenSportsMatchNumbers, validateDrawOnlySelections } from '@/lib/bets/sportsCombinations';
 import { Prize } from '@/lib/types/prize';
 import { readMaxWinAmount } from '@/lib/settings/maxWinAmount.server';
+import { getNextBetNumber } from '@/lib/bets/nextBetNumber';
 
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
@@ -209,16 +210,7 @@ async function placeSportsBet(
 
   await validateSportsSelectionsAvailability(supabase, gameId, selections);
 
-  const { data: existingBets, error: countError } = await supabase
-    .from('bets_sport')
-    .select('number')
-    .eq('game_id', gameId)
-    .order('number', { ascending: false })
-    .limit(1);
-
-  if (countError) throw countError;
-
-  const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].number + 1 : 1;
+  const nextNumber = await getNextBetNumber(supabase);
 
   const { data, error } = await supabase
     .from('bets_sport')
@@ -299,16 +291,7 @@ async function placeSportsDrawBet(
 
   await validateSportsSelectionsAvailability(supabase, gameId, selections);
 
-  const { data: existingBets, error: countError } = await supabase
-    .from('bets_sports_draw')
-    .select('number')
-    .eq('game_id', gameId)
-    .order('number', { ascending: false })
-    .limit(1);
-
-  if (countError) throw countError;
-
-  const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].number + 1 : 1;
+  const nextNumber = await getNextBetNumber(supabase);
 
   const { data, error } = await supabase
     .from('bets_sports_draw')
@@ -403,16 +386,7 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
   const visibleNumbers: number[] = gameData?.visible_numbers || Array.from({ length: 99 }, (_, i) => i + 1);
 
 
-  const { data: existingBets, error: countError } = await supabase
-    .from('bets_lotto')
-    .select('bet_id')
-    .eq('game_id', gameId)
-    .order('bet_id', { ascending: false })
-    .limit(1);
-
-  if (countError) throw countError;
-
-  const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].bet_id + 1 : 1;
+  const nextNumber = await getNextBetNumber(supabase);
 
   let numbersObj: Record<string, number[]> | number[];
 
@@ -487,16 +461,7 @@ async function placePoolsBet(supabase: any, gameId: string, userId: string, betA
     dedupePoolsMatchesByNumber(matchData || []).map((match) => String(match.number))
     || Array.from({ length: 49 }, (_, i) => String(i + 1));
 
-  const { data: existingBets, error: countError } = await supabase
-    .from('bets_pools')
-    .select('bet_id')
-    .eq('game_id', gameId)
-    .order('bet_id', { ascending: false })
-    .limit(1);
-
-  if (countError) throw countError;
-
-  const nextNumber = existingBets && existingBets.length > 0 ? existingBets[0].bet_id + 1 : 1;
+  const nextNumber = await getNextBetNumber(supabase);
 
   let matchesObj: Record<string, string[]> | string[];
 
