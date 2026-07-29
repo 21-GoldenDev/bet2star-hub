@@ -61,66 +61,76 @@ export default function PrintableMatchSheet({
         </div>
       </header>
 
-      <div className="print-table-wrap w-full border border-black">
-        <table className="w-full max-w-full border-collapse table-fixed text-[16px] leading-tight">
+      <div className="print-table-wrap w-full">
+        <table className="w-full border-collapse text-[13px] leading-snug">
           <colgroup>
-            <col className="w-[4%]" />
-            <col className="w-[10%]" />
-            <col className="w-[18%]" />
+            <col style={{ width: "6%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "28%" }} />
             {OPTION_KEYS.map((key) => (
-              <col key={key} className="w-[7.5%]" />
+              <col key={key} style={{ width: `${54 / OPTION_KEYS.length}%` }} />
             ))}
           </colgroup>
-        <thead>
-          <tr>
-            <th className="print-cell border border-black px-0.5 py-2 text-left font-bold">Qbet</th>
-            <th className="print-cell border border-black px-0.5 py-2 text-center font-bold">Time</th>
-            <th className="print-cell border border-black px-0.5 py-2 text-left font-bold">Event</th>
-            {OPTION_KEYS.map((key) => (
-              <th key={key} className="print-cell border border-black px-0.5 py-2 text-center font-bold">
-                {printOptionLabels[key]}
+          <thead>
+            <tr>
+              <th className="print-cell print-qbet border border-black px-1 py-1.5 text-center font-bold">
+                Qbet
               </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(groupedMatches).map(([league, leagueMatches]) => (
-            <Fragment key={league}>
-              <tr>
-                <td
-                  colSpan={colCount}
-                  className="print-cell border border-black bg-neutral-100 px-1 py-2 text-left text-[16px] font-bold"
+              <th className="print-cell print-time border border-black px-1 py-1.5 text-center font-bold">
+                Time
+              </th>
+              <th className="print-cell print-event border border-black px-1 py-1.5 text-left font-bold">
+                Event
+              </th>
+              {OPTION_KEYS.map((key) => (
+                <th
+                  key={key}
+                  className="print-cell print-odds border border-black px-0.5 py-1.5 text-center font-bold"
                 >
-                  {league}
-                </td>
-              </tr>
-              {leagueMatches.map((match) => (
-                <tr key={match.id}>
-                  <td className="print-cell border border-black px-0.5 py-1 text-center font-bold">
-                    {match.number}
-                  </td>
-                  <td className="print-cell border border-black px-0.5 py-1 text-center font-semibold whitespace-nowrap">
-                    {formatKickoff(match.start_time ?? match.end_time)}
-                  </td>
-                  <td className="print-cell border border-black px-0.5 py-1 font-semibold leading-snug break-words">
-                    {match.homeTeam} - {match.awayTeam}
-                  </td>
-                  {OPTION_KEYS.map((key, idx) => {
-                    const odds = match.prizes[idx] || 0;
-                    return (
-                      <td
-                        key={`${match.id}-${key}`}
-                        className="print-cell border border-black px-0.5 py-1 text-center font-bold"
-                      >
-                        {odds.toFixed(2)}
-                      </td>
-                    );
-                  })}
-                </tr>
+                  {printOptionLabels[key]}
+                </th>
               ))}
-            </Fragment>
-          ))}
-        </tbody>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(groupedMatches).map(([league, leagueMatches]) => (
+              <Fragment key={league}>
+                <tr>
+                  <td
+                    colSpan={colCount}
+                    className="print-cell border border-black bg-neutral-100 px-1.5 py-1.5 text-left text-[14px] font-bold"
+                  >
+                    {league}
+                  </td>
+                </tr>
+                {leagueMatches.map((match) => (
+                  <tr key={match.id}>
+                    <td className="print-cell print-qbet border border-black px-1 py-1.5 text-center font-bold align-middle">
+                      {match.number}
+                    </td>
+                    <td className="print-cell print-time border border-black px-1 py-1.5 text-center font-semibold align-middle">
+                      {formatKickoff(match.start_time ?? match.end_time)}
+                    </td>
+                    <td className="print-cell print-event border border-black px-1.5 py-1.5 font-semibold align-middle">
+                      <span className="block">{match.homeTeam}</span>
+                      <span className="block">- {match.awayTeam}</span>
+                    </td>
+                    {OPTION_KEYS.map((key, idx) => {
+                      const odds = match.prizes[idx] || 0;
+                      return (
+                        <td
+                          key={`${match.id}-${key}`}
+                          className="print-cell print-odds border border-black px-0.5 py-1.5 text-center font-bold align-middle"
+                        >
+                          {odds.toFixed(2)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </Fragment>
+            ))}
+          </tbody>
         </table>
       </div>
     </div>

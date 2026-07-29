@@ -189,8 +189,8 @@ body {
 
 @media print {
   @page {
-    margin: 10mm;
-    size: auto;
+    margin: 8mm;
+    size: landscape;
   }
 
   html,
@@ -209,7 +209,6 @@ body {
     box-sizing: border-box;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
   }
 
   .sports-print-sheet .print-table-wrap {
@@ -217,7 +216,6 @@ body {
     width: 100%;
     max-width: 100%;
     border: 1px solid #000 !important;
-    overflow: hidden;
   }
 
   .sports-print-sheet table {
@@ -226,15 +224,41 @@ body {
     max-width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
-    /* Fallback frame when cell borders clip at page edge */
-    box-shadow: inset 0 0 0 1px #000;
   }
 
   .sports-print-sheet .print-cell {
     box-sizing: border-box;
     border: 1px solid #000 !important;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+  }
+
+  .sports-print-sheet .print-qbet {
+    width: 6%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+
+  .sports-print-sheet .print-time {
+    width: 12%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sports-print-sheet .print-event {
+    width: 28%;
+    white-space: normal;
+  }
+
+  .sports-print-sheet .print-odds {
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   .sports-print-sheet th:first-child,
