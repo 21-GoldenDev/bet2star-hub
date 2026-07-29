@@ -53,6 +53,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bet not found" }, { status: 404 });
     }
 
+    if (String(betData.status || "").toLowerCase() === "void") {
+      return NextResponse.json({ error: "Bet is already deleted" }, { status: 400 });
+    }
+
     if (tab === "lotto") {
       const serviceClient = getServiceClient();
       const { data: gameData, error: gameError } = await serviceClient

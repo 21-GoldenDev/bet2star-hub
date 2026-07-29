@@ -206,8 +206,7 @@ export async function GET(request: NextRequest) {
       let lottoWeeksQuery = supabase
         .from("bets_lotto")
         .select("games:game_id (id, week, game_name, start_time, end_time, results)")
-        .eq("player", user.id)
-        .or("status.is.null,status.neq.void");
+        .eq("player", user.id);
 
       if (Number.isFinite(betIdFilter)) lottoWeeksQuery = lottoWeeksQuery.eq("bet_id", betIdFilter);
       if (Number.isFinite(betAboveFilter)) lottoWeeksQuery = lottoWeeksQuery.gt("staked", betAboveFilter);
@@ -227,10 +226,10 @@ export async function GET(request: NextRequest) {
         .from("bets_lotto")
         .select("id, game_id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
-        .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
         .range(from, to);
 
+      // Exclude deleted (void) bets from sales/winnings summary only
       summaryQuery = supabase
         .from("bets_lotto")
         .select("gameType, under, staked, award, games:game_id (week), prize:prize_id (name)")
@@ -306,9 +305,12 @@ export async function GET(request: NextRequest) {
         }
 
         lottoResponseData = data.map((bet: any) => {
-          const canDelete = !bet.game_id
-            ? true
-            : !betIncludesInvisibleNumbers(bet.numbers, visibleNumbersByGameId[bet.game_id]);
+          const isVoid = String(bet.status || "").toLowerCase() === "void";
+          const canDelete = isVoid
+            ? false
+            : !bet.game_id
+              ? true
+              : !betIncludesInvisibleNumbers(bet.numbers, visibleNumbersByGameId[bet.game_id]);
 
           return { ...bet, canDelete };
         });
@@ -332,16 +334,15 @@ export async function GET(request: NextRequest) {
         .from("bets_pools")
         .select("id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
-        .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
         .range(from, to);
 
       weeksQuery = supabase
         .from("bets_pools")
         .select("games:game_id (week)")
-        .eq("player", user.id)
-        .or("status.is.null,status.neq.void");
+        .eq("player", user.id);
 
+      // Exclude deleted (void) bets from sales/winnings summary only
       summaryQuery = supabase
         .from("bets_pools")
         .select("gameType, under, staked, award, games:game_id (week), prize:prize_id (name)")
@@ -361,15 +362,13 @@ export async function GET(request: NextRequest) {
         .from("bets_sport")
         .select("id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week)", { count: "exact" })
         .eq("player", user.id)
-        .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
         .range(from, to);
 
       weeksQuery = supabase
         .from("bets_sport")
         .select("games:game_id (week)")
-        .eq("player", user.id)
-        .or("status.is.null,status.neq.void");
+        .eq("player", user.id);
 
       summaryQuery = null;
 
@@ -384,15 +383,13 @@ export async function GET(request: NextRequest) {
         .from("bets_sports_draw")
         .select("id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week)", { count: "exact" })
         .eq("player", user.id)
-        .or("status.is.null,status.neq.void")
         .order("bet_time", { ascending: false })
         .range(from, to);
 
       weeksQuery = supabase
         .from("bets_sports_draw")
         .select("games:game_id (week)")
-        .eq("player", user.id)
-        .or("status.is.null,status.neq.void");
+        .eq("player", user.id);
 
       summaryQuery = null;
 
@@ -543,10 +540,13 @@ export async function GET(request: NextRequest) {
       }
 
       responseData = data.map((bet: any) => {
+        const isVoid = String(bet.status || "").toLowerCase() === "void";
         const week = resolvePoolsBetWeek(bet) ?? gameWeekById[bet.game_id] ?? null;
-        const canDelete = week == null
-          ? true
-          : !betIncludesDisabledMatches(bet.matches, week, disabledMatchNumbers);
+        const canDelete = isVoid
+          ? false
+          : week == null
+            ? true
+            : !betIncludesDisabledMatches(bet.matches, week, disabledMatchNumbers);
 
         return { ...bet, canDelete };
       });
@@ -564,11 +564,14 @@ export async function GET(request: NextRequest) {
       }
 
       responseData = data.map((bet: any) => {
-        const canDelete = !betIncludesVoidSportsMatches(
-          bet.selections,
-          bet.game_id,
-          voidMatchNumbersByGameId,
-        );
+        const isVoid = String(bet.status || "").toLowerCase() === "void";
+        const canDelete = isVoid
+          ? false
+          : !betIncludesVoidSportsMatches(
+            bet.selections,
+            bet.game_id,
+            voidMatchNumbersByGameId,
+          );
 
         return { ...bet, canDelete };
       });

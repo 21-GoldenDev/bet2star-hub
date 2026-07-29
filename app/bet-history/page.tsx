@@ -363,7 +363,7 @@ const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
     gameList,
     apl: resolveApl(bet, tab),
     staked: Number(bet.staked) || 0,
-    winning: Number(bet.award) || 0,
+    winning: String(bet.status || "").toLowerCase() === "void" ? 0 : Number(bet.award) || 0,
     betTime: formatDateTime(bet.bet_time),
     canDelete: bet.canDelete,
   };
@@ -429,7 +429,8 @@ async function fetchTabBets(
   };
 }
 
-const canDeleteBet = (_tab: BetTab, row: BetRow) => row.canDelete !== false;
+const canDeleteBet = (_tab: BetTab, row: BetRow) =>
+  row.canDelete !== false && String(row.status || "").toLowerCase() !== "void";
 
 const getUnderValue = (gameType: string, under: any) => {
   if (gameType === "under1" || gameType === "under2") {
@@ -860,22 +861,18 @@ export default function BetHistoryPage() {
 
       setBetsByTab((prev) => ({
         ...prev,
-        [tab]: prev[tab].filter((row) => row.id !== id),
+        [tab]: prev[tab].map((row) =>
+          row.id === id
+            ? { ...row, status: "void", winning: 0, canDelete: false }
+            : row,
+        ),
       }));
 
-      setTotalsByTab((prev) => ({
-        ...prev,
-        [tab]: Math.max(0, prev[tab] - 1),
-      }));
-
-      const currentPage = pagesByTab[tab];
-      const currentRows = betsByTab[tab];
-      if (currentRows.length <= 1 && currentPage > 1) {
-        setPagesByTab((prev) => ({
-          ...prev,
-          [tab]: Math.max(1, prev[tab] - 1),
-        }));
-      }
+      setSelectedBet((prev) =>
+        prev && prev.id === id
+          ? { ...prev, status: "void", winning: 0, canDelete: false }
+          : prev,
+      );
 
       toast({ title: "Bet deleted" });
     } catch (error) {
@@ -1055,6 +1052,7 @@ export default function BetHistoryPage() {
                       <TableHead className="text-right">APL</TableHead>
                       <TableHead className="text-right">Staked</TableHead>
                       <TableHead className="text-right">Winning</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Bet Time</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -1062,19 +1060,23 @@ export default function BetHistoryPage() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                        <TableCell colSpan={11} className="text-center py-10 text-muted-foreground">
                           Loading bet history...
                         </TableCell>
                       </TableRow>
                     ) : (betsByTab[tab] || []).length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-10 text-muted-foreground">
+                        <TableCell colSpan={11} className="text-center py-10 text-muted-foreground">
                           No {TAB_LABELS[tab]} bets found
                         </TableCell>
                       </TableRow>
                     ) : (
                       (betsByTab[tab] || []).map((row) => {
                         const rowDeleteKey = `${tab}-${row.id}`;
+                        const rowStatus =
+                          String(row.status || "").toLowerCase() === "void"
+                            ? "void"
+                            : row.status;
                         return (
                           <TableRow key={row.id}>
                             <TableCell>{row.week}</TableCell>
@@ -1085,6 +1087,7 @@ export default function BetHistoryPage() {
                             <TableCell className="text-right">{row.apl !== null ? row.apl.toFixed(2) : "-"}</TableCell>
                             <TableCell className="text-right">{formatCurrency(row.staked)}</TableCell>
                             <TableCell className="text-right">{formatCurrency(row.winning)}</TableCell>
+                            <TableCell>{renderStatus(rowStatus)}</TableCell>
                             <TableCell className="whitespace-nowrap">{row.betTime}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
