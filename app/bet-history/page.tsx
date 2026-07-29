@@ -462,12 +462,13 @@ const getGameLabel = (gameType: string) => {
 const renderStatus = (status?: string) => {
   const normalized = (status || "active").toLowerCase();
   const isVoid = normalized === "void";
+  const isClosed = normalized === "closed";
   return (
     <span
-      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${isVoid ? "bg-gray-500 text-white" : "bg-green-600 text-white"
+      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${isVoid ? "bg-gray-500 text-white" : isClosed ? "bg-blue-600 text-white" : "bg-green-600 text-white"
         }`}
     >
-      {isVoid ? "VOID" : normalized.toUpperCase()}
+      {isVoid ? "DELETED" : normalized.toUpperCase()}
     </span>
   );
 };
@@ -806,6 +807,20 @@ export default function BetHistoryPage() {
     () => getWeekResultForBet(selectedBet, weekGamesByTab, gameOptionsByTab),
     [selectedBet, weekGamesByTab, gameOptionsByTab],
   );
+
+  const selectedBetIsClosed = useMemo(() => {
+    if (!selectedBet) return false;
+    const status = (selectedBet.status || "active").toLowerCase();
+    if (status === "void") return false;
+    if (status === "closed") return true;
+    const weekGame =
+      selectedBet.tab === "lotto"
+        ? gameOptionsByTab.lotto.find((g) => g.id === selectedBet.gameId)
+        : selectedBet.week && weekGamesByTab[selectedBet.tab]
+          ? weekGamesByTab[selectedBet.tab][Number(selectedBet.week)]
+          : null;
+    return resolveWeekGameStatus(weekGame) === "closed";
+  }, [selectedBet, weekGamesByTab, gameOptionsByTab]);
 
   const handleTabChange = (value: string) => {
     setWeekFilter("");
@@ -1170,7 +1185,7 @@ export default function BetHistoryPage() {
                   </div>
                   <div>
                     <Label className="text-xs font-semibold text-muted-foreground">Status</Label>
-                    <p className="mt-1">{renderStatus(selectedBet.status)}</p>
+                    <p className="mt-1">{renderStatus(selectedBetIsClosed && selectedBet.status.toLowerCase() !== "void" ? "closed" : selectedBet.status)}</p>
                   </div>
                   <div>
                     <Label className="text-xs font-semibold text-muted-foreground">Bet Time</Label>
@@ -1198,7 +1213,8 @@ export default function BetHistoryPage() {
                   </div>
                 </div>
 
-                {(selectedBet.tab === "lotto" || selectedBet.tab === "pools") && (
+                {(selectedBet.tab === "lotto" || selectedBet.tab === "pools") &&
+                  selectedBetIsClosed && (
                   <div className="border-t border-gray-600 pt-4">
                     <Label className="text-xs font-semibold text-muted-foreground block mb-3">Week Result</Label>
                     <div className="flex flex-wrap gap-2">
@@ -1236,10 +1252,12 @@ export default function BetHistoryPage() {
                     <Label className="text-xs font-semibold text-muted-foreground">Option</Label>
                     <p className="mt-1 font-medium text-nowrap">{selectedBet.option || "-"}</p>
                   </div>
-                  <div>
-                    <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
-                    <p className="mt-1 font-medium text-lg">{selectedBet.winning.toFixed(2)}</p>
-                  </div>
+                  {selectedBetIsClosed && (
+                    <div>
+                      <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
+                      <p className="mt-1 font-medium text-lg">{selectedBet.winning.toFixed(2)}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

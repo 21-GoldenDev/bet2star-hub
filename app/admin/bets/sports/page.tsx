@@ -185,7 +185,7 @@ export default function SportsPage() {
   function renderStatus(status: string | undefined) {
     switch (status) {
       case "active": return <span className="text-green-600 font-medium">Active</span>;
-      case "void": return <span className="text-red-600 font-medium">Void</span>;
+      case "void": return <span className="text-red-600 font-medium">Deleted</span>;
       default: return <span className="text-muted-foreground">N/A</span>;
     }
   }

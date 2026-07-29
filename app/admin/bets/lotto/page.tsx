@@ -362,7 +362,7 @@ export default function LottoPage() {
     switch (status) {
       case "active": return <span className="text-green-600 font-medium">Active</span>;
       case "closed": return <span className="text-blue-600 font-medium">Closed</span>;
-      case "void": return <span className="text-red-600 font-medium">Void</span>;
+      case "void": return <span className="text-red-600 font-medium">Deleted</span>;
       default: return <span className="text-muted-foreground">N/A</span>;
     }
   }

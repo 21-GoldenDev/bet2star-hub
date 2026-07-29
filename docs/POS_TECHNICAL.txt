@@ -1,0 +1,298 @@
+
+
+Deployed base URL: https://Bet2star.net
+
+
+2. Response format
+
+Successful calls return:
+
+{
+  "success": true,
+  "data": { ... }
+}
+
+Failed calls return:
+
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable message",
+    "details": { ... }
+  }
+}
+
+details is optional.
+
+
+3. POS endpoints
+
+3.1 Login
+
+POST /api/pos/login
+No token required.
+
+Request fields: serial_number and password.
+Accepted aliases: serialNumber, tsn, TSN, pin.
+
+Success data includes: token, terminal, agent, credit_limit, max_stake, allowed_products, prizes, status.
+
+Login failures:
+- Wrong serial or password → INVALID_CREDENTIALS (401)
+- Terminal disabled → TERMINAL_INACTIVE (401)
+- Agent disabled or missing → AGENT_INACTIVE (401)
+
+3.2 Session
+
+GET /api/pos/me
+Bearer token required.
+
+Returns current credit, products, prizes, and agent (same shape as login, without a new token).
+
+3.3 Active game
+
+GET /api/pos/{product}/active
+Bearer token required.
+
+product may be: lotto, pools, sports, sports-draw, or footballpools.
+
+If no game is running, the response is still success with game null and fixtures as an empty list.
+
+A game is active when the current time is between start_time and end_time. If gameId is supplied and outside that window, the API returns GAME_NOT_ACTIVE.
+
+3.4 APL preview
+
+POST or GET:
+- /api/pos/lotto/apl
+- /api/pos/pools/apl
+- /api/pos/sports/apl
+- /api/pos/sports-draw/apl
+
+Use the same selection fields as place-bet. Returns amount per line (APL). Sports may also return line count and min/max winnings where supported.
+
+3.5 Place bet
+
+POST only:
+- /api/pos/lotto/bet
+- /api/pos/pools/bet
+- /api/pos/sports/bet
+- /api/pos/sports-draw/bet
+
+Success data typically includes: apl, stake, gameMode or mode, gameId, betId, betNumber, tsn, terminalId, remainingCredit, award.
+
+Sports also returns product as sports or sports_draw.
+
+
+4. Error codes
+
+INVALID_REQUEST (400) — missing or bad fields
+INVALID_CREDENTIALS (401) — wrong serial or password
+TERMINAL_INACTIVE (401) — terminal disabled
+AGENT_INACTIVE (401) — assigned agent disabled
+TOKEN_REQUIRED (401) — no Authorization Bearer token
+TOKEN_INVALID (401) — token bad or expired
+SERIAL_MISMATCH (403) — body serial does not match token terminal
+PRODUCT_NOT_ALLOWED (403) — product not in terminal allowed list (empty list means none allowed)
+INSUFFICIENT_CREDIT (400) — not enough terminal credit
+MAX_STAKE_EXCEEDED (400) — stake above terminal max_stake
+NO_ACTIVE_GAME (404) — no open game for that product
+GAME_NOT_ACTIVE (400) — provided gameId outside its time window
+GAME_NOT_FOUND (404) — unknown gameId
+INVALID_MODE (400) — unknown gameMode or mode
+INVALID_STAKE (400) — stake missing or less than or equal to zero
+INVALID_SELECTIONS (400) — numbers, matches, or selections invalid
+MATCH_UNAVAILABLE (400) — match void, processed, expired, or missing
+PRIZE_INACTIVE (400) — chosen prize inactive on terminal
+TERMINAL_NOT_FOUND (404) — terminal missing
+CREDIT_DEDUCT_FAILED (500) — credit update failed; bet is rolled back
+BET_SAVE_FAILED (500) — could not save bet
+INTERNAL_ERROR (500) — unexpected server error
+
+
+5. Products and modes
+
+Supported products: lotto, pools, sports, sports_draw (POS path sports-draw; footballpools is an alias for active game).
+
+SORT is not implemented in this codebase.
+
+Lotto and pools modes:
+- nap_perm (NAP/PERM) — under required; prize required (or terminal default)
+- grouping — group under values; prize required
+- one_banker (1 Against) — prize required
+- two_banker — totalUnder and groupAU; prize required
+- turbo — uses global turbo_prize table, not the normal prize table
+- under1 / under2 — APL equals full stake; prize columns 0 and 1
+
+Sports and sports-draw modes:
+- direct — under must be a single value
+- permutation — under must be a non-empty array
+- grouping — under must be a single total value
+- one_banker — under must be [2]
+
+Sports selection options: H, D, A, 1X, 12, X2, O25, U25, GG.
+Sports-draw (football pools) allows D only.
+
+
+6. Prizes, under, turbo, commissions, limits
+
+Prizes
+Prize tables are stored in prize. Turbo multipliers are in turbo_prize (default 50, 150, 300 if missing). Each terminal has its own prize list with commission percent, active/inactive status, and one default prize. If the request omits prize, the terminal default is used. Inactive prizes return PRIZE_INACTIVE.
+
+Under values
+Under means combination size (select U from N). For NAP/PERM, line count is the sum of combinations C(n, u) for each under value. For grouping and banker, line count is the product of combinations across groups.
+
+Turbo
+APL equals the full stake. A win requires the selected sequence to appear in the result. Payout uses the turbo multiplier for the selection length (at least 2 selections).
+
+Commissions
+Commission is stored on the terminal prize (0–100%) and may also exist at game or master prize level. It is used in sales reports (payable approximately stake times commission divided by 100). It is not deducted when the POS places a bet.
+
+Limits
+- Terminal credit_limit — checked before bet; deducted after save
+- Terminal max_stake — if greater than zero and stake exceeds it, MAX_STAKE_EXCEEDED
+- Terminal game_modes — allowed products; empty means no products allowed
+- Platform max win for sports — capped (default 10,000,000)
+- Void window — games.void_window_minutes controls how long a bet may be voided
+
+
+7. Calculation rules
+
+Line count and APL
+
+Direct / NAP-PERM / sports permutation:
+lines = sum of C(n, u) for each under value
+APL = stake / lines
+
+Grouping / banker:
+lines = product of C(group length, group U)
+APL = stake / lines
+
+Turbo, under1, under2:
+APL = stake
+
+POS responses round APL to two decimal places.
+
+Lotto and pools award
+1. Find the prize matrix row whose draw-count range matches the result length (pools may adjust for result exceptions).
+2. NAP/PERM: for each under, multiply the U column value by the count of winning combinations, sum them, then multiply by APL.
+3. Grouping/banker: multiply winning combo counts across groups, apply under column multipliers, then multiply by APL.
+4. Under1/Under2: all selections must hit; multiply stake by the matching column.
+5. Turbo: as above.
+6. Void bets set award equal to stake.
+
+Sports min / max / settlement
+For permutation preview: min is the lowest line payout; max is the sum if every line wins; both may be capped by the platform max win. Settlement multiplies APL by winning option odds products for correct combinations. Void matches are skipped. Outcomes are derived from home and away goals (H/D/A, 1X/12/X2, O25/U25, GG).
+
+
+8. Bet placement flow
+
+On every place-bet call the server:
+
+1. Verifies the Bearer token and that the terminal is still active.
+2. Checks the terminal may play that product.
+3. Checks max stake and available credit.
+4. Resolves and validates the active game.
+5. Validates prize (lotto/pools) and selections (including match availability for sports).
+6. Computes APL.
+7. Allocates a global ticket number via next_bet_number().
+8. Inserts one bet row (status active, award 0, player null, terminal set). Selections are stored on that row; there are no separate child ticket tables.
+9. Deducts stake from terminal credit. If deduct fails, the bet row is deleted and CREDIT_DEDUCT_FAILED is returned.
+10. If results or scores already exist, sets award immediately.
+11. Returns ticket details and remainingCredit.
+
+Important gaps for POS clients:
+- No idempotency key — retries can create duplicate bets and double credit deduction.
+- Insert and credit deduct are not a single database transaction; rollback is best-effort delete.
+- No timeout or verify-after-place API.
+- No POS reprint, cancel, or delete endpoints.
+- Void does not refund terminal credit.
+
+
+9. Ticket search, void, reprint
+
+Search / verify
+There is no dedicated POS search route. Use the public endpoint:
+GET /api/bets/lookup?betId=NUMBER
+
+It searches lotto, pools, sports, and sports-draw by ticket number and returns status, stake, award, selections, week, and results where available.
+
+Reprint
+No reprint API. The client should reprint from the place-bet response or from lookup.
+
+Cancel / void
+No POS void endpoint. Admin void is under /api/admin/bets/{product}/void. Web players use /api/bets/void.
+
+Void rules:
+- Admin may void any bet; staff and agents only bets on terminals they manage.
+- Time limit uses void_window_minutes after bet_time. Null means no time limit. Zero or less means voiding is not allowed. Otherwise voiding is allowed only within that many minutes.
+- Effect: status becomes void and award is set to the stake.
+- Terminal credit is not restored.
+
+
+10. Results, settlement, credit, reports
+
+Settlement
+- Lotto: POST /api/admin/bets/lotto/result — writes game results and recomputes awards; credits online player balances where applicable.
+- Pools: POST /api/admin/bets/pools/result — same pattern for pools.
+- Sports / sports-draw: no dedicated result route like lotto/pools; awards are computed when scores exist.
+
+Winners
+GET /api/admin/bets/lotto/winners
+GET /api/admin/bets/pools/winners
+GET /api/admin/bets/sports/winners
+GET /api/admin/bets/sports-draw/winners
+
+Terminal credit
+Deducted on POS bet. Admin can add or clear credit via /api/admin/terminals/credit. Online deposits use Monnify and are unrelated to POS.
+
+Sales reports
+GET /api/admin/sales/lotto?game_id=...
+GET /api/admin/sales/pools?game_id=...
+GET /api/admin/sales/sports?game_id=...
+GET /api/admin/sales/sports-draw?game_id=...
+
+These aggregate sales and wins and compute agent payable from commission.
+
+
+11. Staging and test cases
+
+Staging URL: https://bet2star-hub.vercel.app
+
+The serial and password in POS_API.md are examples only. They may not exist in staging. Create real test terminals, agents, and games in the database.
+
+Recommended test matrix:
+- Valid login — active terminal, active agent, correct password → success and token
+- Inactive terminal — terminal status not active → TERMINAL_INACTIVE
+- Inactive agent — agent status not active → AGENT_INACTIVE
+- No active game — no game in the current time window → active returns null; bet returns NO_ACTIVE_GAME
+- Insufficient credit — credit_limit less than stake → INSUFFICIENT_CREDIT
+- Max stake — stake greater than max_stake → MAX_STAKE_EXCEEDED
+- Product denied — product missing from game_modes → PRODUCT_NOT_ALLOWED
+- Successful bet — active game, enough credit, allowed product → bet saved and remainingCredit returned
+
+
+12. Known gaps and notes
+
+- No Supabase Edge Functions; everything is Next.js API routes.
+- SORT product is not present.
+- No OpenAPI or Postman collection.
+- No POS reprint, cancel, or delete APIs.
+- No duplicate-prevention or idempotent place-bet.
+- No place-bet timeout verification.
+- Void does not refund terminal credit.
+- Sports has no dedicated settle endpoint like lotto and pools.
+- Admin helper isUserAdmin currently always returns true (temporary / unsafe).
+- Reports export in the admin UI is still a TODO.
+- .env.local.example is mentioned in the README but missing from the repo.
+
+
+13. Suggested client flow
+
+1. POST /api/pos/login and store the token.
+2. On resume, GET /api/pos/me.
+3. GET /api/pos/{product}/active.
+4. Optionally POST /api/pos/{product}/apl.
+5. POST /api/pos/{product}/bet and print from the response (betNumber, stake, APL, selections, remaining credit).
+6. Verify later with GET /api/bets/lookup?betId=...
+7. Treat void and cancel as admin operations until a POS void API with credit refund is added.

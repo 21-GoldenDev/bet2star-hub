@@ -48,7 +48,7 @@ type PublicBet = {
   matches: unknown;
   selections: unknown;
   staked: number;
-  award: number;
+  award: number | null;
   betTime: string | null;
   week: string;
   option: string | null;
@@ -189,13 +189,18 @@ const resolveApl = (bet: PublicBet) => {
 const renderStatus = (status?: string) => {
   const normalized = (status || "active").toLowerCase();
   const isVoid = normalized === "void";
+  const isClosed = normalized === "closed";
   return (
     <span
       className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${
-        isVoid ? "bg-gray-500 text-white" : "bg-green-600 text-white"
+        isVoid
+          ? "bg-gray-500 text-white"
+          : isClosed
+            ? "bg-blue-600 text-white"
+            : "bg-green-600 text-white"
       }`}
     >
-      {isVoid ? "VOID" : normalized.toUpperCase()}
+      {isVoid ? "DELETED" : normalized.toUpperCase()}
     </span>
   );
 };
@@ -442,6 +447,7 @@ export default function CheckBetTicket({
   };
 
   const apl = bet ? resolveApl(bet) : null;
+  const isClosed = (bet?.status || "").toLowerCase() === "closed";
 
   return (
     <>
@@ -595,7 +601,7 @@ export default function CheckBetTicket({
                 </div>
               </div>
 
-              {(bet.product === "lotto" || bet.product === "pools") && (
+              {(bet.product === "lotto" || bet.product === "pools") && isClosed && (
                 <div className="border-t border-border pt-4">
                   <Label className="text-xs font-semibold text-muted-foreground block mb-3">
                     Week Result
@@ -639,10 +645,14 @@ export default function CheckBetTicket({
                       : formatMode(bet.mode)}
                   </p>
                 </div>
-                <div>
-                  <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
-                  <p className="mt-1 font-medium text-lg">{Number(bet.award).toFixed(2)}</p>
-                </div>
+                {isClosed && (
+                  <div>
+                    <Label className="text-xs font-semibold text-muted-foreground">Award</Label>
+                    <p className="mt-1 font-medium text-lg">
+                      {Number(bet.award || 0).toFixed(2)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

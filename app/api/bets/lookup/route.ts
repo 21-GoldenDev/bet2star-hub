@@ -10,6 +10,33 @@ type LookupHit = {
   row: Record<string, unknown>;
 };
 
+type GameInfo = {
+  week?: number | null;
+  game_name?: string | null;
+  results?: unknown;
+  end_time?: string | null;
+};
+
+function resolvePublicStatus(
+  rawStatus: unknown,
+  _product: PublicBetProduct,
+  game: GameInfo | null,
+): "active" | "closed" | "void" {
+  const status = String(rawStatus || "active").toLowerCase();
+  if (status === "void") return "void";
+  if (status === "closed") return "closed";
+
+  // Game is closed only after its end time — results alone do not close an active week
+  if (game?.end_time) {
+    const end = new Date(game.end_time).getTime();
+    if (Number.isFinite(end) && Date.now() > end) {
+      return "closed";
+    }
+  }
+
+  return "active";
+}
+
 export async function OPTIONS(request: NextRequest) {
   return handleCORS(request) || new NextResponse(null, { status: 200 });
 }
@@ -31,28 +58,28 @@ export async function GET(request: NextRequest) {
       supabase
         .from("bets_lotto")
         .select(
-          "id, game_id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name, results), prize:prize_id (name)",
+          "id, game_id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name, results, end_time), prize:prize_id (name)",
         )
         .eq("bet_id", betNumber)
         .maybeSingle(),
       supabase
         .from("bets_pools")
         .select(
-          "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week, results), prize:prize_id (name)",
+          "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week, results, end_time), prize:prize_id (name)",
         )
         .eq("bet_id", betNumber)
         .maybeSingle(),
       supabase
         .from("bets_sport")
         .select(
-          "id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week)",
+          "id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week, end_time)",
         )
         .eq("number", betNumber)
         .maybeSingle(),
       supabase
         .from("bets_sports_draw")
         .select(
-          "id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week)",
+          "id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week, end_time)",
         )
         .eq("number", betNumber)
         .maybeSingle(),
@@ -91,11 +118,7 @@ export async function GET(request: NextRequest) {
     const hit = hits[0];
     const gamesRaw = hit.row.games;
     const games = Array.isArray(gamesRaw) ? gamesRaw[0] : gamesRaw;
-    const game = (games && typeof games === "object" ? games : null) as {
-      week?: number | null;
-      game_name?: string | null;
-      results?: unknown;
-    } | null;
+    const game = (games && typeof games === "object" ? games : null) as GameInfo | null;
 
     const prizeRaw = hit.row.prize;
     const prize = Array.isArray(prizeRaw) ? prizeRaw[0] : prizeRaw;
@@ -112,6 +135,9 @@ export async function GET(request: NextRequest) {
           ? String(weekValue)
           : "-";
 
+    const status = resolvePublicStatus(hit.row.status, hit.product, game);
+    const isClosed = status === "closed";
+
     let sportsMatches: Array<Record<string, unknown>> = [];
     if ((hit.product === "sports" || hit.product === "sports-draw") && hit.row.game_id) {
       const { data: matchData, error: matchError } = await supabase
@@ -122,7 +148,15 @@ export async function GET(request: NextRequest) {
       if (matchError) {
         console.error("Public bet lookup sports matches error:", matchError);
       } else {
-        sportsMatches = matchData || [];
+        sportsMatches = (matchData || []).map((match) => {
+          if (isClosed) return match;
+          // Hide scores until the bet/game is closed
+          return {
+            ...match,
+            home_goal: null,
+            away_goal: null,
+          };
+        });
       }
     }
 
@@ -136,7 +170,7 @@ export async function GET(request: NextRequest) {
         bet: {
           product: hit.product,
           betNumber: betNumberValue,
-          status: String(hit.row.status || "active"),
+          status,
           gameType: hit.row.gameType ? String(hit.row.gameType) : null,
           mode: hit.row.mode ? String(hit.row.mode) : null,
           under: hit.row.under ?? [],
@@ -144,11 +178,11 @@ export async function GET(request: NextRequest) {
           matches: hit.row.matches ?? null,
           selections: hit.row.selections ?? null,
           staked: Number(hit.row.staked) || 0,
-          award: Number(hit.row.award) || 0,
+          award: isClosed ? Number(hit.row.award) || 0 : null,
           betTime: hit.row.bet_time ? String(hit.row.bet_time) : null,
           week: weekLabel,
           option: prizeName || null,
-          weekResult: Array.isArray(game?.results) ? game.results : [],
+          weekResult: isClosed && Array.isArray(game?.results) ? game.results : [],
           sportsMatches,
         },
       }),
