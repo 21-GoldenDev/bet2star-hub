@@ -20,6 +20,7 @@ import supabase from "@/lib/supabase/client";
 import { isUserAdminByEmail } from "@/lib/admin/auth";
 import { getUserProfile } from "@/lib/auth";
 import useAdminRole from "@/hooks/use-admin-role";
+import CheckBetTicket from "@/components/CheckBetTicket";
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -126,7 +127,7 @@ const Navbar = () => {
   return (
     <nav className="dark fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border shadow-sm print:hidden">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between min-h-16 py-2 gap-3">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
             <Image
@@ -219,6 +220,9 @@ const Navbar = () => {
                     </DropdownMenu>
                   </>
                 )}
+
+                {!isAdminPage && <CheckBetTicket variant="navbar" />}
+
                 <Link href="/profile">
                   <Button variant="ghost" size="icon" className="text-muted-foreground">
                     <User className="w-5 h-5" />
@@ -229,12 +233,15 @@ const Navbar = () => {
                 </Button>
               </>
             ) : (
-              <Link href="/auth">
-                <Button variant="gold" size="sm" className="gap-2">
-                  <LogIn className="w-4 h-4" />
-                  <span className="hidden sm:inline">Sign In</span>
-                </Button>
-              </Link>
+              <>
+                {!isAdminPage && <CheckBetTicket variant="navbar" />}
+                <Link href="/auth">
+                  <Button variant="gold" size="sm" className="gap-2">
+                    <LogIn className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign In</span>
+                  </Button>
+                </Link>
+              </>
             )}
 
             {/* Mobile Menu Toggle */}
@@ -253,6 +260,14 @@ const Navbar = () => {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
             <div className="flex flex-col gap-2">
+              {!isAdminPage && (
+                <div className="px-1 pb-2">
+                  <CheckBetTicket
+                    variant="mobile"
+                    onChecked={() => setMobileMenuOpen(false)}
+                  />
+                </div>
+              )}
               {!isAdminPage && navLinks.map((link) => (
                 <Link
                   key={link.path}
