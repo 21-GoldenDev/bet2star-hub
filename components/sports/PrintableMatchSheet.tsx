@@ -15,6 +15,8 @@ interface Props {
   groupedMatches: Record<string, SportsMatchRow[]>;
   gameWeek?: number | null;
   gameName?: string | null;
+  /** Show on screen (share page). Default: print-only. */
+  visible?: boolean;
 }
 
 /** e.g. 23:30,26,Jul */
@@ -34,6 +36,7 @@ export default function PrintableMatchSheet({
   groupedMatches,
   gameWeek,
   gameName,
+  visible = false,
 }: Props) {
   const printedAt = new Date().toLocaleString("en-US", {
     year: "numeric",
@@ -46,7 +49,13 @@ export default function PrintableMatchSheet({
   const colCount = 3 + OPTION_KEYS.length;
 
   return (
-    <div className="sports-print-sheet hidden print:block text-black bg-white">
+    <div
+      className={
+        visible
+          ? "sports-print-sheet block text-black bg-white p-4"
+          : "sports-print-sheet hidden print:block text-black bg-white"
+      }
+    >
       <header className="mb-3 border-b border-black pb-2">
         <div className="flex items-end justify-between gap-4">
           <div>
