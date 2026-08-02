@@ -62,6 +62,9 @@ Preview APL
   POST or GET /api/pos/sports/apl
   POST or GET /api/pos/sports-draw/apl
 
+Win-list (closed-game winners, paginated)
+  GET /api/pos/win-list
+
 
 Success response shape
 ----------------------
@@ -569,6 +572,102 @@ Football Pools — 1 Banker
       }
     }
   }
+
+
+8) Win-list (paginated, closed games only)
+-----------------------------------------
+GET /api/pos/win-list
+Bearer token required.
+
+Returns winning tickets placed on this terminal for games whose end_time has passed.
+Use this to print the POS win-list in controlled batches (Page X of Y) and resume from the
+failed page after paper-out or printer failure.
+
+Pagination
+  page       1-based page index (default 1)
+  page_size  items per page (default 25, maximum 50)
+  Aliases: pageSize
+
+  Response always includes:
+    total_items, page, page_size, total_pages
+
+  Lists longer than 50 winners are never truncated — fetch successive pages until
+  page == total_pages (or total_pages == 0 when empty).
+
+Filters
+  product    required — lotto | pools | sports | sports-draw
+             Alias: footballpools → sports-draw
+  week       optional — game week number
+  date       optional — YYYY-MM-DD, filters bet_time to that UTC calendar day
+  date_from  optional — YYYY-MM-DD inclusive start (ignored if date is set)
+  date_to    optional — YYYY-MM-DD inclusive end (ignored if date is set)
+  Aliases: dateFrom, dateTo
+
+Stable ordering
+  Ticket number ascending, then row id ascending.
+  The same filters + page always return the same items with no duplicates or skips
+  between pages (safe to retry a failed page).
+
+Inclusion rules
+  - Authenticated terminal only
+  - award > 0
+  - status is not void or deleted
+  - game end_time is in the past (closed game)
+
+Example
+
+  GET /api/pos/win-list?product=lotto&week=12&page=1&page_size=25
+
+Success data shape:
+
+  {
+    "product": "lotto",
+    "page": 1,
+    "page_size": 25,
+    "total_items": 87,
+    "total_pages": 4,
+    "items": [
+      {
+        "product": "lotto",
+        "bet_id": "uuid",
+        "bet_number": 10042,
+        "game_id": "uuid",
+        "week": 12,
+        "week_label": "Week 12",
+        "status": "closed",
+        "game_mode": "nap_perm",
+        "mode": null,
+        "under": [3, 4],
+        "numbers": [1, 5, 9, 12, 18],
+        "matches": null,
+        "selections": null,
+        "stake": 500,
+        "apl": 25,
+        "award": 1250,
+        "bet_time": "2026-07-28T10:15:00.000Z",
+        "prize_name": "Standard",
+        "tsn": "TERM-001",
+        "week_result": [1, 5, 9, 12, 20],
+        "sports_matches": null
+      }
+    ]
+  }
+
+Printable fields on every item
+  product, bet_id, bet_number, game_id, week, week_label, status,
+  game_mode (lotto/pools), mode (sports/sports-draw),
+  under, numbers (lotto), matches (pools), selections (sports),
+  stake, apl, award, bet_time, prize_name, tsn,
+  week_result (lotto/pools result numbers),
+  sports_matches (sports fixtures + scores for the game)
+
+Suggested client print flow
+  1. Request page=1 with a chosen page_size (≤ 50).
+  2. Print header: product, week/date filters, "Page {page} of {total_pages}".
+  3. Print each item’s printable fields.
+  4. On success, request page+1 until page > total_pages.
+  5. On paper-out / printer failure, retry the same page with the same filters
+     (ordering is stable — no need to restart from page 1 unless filters change).
 
 
 What happens on every place-bet call

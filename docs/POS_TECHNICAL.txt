@@ -83,6 +83,31 @@ Success data typically includes: apl, stake, gameMode or mode, gameId, betId, be
 
 Sports also returns product as sports or sports_draw.
 
+3.6 Win-list (paginated)
+
+GET /api/pos/win-list
+Bearer token required.
+
+Returns this terminal’s winning tickets for closed games (game end_time in the past),
+award > 0, status not void/deleted. Designed for printer-safe batched printing.
+
+Query parameters:
+- product (required): lotto | pools | sports | sports-draw (footballpools alias)
+- page (optional): 1-based, default 1
+- page_size (optional): default 25, maximum 50 (alias pageSize)
+- week (optional): game week number
+- date (optional): YYYY-MM-DD filter on bet_time (UTC day)
+- date_from / date_to (optional): YYYY-MM-DD inclusive range on bet_time (ignored if date set)
+
+Success data includes: product, page, page_size, total_items, total_pages, items[].
+
+Ordering is stable: ticket number ASC, then row id ASC — pages do not skip or duplicate
+items. Clients may show “Page X of Y” and resume from a failed page after paper-out.
+
+Each item includes printable fields: bet_number, stake, apl, award, week/week_label,
+game_mode or mode, under, numbers/matches/selections, prize_name, tsn, bet_time,
+week_result (lotto/pools), sports_matches (sports products), status=closed.
+
 
 4. Error codes
 
@@ -207,6 +232,7 @@ Important gaps for POS clients:
 - No timeout or verify-after-place API.
 - No POS reprint, cancel, or delete endpoints.
 - Void does not refund terminal credit.
+- Win-list is available at GET /api/pos/win-list (paginated; see 3.6).
 
 
 9. Ticket search, void, reprint
@@ -238,10 +264,14 @@ Settlement
 - Sports / sports-draw: no dedicated result route like lotto/pools; awards are computed when scores exist.
 
 Winners
+Admin (all managed terminals):
 GET /api/admin/bets/lotto/winners
 GET /api/admin/bets/pools/winners
 GET /api/admin/bets/sports/winners
 GET /api/admin/bets/sports-draw/winners
+
+POS terminal win-list (paginated, closed games only):
+GET /api/pos/win-list?product=...&page=1&page_size=25
 
 Terminal credit
 Deducted on POS bet. Admin can add or clear credit via /api/admin/terminals/credit. Online deposits use Monnify and are unrelated to POS.
@@ -295,4 +325,6 @@ Recommended test matrix:
 4. Optionally POST /api/pos/{product}/apl.
 5. POST /api/pos/{product}/bet and print from the response (betNumber, stake, APL, selections, remaining credit).
 6. Verify later with GET /api/bets/lookup?betId=...
-7. Treat void and cancel as admin operations until a POS void API with credit refund is added.
+7. After a game closes, print winners with GET /api/pos/win-list in page-sized batches;
+   show Page X of Y and retry the same page after printer failure.
+8. Treat void and cancel as admin operations until a POS void API with credit refund is added.
