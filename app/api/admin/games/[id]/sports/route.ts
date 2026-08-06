@@ -116,8 +116,13 @@ export async function POST(
           number,
           home,
           away,
-          home_goal: home_goal !== undefined ? home_goal : (game.type === "sports_draw" ? 1 : null),
-          away_goal: away_goal !== undefined ? away_goal : (game.type === "sports_draw" ? 0 : null),
+          // Column is NOT NULL — sports defaults to 0-0 until results are entered
+          home_goal: home_goal !== undefined && home_goal !== null
+            ? home_goal
+            : (game.type === "sports_draw" ? 1 : 0),
+          away_goal: away_goal !== undefined && away_goal !== null
+            ? away_goal
+            : 0,
           prizes: prizesArray,
           status: normalizedStatus,
           processed: false,
