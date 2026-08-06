@@ -188,8 +188,18 @@ export async function PUT(
     if (processed !== undefined) {
       updateData.processed = Boolean(processed);
     }
-    if (start_time !== undefined) updateData.start_time = start_time;
-    if (end_time !== undefined) updateData.end_time = end_time;
+    if (start_time !== undefined) {
+      updateData.start_time =
+        start_time == null || (typeof start_time === "string" && start_time.trim() === "")
+          ? null
+          : start_time;
+    }
+    if (end_time !== undefined) {
+      updateData.end_time =
+        end_time == null || (typeof end_time === "string" && end_time.trim() === "")
+          ? null
+          : end_time;
+    }
 
     const { data, error } = await supabase
       .from("sports")

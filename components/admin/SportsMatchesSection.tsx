@@ -33,6 +33,7 @@ import { Plus, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SportsCountry, SportsLeague, SportsMatch } from "@/lib/types/sports";
 import MatchCard from "./MatchCard";
+import DateTime24Input from "./DateTime24Input";
 
 interface MatchInfo {
   league_id: string;
@@ -333,12 +334,15 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...sportsForm,
+          league_id: sportsForm.league_id,
+          number: sportsForm.number,
+          home: sportsForm.home,
+          away: sportsForm.away,
           prizes: sportsForm.prizes,
           status: sportsForm.status || "void",
           home_goal: drawMode ? 1 : undefined,
           away_goal: drawMode ? 0 : undefined,
-          ...(drawMode ? { start_time: startIso } : {}),
+          start_time: startIso,
           end_time: endIso,
         }),
       });
@@ -619,31 +623,28 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
                   </div>
                 </div>
                 {drawMode ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <div>
                       <Label>Start Time</Label>
-                      <Input
-                        type="datetime-local"
+                      <DateTime24Input
                         value={formatDateTimeLocal(sportsForm.start_time)}
-                        onChange={(e) => setSportsForm({ ...sportsForm, start_time: e.target.value })}
+                        onChange={(v) => setSportsForm({ ...sportsForm, start_time: v })}
                       />
                     </div>
                     <div>
                       <Label>End Time</Label>
-                      <Input
-                        type="datetime-local"
+                      <DateTime24Input
                         value={formatDateTimeLocal(sportsForm.end_time)}
-                        onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
+                        onChange={(v) => setSportsForm({ ...sportsForm, end_time: v })}
                       />
                     </div>
                   </div>
                 ) : (
                   <div>
                     <Label>End Time</Label>
-                    <Input
-                      type="datetime-local"
+                    <DateTime24Input
                       value={formatDateTimeLocal(sportsForm.end_time)}
-                      onChange={(e) => setSportsForm({ ...sportsForm, end_time: e.target.value })}
+                      onChange={(v) => setSportsForm({ ...sportsForm, end_time: v })}
                     />
                   </div>
                 )}

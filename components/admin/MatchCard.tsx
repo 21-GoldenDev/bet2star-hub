@@ -17,6 +17,7 @@ import { Edit2, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SportsCountry, SportsLeague, SportsMatch } from "@/lib/types/sports";
 import clsx from "clsx";
+import DateTime24Input from "./DateTime24Input";
 
 interface MatchEditInfo {
   league_id: string;
@@ -426,25 +427,23 @@ export default function MatchCard({ match, countries, leagues, gameId, maxPrize,
               />
             </div>
           </div>
-          <div className={drawMode ? "grid grid-cols-2 gap-2" : undefined}>
+          <div className={drawMode ? "grid grid-cols-1 gap-2" : undefined}>
             {drawMode && (
               <div>
                 <Label className="text-xs">Start Time</Label>
-                <Input
-                  type="datetime-local"
+                <DateTime24Input
                   className="h-9 text-xs"
                   value={formatDateTimeLocal(editRowForm.start_time)}
-                  onChange={(e) => setEditRowForm({ ...editRowForm, start_time: e.target.value })}
+                  onChange={(v) => setEditRowForm({ ...editRowForm, start_time: v })}
                 />
               </div>
             )}
             <div>
               <Label className="text-xs">End Time</Label>
-              <Input
-                type="datetime-local"
+              <DateTime24Input
                 className="h-9 text-xs"
                 value={formatDateTimeLocal(editRowForm.end_time)}
-                onChange={(e) => setEditRowForm({ ...editRowForm, end_time: e.target.value })}
+                onChange={(v) => setEditRowForm({ ...editRowForm, end_time: v })}
               />
             </div>
           </div>

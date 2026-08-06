@@ -102,6 +102,10 @@ export async function POST(
       }
     }
 
+    // Postgres timestamptz rejects "" — coerce empty values to null
+    const toTimestampOrNull = (value: unknown) =>
+      value == null || (typeof value === "string" && value.trim() === "") ? null : value;
+
     const { data, error } = await supabase
       .from("sports")
       .insert([
@@ -117,8 +121,8 @@ export async function POST(
           prizes: prizesArray,
           status: normalizedStatus,
           processed: false,
-          start_time,
-          end_time,
+          start_time: toTimestampOrNull(start_time),
+          end_time: toTimestampOrNull(end_time),
         },
       ])
       .select()
