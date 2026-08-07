@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildDefaultPoolsMatches } from "@/lib/pools/defaultMatches";
+import { syncTerminalsIfPoolsGame } from "@/lib/admin/gamePrizeMutations";
+import { normalizeGamePrizeEntries } from "@/lib/admin/syncTerminalPrizesFromGame";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
       max_prize: unknown;
       visible_numbers: number[] | null;
       void_window_minutes: number | null;
-      prize_ids: { commissions?: Array<{ terminal: string; commission: number }> } | null;
+      prize_ids: unknown;
     } | null = null;
 
     if (
@@ -169,14 +171,28 @@ export async function POST(request: NextRequest) {
     };
 
     const resolvePrizeIds = () => {
-      if (type !== "sports" && type !== "sports_draw") return null;
-      const previousCommissions = previousGame?.prize_ids?.commissions;
-      if (!Array.isArray(previousCommissions) || previousCommissions.length === 0) {
-        return null;
+      if (type === "lotto" || type === "pools") {
+        const previousPrizes = normalizeGamePrizeEntries(previousGame?.prize_ids);
+        return previousPrizes.length > 0 ? previousPrizes : null;
       }
-      // Carry terminal commissions only; do not copy draw-odds maps from prior weeks
-      return { commissions: previousCommissions };
+
+      if (type === "sports" || type === "sports_draw") {
+        const prizeIds = previousGame?.prize_ids;
+        if (!prizeIds || typeof prizeIds !== "object" || Array.isArray(prizeIds)) {
+          return null;
+        }
+        const previousCommissions = (prizeIds as { commissions?: unknown }).commissions;
+        if (!Array.isArray(previousCommissions) || previousCommissions.length === 0) {
+          return null;
+        }
+        // Carry terminal commissions only; do not copy draw-odds maps from prior weeks
+        return { commissions: previousCommissions };
+      }
+
+      return null;
     };
+
+    const resolvedPrizeIds = resolvePrizeIds();
 
     const { data, error } = await supabase
       .from("games")
@@ -193,9 +209,8 @@ export async function POST(request: NextRequest) {
             ? { visible_numbers: previousGame?.visible_numbers ?? null }
             : {}),
           max_prize: resolveMaxPrize(),
-          prize_ids: resolvePrizeIds(),
-          ...((type === "sports" || type === "sports_draw") &&
-          previousGame?.void_window_minutes != null
+          prize_ids: resolvedPrizeIds,
+          ...(previousGame?.void_window_minutes != null
             ? { void_window_minutes: previousGame.void_window_minutes }
             : {}),
         },
@@ -257,6 +272,17 @@ export async function POST(request: NextRequest) {
           { error: "Failed to create default pool matches" },
           { status: 500 }
         );
+      }
+
+      if (resolvedPrizeIds) {
+        const { error: syncError } = await syncTerminalsIfPoolsGame(
+          supabase,
+          type,
+          resolvedPrizeIds
+        );
+        if (syncError) {
+          console.error("Error syncing terminal prizes for new pools game:", syncError);
+        }
       }
     }
 
