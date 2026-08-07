@@ -136,12 +136,18 @@ export async function POST(request: NextRequest) {
       max_stake: unknown;
       max_prize: unknown;
       visible_numbers: number[] | null;
+      prize_ids: { commissions?: Array<{ terminal: string; commission: number }> } | null;
     } | null = null;
 
-    if (type === "lotto" || type === "pools" || type === "sports_draw") {
+    if (
+      type === "lotto" ||
+      type === "pools" ||
+      type === "sports" ||
+      type === "sports_draw"
+    ) {
       const { data } = await supabase
         .from("games")
-        .select("week, max_stake, max_prize, visible_numbers")
+        .select("week, max_stake, max_prize, visible_numbers, prize_ids")
         .eq("type", type)
         .lt("start_time", startTime)
         .order("start_time", { ascending: false })
@@ -152,11 +158,23 @@ export async function POST(request: NextRequest) {
     }
 
     const resolveMaxPrize = () => {
-      if (type === "sports") return SPORTS_DEFAULT_MAX_PRIZE;
+      if (type === "sports") {
+        return previousGame?.max_prize ?? SPORTS_DEFAULT_MAX_PRIZE;
+      }
       if (type === "sports_draw") {
         return previousGame?.max_prize ?? SPORTS_DRAW_DEFAULT_MAX_PRIZE;
       }
       return null;
+    };
+
+    const resolvePrizeIds = () => {
+      if (type !== "sports" && type !== "sports_draw") return null;
+      const previousCommissions = previousGame?.prize_ids?.commissions;
+      if (!Array.isArray(previousCommissions) || previousCommissions.length === 0) {
+        return null;
+      }
+      // Carry terminal commissions only; do not copy draw-odds maps from prior weeks
+      return { commissions: previousCommissions };
     };
 
     const { data, error } = await supabase
@@ -174,6 +192,7 @@ export async function POST(request: NextRequest) {
             ? { visible_numbers: previousGame?.visible_numbers ?? null }
             : {}),
           max_prize: resolveMaxPrize(),
+          prize_ids: resolvePrizeIds(),
         },
       ])
       .select()
