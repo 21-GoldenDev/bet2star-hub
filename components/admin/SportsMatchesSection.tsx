@@ -29,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, Trash2 } from "lucide-react";
+import { Plus, Loader2, Trash2, Search, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { SportsCountry, SportsLeague, SportsMatch } from "@/lib/types/sports";
 import MatchCard from "./MatchCard";
@@ -83,6 +83,7 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
   const [leagueCountryId, setLeagueCountryId] = useState("");
   const [metaLoading, setMetaLoading] = useState(false);
   const [managing, setManaging] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   const MAX_PRIZE_KEYS = ["1", "X", "2", "1X", "12", "X2", "OV 2.5", "UN 2.5", "GG"] as const;
@@ -412,6 +413,22 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
         ? expiredMatches
         : processedMatches;
 
+  const filteredMatches = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return tabMatches;
+
+    const isNumeric = /^\d+$/.test(term);
+    return tabMatches.filter((match) => {
+      if (isNumeric) {
+        return String(match.number) === term;
+      }
+      return (
+        match.home.toLowerCase().includes(term) ||
+        match.away.toLowerCase().includes(term)
+      );
+    });
+  }, [tabMatches, searchTerm]);
+
   const drawResultNumbers = useMemo(() => {
     if (!drawMode) return [];
     return sports
@@ -736,6 +753,28 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
         </div>
       </div>
 
+      <div className="mb-4 flex justify-end">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by event # or team name..."
+            className="pl-9 pr-10"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
       {!drawMode && (
         <div className="mb-4 flex flex-wrap gap-2">
           <Button
@@ -782,9 +821,13 @@ export default function SportsMatchesSection({ gameId, sports, maxPrize, loading
             </Button>
           )}
         </Card>
+      ) : filteredMatches.length === 0 ? (
+        <Card className="p-8 text-center">
+          <p className="text-muted-foreground">No matches match your search</p>
+        </Card>
       ) : (
         <div className="space-y-4">
-          {tabMatches.map((match) => (
+          {filteredMatches.map((match) => (
             <MatchCard
               key={match.id}
               match={match}
