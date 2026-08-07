@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
       max_stake: unknown;
       max_prize: unknown;
       visible_numbers: number[] | null;
+      void_window_minutes: number | null;
       prize_ids: { commissions?: Array<{ terminal: string; commission: number }> } | null;
     } | null = null;
 
@@ -147,7 +148,7 @@ export async function POST(request: NextRequest) {
     ) {
       const { data } = await supabase
         .from("games")
-        .select("week, max_stake, max_prize, visible_numbers, prize_ids")
+        .select("week, max_stake, max_prize, visible_numbers, void_window_minutes, prize_ids")
         .eq("type", type)
         .lt("start_time", startTime)
         .order("start_time", { ascending: false })
@@ -193,6 +194,10 @@ export async function POST(request: NextRequest) {
             : {}),
           max_prize: resolveMaxPrize(),
           prize_ids: resolvePrizeIds(),
+          ...((type === "sports" || type === "sports_draw") &&
+          previousGame?.void_window_minutes != null
+            ? { void_window_minutes: previousGame.void_window_minutes }
+            : {}),
         },
       ])
       .select()
