@@ -493,7 +493,7 @@ export default function CheckBetTicket({
           className={
             className ??
             (variant === "navbar"
-              ? "hidden lg:flex flex-col gap-1 min-w-[220px]"
+              ? "hidden md:flex flex-col gap-1 min-w-[220px]"
               : "flex flex-col gap-2 w-full")
           }
         >
