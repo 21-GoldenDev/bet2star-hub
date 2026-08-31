@@ -111,14 +111,14 @@ export default function AdminSidebar() {
       {/* Sidebar */}
       <aside
         className={clsx(
-          "dark fixed left-0 top-0 h-screen bg-sidebar-background border-r border-sidebar-border shadow-lg transition-all duration-300 z-40",
+          "dark fixed left-0 top-16 h-[calc(100dvh-4rem)] bg-sidebar-background border-r border-sidebar-border shadow-lg transition-all duration-300 z-40 overflow-hidden",
           isCollapsed ? "w-16" : "w-64",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
-        <div className="flex flex-col h-full pt-16">
+        <div className="flex flex-col h-full min-h-0">
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+          <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-2">
             {/* Bets expandable item */}
             <div
               className="relative group"
@@ -545,7 +545,7 @@ export default function AdminSidebar() {
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-sidebar-border">
+          <div className="shrink-0 p-4 border-t border-sidebar-border">
             <Link href="/">
               <Button
                 variant="outline"

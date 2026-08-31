@@ -325,11 +325,11 @@ export default function SettingsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="email">Email</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
+        <TabsList className="grid h-auto w-full grid-cols-2 lg:grid-cols-4 gap-1">
+          <TabsTrigger value="general" className="w-full">General</TabsTrigger>
+          <TabsTrigger value="email" className="w-full">Email</TabsTrigger>
+          <TabsTrigger value="notifications" className="w-full">Notifications</TabsTrigger>
+          <TabsTrigger value="security" className="w-full">Security</TabsTrigger>
         </TabsList>
 
         {/* General Settings */}

@@ -133,7 +133,7 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmo
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:row-span-2 order-1">
         <div className="p-4 rounded-xl bg-card border border-border">
           <div className="text-sm font-semibold text-center mb-3 text-muted-foreground">Under</div>
           <div className="px-2 py-1 rounded text-xs bg-muted border border-border text-center font-medium">
@@ -145,7 +145,7 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmo
         </div>
       </div>
 
-      <div className="lg:col-span-7">
+      <div className="lg:col-span-7 lg:col-start-3 lg:row-start-1 lg:row-span-2 order-3 lg:order-2">
         <div className="p-4 pr-2 rounded-xl bg-card border border-border">
           <div className="pr-2 max-h-150 lg:max-h-[calc(100vh-18rem)] overflow-auto scrollbar">
             <DrawMatchList
@@ -159,7 +159,7 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmo
         </div>
       </div>
 
-      <div className="lg:col-span-3 flex flex-col gap-4">
+      <div className="lg:col-span-3 lg:col-start-10 lg:row-start-1 order-2 lg:order-3">
         <div className="p-4 rounded-xl bg-card border border-border">
           <div className="text-sm font-semibold mb-3 text-muted-foreground">Groups</div>
           <div className="space-y-3">
@@ -191,7 +191,9 @@ const OneBanker = ({ matches, drawOddsMap, matchNumberMap, activeGame, maxWinAmo
             </div>
           </div>
         </div>
+      </div>
 
+      <div className="lg:col-span-3 lg:col-start-10 lg:row-start-2 flex flex-col gap-4 order-4">
         {selections.length > 0 && (
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-2 text-muted-foreground">Set Banker</div>
