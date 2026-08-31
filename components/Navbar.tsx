@@ -94,6 +94,15 @@ const Navbar = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mobileMenuOpen]);
+
   const handleSignOut = async () => {
     const { error } = await signOut();
     if (error) toast({ title: error.message || "Sign out failed", variant: "destructive" });
@@ -125,9 +134,9 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="dark fixed top-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-b border-border shadow-sm print:hidden">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between min-h-16 py-2 gap-3">
+    <nav className="dark fixed top-0 left-0 right-0 z-50 max-h-dvh flex flex-col bg-card/95 backdrop-blur-xl border-b border-border shadow-sm print:hidden">
+      <div className="container mx-auto px-4 min-h-0 flex flex-col max-h-dvh">
+        <div className="flex items-center justify-between min-h-16 py-2 gap-3 shrink-0">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 min-w-0 shrink">
             <Image
@@ -260,7 +269,7 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border/50 animate-slide-up">
+          <div className="md:hidden min-h-0 overflow-y-auto overscroll-contain py-4 pb-8 border-t border-border/50 animate-slide-up">
             <div className="flex flex-col gap-2">
               {!isAdminPage && (
                 <div className="px-1 pb-2">
