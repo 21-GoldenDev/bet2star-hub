@@ -1040,7 +1040,7 @@ export default function BetHistoryPage() {
 
           {(Object.keys(TAB_LABELS) as BetTab[]).map((tab) => (
             <TabsContent key={tab} value={tab}>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <div className="bg-card border border-border rounded-2xl overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/60">
                     <TableRow>
@@ -1124,11 +1124,11 @@ export default function BetHistoryPage() {
         </Tabs>
 
         {!loading && activeRows.length > 0 && (
-          <div className="flex items-center justify-between mt-3 gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-3 gap-3">
             <p className="text-sm text-muted-foreground">
               Showing {startItem}-{endItem} of {currentTotal} {TAB_LABELS[activeTab]} bets
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="outline"
                 size="sm"

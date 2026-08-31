@@ -37,13 +37,13 @@ const Home = () => {
               <Sparkles className="w-4 h-4" />
               Welcome to the future of betting
             </div>
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 animate-slide-up" style={{ animationDelay: "100ms" }}>
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-foreground mb-6 animate-slide-up" style={{ animationDelay: "100ms" }}>
               Experience Premium{" "}
               <span className="bg-clip-text text-transparent bg-linear-to-r from-primary via-primary to-amber-500">
                 Betting
               </span>
             </h1>
-            <p className="text-lg text-muted-foreground mb-8 animate-slide-up" style={{ animationDelay: "200ms" }}>
+            <p className="text-base sm:text-lg text-muted-foreground mb-8 animate-slide-up" style={{ animationDelay: "200ms" }}>
               Join thousands of players on bet2star. Play number matching, word games, or bet on your favorite football matches.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up" style={{ animationDelay: "300ms" }}>

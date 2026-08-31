@@ -330,9 +330,9 @@ export default function GamesPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Games Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Games Management</h1>
           <p className="text-muted-foreground mt-2">
             Create and manage games, draws, and prizes
           </p>

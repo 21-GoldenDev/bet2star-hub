@@ -439,7 +439,7 @@ export default function SportsDrawSalesPage() {
       <div className="flex flex-wrap gap-4 justify-between items-center">
         <h1 className="text-3xl font-bold">Football Pool Sales Report</h1>
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="w-48">
+          <div className="w-full sm:w-48">
             <Select value={selectedWeek} onValueChange={setSelectedWeek}>
               <SelectTrigger>
                 <SelectValue placeholder="Select week" />
@@ -476,7 +476,7 @@ export default function SportsDrawSalesPage() {
 
           {(activeTab === "staff" || activeTab === "agent" || activeTab === "terminal") && (
             <div className="flex flex-wrap gap-3 items-center border rounded-md p-3">
-              <div className="w-56">
+              <div className="w-full sm:w-56">
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
@@ -523,7 +523,7 @@ export default function SportsDrawSalesPage() {
               </div>
 
               {(activeTab === "agent" || activeTab === "terminal") && (
-                <div className="w-56">
+                <div className="w-full sm:w-56">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
@@ -569,7 +569,7 @@ export default function SportsDrawSalesPage() {
               )}
 
               {activeTab === "terminal" && (
-                <div className="w-56">
+                <div className="w-full sm:w-56">
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button variant="outline" role="combobox" className="w-full justify-between font-normal">

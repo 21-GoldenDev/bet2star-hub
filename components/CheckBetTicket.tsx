@@ -550,7 +550,7 @@ export default function CheckBetTicket({
 
           {bet && (
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Bet ID</Label>
                   <p className="mt-1 font-medium">{bet.betNumber}</p>
@@ -590,7 +590,7 @@ export default function CheckBetTicket({
                   : renderDetailedSelection(bet)}
               </div>
 
-              <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
+              <div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Under</Label>
                   <p className="mt-1 font-medium">{getUnderValue(bet.gameType, bet.under)}</p>
@@ -623,7 +623,7 @@ export default function CheckBetTicket({
                 </div>
               )}
 
-              <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
+              <div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Staked</Label>
                   <p className="mt-1 font-medium text-lg">{Number(bet.staked).toFixed(0)}</p>
@@ -636,7 +636,7 @@ export default function CheckBetTicket({
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4 grid grid-cols-2 gap-4">
+              <div className="border-t border-border pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Option</Label>
                   <p className="mt-1 font-medium text-nowrap">

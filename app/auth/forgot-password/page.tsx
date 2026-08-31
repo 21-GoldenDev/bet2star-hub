@@ -46,7 +46,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <div className="w-full max-w-md relative">
-          <div className="bg-card border border-border rounded-2xl p-8 shadow-xl text-center">
+          <div className="bg-card border border-border rounded-2xl p-4 sm:p-8 shadow-xl text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_hsl(43_96%_56%/0.3)]">
               <Mail className="w-8 h-8 text-primary-foreground" />
             </div>
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
           Back to Sign In
         </Link>
 
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-8 shadow-xl">
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_hsl(43_96%_56%/0.3)]">
               <span className="text-primary-foreground font-bold text-2xl">B2</span>

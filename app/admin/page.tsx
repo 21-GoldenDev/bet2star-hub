@@ -139,14 +139,14 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">Dashboard</h1>
           <p className="text-muted-foreground">
             Welcome to Admin Panel!
           </p>
         </div>
-        <div className="w-56 p-4 rounded-lg border-2 border-primary bg-primary/5 shadow-md">
+        <div className="w-full sm:w-56 p-4 rounded-lg border-2 border-primary bg-primary/5 shadow-md">
           <Label className="text-sm font-semibold">Filter by Game Type</Label>
           <Select value={gameType} onValueChange={setGameType}>
             <SelectTrigger className="mt-2 border-primary/50 bg-background font-medium">

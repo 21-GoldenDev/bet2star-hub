@@ -212,7 +212,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props
         {/* Column 2: Number Grid */}
         <div className="lg:col-span-6">
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {matches.map((match) => {
                 const selectionLimitReached = selectedMatches.length >= requiredSelectionCount && !selectedMatches.includes(match);
                 return (

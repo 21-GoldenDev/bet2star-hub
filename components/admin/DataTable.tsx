@@ -150,7 +150,7 @@ export default function DataTable<T extends { id?: string | number }>({
         </div>
       )}
 
-      <div className="border border-border rounded-lg overflow-hidden">
+      <div className="border border-border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -206,7 +206,7 @@ export default function DataTable<T extends { id?: string | number }>({
           <p className="text-sm text-muted-foreground">
             Page {safePage} of {totalPages} ({filteredData.length} results)
           </p>
-          <nav aria-label="Pagination" className="inline-flex items-center overflow-hidden rounded-md border border-border">
+          <nav aria-label="Pagination" className="inline-flex max-w-full items-center overflow-x-auto rounded-md border border-border">
             <Button
               variant="ghost"
               size="sm"

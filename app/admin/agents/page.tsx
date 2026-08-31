@@ -209,9 +209,9 @@ export default function AgentsPage() {
   });
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Agents Management</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold">Agents Management</h1>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
             <Button
@@ -231,8 +231,8 @@ export default function AgentsPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Label htmlFor="username" className="min-w-24 text-end">Username</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="username" className="sm:min-w-24 sm:text-end">Username</Label>
                 <Input
                   id="username"
                   name="username"
@@ -241,8 +241,8 @@ export default function AgentsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="password" className="min-w-24 text-end">Password</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="password" className="sm:min-w-24 sm:text-end">Password</Label>
                 <Input
                   id="password"
                   name="password"
@@ -254,8 +254,8 @@ export default function AgentsPage() {
                   placeholder={editingId ? "Leave empty to keep current" : ""}
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="email" className="min-w-24 text-end">Email</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="email" className="sm:min-w-24 sm:text-end">Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -265,8 +265,8 @@ export default function AgentsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="staff_id" className="min-w-24 text-end">Assign to Staff</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="staff_id" className="sm:min-w-24 sm:text-end">Assign to Staff</Label>
                 <Select value={formData.staff_id} onValueChange={handleStaffChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a staff member" />
@@ -280,8 +280,8 @@ export default function AgentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="first_name" className="min-w-24 text-end">First Name</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="first_name" className="sm:min-w-24 sm:text-end">First Name</Label>
                 <Input
                   id="first_name"
                   name="first_name"
@@ -290,8 +290,8 @@ export default function AgentsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="last_name" className="min-w-24 text-end">Last Name</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="last_name" className="sm:min-w-24 sm:text-end">Last Name</Label>
                 <Input
                   id="last_name"
                   name="last_name"
@@ -300,8 +300,8 @@ export default function AgentsPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="phone" className="min-w-24 text-end">Phone</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="phone" className="sm:min-w-24 sm:text-end">Phone</Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -309,8 +309,8 @@ export default function AgentsPage() {
                   onChange={handleInputChange}
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="address" className="min-w-24 text-end">Address</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="address" className="sm:min-w-24 sm:text-end">Address</Label>
                 <Input
                   id="address"
                   name="address"
@@ -326,8 +326,8 @@ export default function AgentsPage() {
         </Dialog>
       </div>
 
-      <div className="flex gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             type="text"
@@ -338,7 +338,7 @@ export default function AgentsPage() {
           />
         </div>
         <Select value={filterStaffId} onValueChange={setFilterStaffId}>
-          <SelectTrigger className="w-62.5">
+          <SelectTrigger className="w-full sm:w-62.5">
             <SelectValue placeholder="Filter by staff" />
           </SelectTrigger>
           <SelectContent>
@@ -355,7 +355,7 @@ export default function AgentsPage() {
       {loading ? (
         <div className="text-center py-8">Loading...</div>
       ) : (
-        <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="bg-card rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

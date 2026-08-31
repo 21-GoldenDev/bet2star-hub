@@ -468,7 +468,7 @@ export default function WinnersPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div className="space-y-6">
         <h1 className="text-2xl font-bold">Winner List</h1>
         <div className="mt-12 flex items-center justify-center">
           <div className="text-muted-foreground">Loading winning bets...</div>
@@ -478,7 +478,7 @@ export default function WinnersPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">Winner List</h1>
       <p className="text-sm text-muted-foreground mt-2">
         Active bets with a winning award after results or scores were applied.
@@ -702,7 +702,7 @@ export default function WinnersPage() {
               </Select>
             </div>
 
-            <div className="md:col-span-4 flex items-center justify-between">
+            <div className="md:col-span-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${activeFilteredCount} results`}
               </div>
@@ -731,17 +731,17 @@ export default function WinnersPage() {
       </section>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid w-full max-w-md grid-cols-4">
-          <TabsTrigger value="lotto">
+        <TabsList className="grid h-auto w-full max-w-2xl grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsTrigger value="lotto" className="text-xs sm:text-sm whitespace-normal">
             Lotto ({lottoBets.length})
           </TabsTrigger>
-          <TabsTrigger value="pools">
+          <TabsTrigger value="pools" className="text-xs sm:text-sm whitespace-normal">
             Pools ({poolsBets.length})
           </TabsTrigger>
-          <TabsTrigger value="sports">
+          <TabsTrigger value="sports" className="text-xs sm:text-sm whitespace-normal">
             Sports ({sportsBets.length})
           </TabsTrigger>
-          <TabsTrigger value="sports-draw">
+          <TabsTrigger value="sports-draw" className="text-xs sm:text-sm whitespace-normal">
             Football Pool ({sportsDrawBets.length})
           </TabsTrigger>
         </TabsList>

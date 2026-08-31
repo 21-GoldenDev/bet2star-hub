@@ -373,7 +373,7 @@ export default function LottoPage() {
   }, [weekFilter, gameFilter, rangeFilter]);
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">Bets — Lotto</h1>
       <p className="text-sm text-muted-foreground mt-2">Manage lotto bets here.</p>
 
@@ -633,7 +633,7 @@ export default function LottoPage() {
               </div>
             )}
 
-            <div className="md:col-span-4 flex items-center justify-between">
+            <div className="md:col-span-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-muted-foreground">
                 {loading ? "Loading..." : `${filteredAll.length} results`}
               </div>

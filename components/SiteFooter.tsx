@@ -16,7 +16,13 @@ export default function SiteFooter() {
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-2">
-            <Image src="/logo2.png" alt="Logo" width={250} height={33} />
+            <Image
+              src="/logo2.png"
+              alt="Logo"
+              width={250}
+              height={33}
+              className="h-8 w-auto max-w-[180px] sm:max-w-[220px] md:max-w-[250px] object-contain"
+            />
           </div>
 
           <ContactUsSection />

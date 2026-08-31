@@ -117,8 +117,8 @@ const Profile = () => {
 
         {/* Profile Header */}
         <div className="bg-card border border-border rounded-2xl p-6 mb-6">
-          <div className="flex items-start gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-primary/20 flex items-center justify-center overflow-hidden relative">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 rounded-2xl bg-primary/20 flex items-center justify-center overflow-hidden relative">
               {profile.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.avatar_url} alt={`${profile.username} avatar`} className="w-full h-full object-cover" />
@@ -148,10 +148,10 @@ const Profile = () => {
                 </label>
               )}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-foreground">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
                     {profile.username}
                   </h1>
                   <p className="text-muted-foreground">Premium Member</p>
@@ -160,6 +160,7 @@ const Profile = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEditing(!isEditing)}
+                  className="shrink-0 self-start"
                 >
                   <Edit3 className="w-4 h-4 mr-2" />
                   Edit
@@ -169,15 +170,15 @@ const Profile = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mt-6">
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-6">
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-muted rounded-xl p-4 text-center"
+                className="bg-muted rounded-xl p-2 sm:p-4 text-center min-w-0"
               >
-                <stat.icon className="w-5 h-5 text-primary mx-auto mb-2" />
-                <p className="text-xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
+                <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary mx-auto mb-2" />
+                <p className="text-base sm:text-xl font-bold text-foreground truncate">{stat.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">{stat.label}</p>
               </div>
             ))}
           </div>

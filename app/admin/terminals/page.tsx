@@ -463,10 +463,10 @@ export default function TerminalsPage() {
   });
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Terminals Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Terminals Management</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -611,7 +611,7 @@ export default function TerminalsPage() {
 
                 <div className="space-y-2">
                   <Label>Game Modes (Products)</Label>
-                  <div className="grid grid-cols-3 gap-3 rounded-md border p-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-md border p-3">
                     {gameModeOptions.map((mode) => (
                       <div key={mode.value} className="flex items-center space-x-2">
                         <Checkbox
@@ -631,14 +631,14 @@ export default function TerminalsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <Label>Prizes with Commissions</Label>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         Toggle active/inactive and select one default prize (active only).
                       </p>
                     </div>
-                    <Button type="button" variant="outline" size="sm" onClick={addPrizeRow}>
+                    <Button type="button" variant="outline" size="sm" onClick={addPrizeRow} className="shrink-0 self-start sm:self-auto">
                       <Plus className="h-4 w-4 mr-1" /> Add Prize
                     </Button>
                   </div>
@@ -649,8 +649,8 @@ export default function TerminalsPage() {
                       className="space-y-3"
                     >
                     {prizeRows.map((row, index) => (
-                      <div key={`${row.prize_id}-${index}`} className="grid grid-cols-12 gap-3 items-center">
-                        <div className="col-span-4">
+                      <div key={`${row.prize_id}-${index}`} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3 items-center">
+                        <div className="md:col-span-4">
                           <Label htmlFor={`prize_select_${index}`} className="sr-only">
                             Prize
                           </Label>
@@ -672,7 +672,7 @@ export default function TerminalsPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="col-span-2">
+                        <div className="md:col-span-2">
                           <Label htmlFor={`prize_commission_${index}`} className="sr-only">
                             Commission
                           </Label>
@@ -689,7 +689,7 @@ export default function TerminalsPage() {
                             placeholder="Commission %"
                           />
                         </div>
-                        <div className="col-span-2 flex items-center gap-2">
+                        <div className="md:col-span-2 flex items-center gap-2">
                           <Switch
                             id={`prize_status_${index}`}
                             checked={row.status === "active"}
@@ -703,7 +703,7 @@ export default function TerminalsPage() {
                             {row.status}
                           </Label>
                         </div>
-                        <div className="col-span-3 flex items-center gap-2">
+                        <div className="md:col-span-3 flex items-center gap-2">
                           <RadioGroupItem
                             value={row.prize_id}
                             id={`prize_default_${index}`}
@@ -716,7 +716,7 @@ export default function TerminalsPage() {
                             Default
                           </Label>
                         </div>
-                        <div className="col-span-1 flex justify-end">
+                        <div className="md:col-span-1 flex justify-end">
                           <Button
                             type="button"
                             variant="ghost"
@@ -740,8 +740,8 @@ export default function TerminalsPage() {
           </Dialog>
         </div>
 
-        <div className="flex gap-4">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               type="text"
@@ -752,7 +752,7 @@ export default function TerminalsPage() {
             />
           </div>
           <Select value={filterAgentId} onValueChange={setFilterAgentId}>
-            <SelectTrigger className="w-50">
+            <SelectTrigger className="w-full sm:w-50">
               <SelectValue placeholder="Filter by agent" />
             </SelectTrigger>
             <SelectContent>
@@ -765,7 +765,7 @@ export default function TerminalsPage() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-37.5">
+            <SelectTrigger className="w-full sm:w-37.5">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>

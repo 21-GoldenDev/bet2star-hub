@@ -227,11 +227,11 @@ export default function SportsDrawPage() {
   ]);
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div>Loading...</div>;
   }
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       <h1 className="text-2xl font-bold">Bets — Football Pool</h1>
       <p className="text-sm text-muted-foreground mt-2">Manage Football Pool bets here.</p>
 
@@ -402,7 +402,7 @@ export default function SportsDrawPage() {
               </Popover>
             </div>
 
-            <div className="md:col-span-4 flex items-center justify-between">
+            <div className="md:col-span-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm text-muted-foreground">{filteredSportsDraw.length} results</div>
               <Button variant="outline" size="sm" onClick={() => {
                 setWeekFilter("");

@@ -290,12 +290,12 @@ export default function TransactionsPage() {
           </div>
 
           {!loading && rows.length > 0 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/30">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 border-t border-border bg-muted/30">
               <p className="text-sm text-muted-foreground">
                 Showing {startItem}-{endItem} of {rows.length}
               </p>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="outline"
                   size="sm"

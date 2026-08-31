@@ -78,15 +78,16 @@ export default function AdminSidebar() {
       {/* Mobile Menu Button */}
       <div
         className={clsx(
-          "lg:hidden fixed top-20 left-4 z-50 transition-transform duration-300",
-          isOpen ? "translate-x-64" : "translate-x-0",
+          "lg:hidden fixed top-20 z-50 transition-all duration-300",
+          isOpen ? "left-[17rem]" : "left-3",
         )}
       >
         <Button
           variant="outline"
           size="icon"
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-background"
+          className="bg-background shadow-md"
+          aria-label={isOpen ? "Close admin menu" : "Open admin menu"}
         >
           {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </Button>

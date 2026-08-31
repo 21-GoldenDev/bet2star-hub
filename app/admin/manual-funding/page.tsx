@@ -168,7 +168,7 @@ export default function ManualFundingPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Online Manual Funding</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Online Manual Funding</h1>
         <p className="text-muted-foreground mt-2">
           Review player deposit and withdrawal requests submitted outside online payments
         </p>

@@ -182,9 +182,9 @@ export default function StaffPage() {
   });
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Staff Management</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold">Staff Management</h1>
         <Dialog open={openDialog} onOpenChange={setOpenDialog}>
           <DialogTrigger asChild>
             <Button
@@ -204,8 +204,8 @@ export default function StaffPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Label htmlFor="username" className="min-w-24 text-end">Username</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="username" className="sm:min-w-24 sm:text-end">Username</Label>
                 <Input
                   id="username"
                   name="username"
@@ -214,8 +214,8 @@ export default function StaffPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="password" className="min-w-24 text-end">Password</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="password" className="sm:min-w-24 sm:text-end">Password</Label>
                 <Input
                   id="password"
                   name="password"
@@ -227,8 +227,8 @@ export default function StaffPage() {
                   placeholder={editingId ? "Leave empty to keep current" : ""}
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="email" className="min-w-24 text-end">Email</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="email" className="sm:min-w-24 sm:text-end">Email</Label>
                 <Input
                   id="email"
                   name="email"
@@ -238,8 +238,8 @@ export default function StaffPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="first_name" className="min-w-24 text-end">First Name</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="first_name" className="sm:min-w-24 sm:text-end">First Name</Label>
                 <Input
                   id="first_name"
                   name="first_name"
@@ -248,8 +248,8 @@ export default function StaffPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="last_name" className="min-w-24 text-end">Last Name</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="last_name" className="sm:min-w-24 sm:text-end">Last Name</Label>
                 <Input
                   id="last_name"
                   name="last_name"
@@ -258,8 +258,8 @@ export default function StaffPage() {
                   required
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="phone" className="min-w-24 text-end">Phone</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="phone" className="sm:min-w-24 sm:text-end">Phone</Label>
                 <Input
                   id="phone"
                   name="phone"
@@ -267,8 +267,8 @@ export default function StaffPage() {
                   onChange={handleInputChange}
                 />
               </div>
-              <div className="flex items-center gap-3">
-                <Label htmlFor="address" className="min-w-24 text-end">Address</Label>
+              <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <Label htmlFor="address" className="sm:min-w-24 sm:text-end">Address</Label>
                 <Input
                   id="address"
                   name="address"
@@ -298,7 +298,7 @@ export default function StaffPage() {
       {loading ? (
         <div className="text-center py-8">Loading...</div>
       ) : (
-        <div className="bg-card rounded-lg border overflow-hidden">
+        <div className="bg-card rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

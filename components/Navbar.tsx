@@ -129,12 +129,14 @@ const Navbar = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between min-h-16 py-2 gap-3">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 min-w-0 shrink">
             <Image
               src="/logo2.png"
               alt="Bet2Star Logo"
               height={33}
               width={250}
+              className="h-7 w-auto max-w-[140px] sm:h-8 sm:max-w-[180px] md:max-w-[220px] lg:max-w-[250px] object-contain object-left"
+              priority
             />
           </Link>
 
@@ -181,7 +183,7 @@ const Navbar = () => {
           )}
 
           {/* Balance & User */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {isLoggedIn ? (
               <>
                 {!isAdminPage && (
@@ -318,13 +320,18 @@ const Navbar = () => {
                           Deposit
                         </Button>
                       </Link>
+                      <Link href="/withdraw" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="cyan" className="w-full mt-2">
+                          Withdraw
+                        </Button>
+                      </Link>
+                      <Link href="/transactions" onClick={() => setMobileMenuOpen(false)}>
+                        <Button variant="outline" className="w-full mt-2">
+                          Transactions
+                        </Button>
+                      </Link>
                     </>
                   )}
-                  <Link href="/withdraw" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="cyan" className="w-full mt-2">
-                      Withdraw
-                    </Button>
-                  </Link>
                 </>
               ) : (
                 <Link href="/auth" onClick={() => setMobileMenuOpen(false)}>

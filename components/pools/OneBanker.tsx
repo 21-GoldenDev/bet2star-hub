@@ -162,7 +162,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }
           )}
         </div>
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
             {matches.map((match) => {
               const inGroupA = groupAMatches.includes(match);
               return (

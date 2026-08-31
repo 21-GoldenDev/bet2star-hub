@@ -64,14 +64,14 @@ const ConfirmContent = () => {
           Back to Home
         </Link>
 
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-xl">
+        <div className="bg-card border border-border rounded-2xl p-4 sm:p-8 shadow-xl">
           <div className="text-center mb-8">
             <Image
               src="/logo2.png"
               alt="Bet2Star Logo"
               width={250}
               height={33}
-              className="mx-auto mb-4"
+              className="mx-auto mb-4 h-8 w-auto max-w-[200px] object-contain"
             />
             <h1 className="text-2xl font-bold text-foreground">
               {loading ? "Confirming Email..." : error ? "Confirmation Failed" : "Email Confirmed!"}

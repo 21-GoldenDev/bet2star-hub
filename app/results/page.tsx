@@ -280,7 +280,7 @@ export default function ResultsPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                  <div className="bg-card border border-border rounded-2xl overflow-x-auto">
                     <Table>
                       <TableHeader className="bg-muted/60">
                         <TableRow>

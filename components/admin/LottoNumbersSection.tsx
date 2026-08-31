@@ -95,14 +95,14 @@ export default function LottoNumbersSection({ gameId, loading }: Props) {
   return (
     <Card className="p-6">
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Lotto Numbers</h2>
             <p className="text-sm text-muted-foreground mt-1">
               Show or hide numbers for players. {visibleNumbers.length} of {numbers.length} visible
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"

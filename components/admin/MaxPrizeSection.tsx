@@ -143,7 +143,7 @@ export default function MaxPrizeSection({ gameId, gameType, maxPrize, loading, o
   return (
     <>
       <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold">Maximum Prize Management</h2>
             <p className="text-sm text-muted-foreground mt-1">
@@ -151,7 +151,7 @@ export default function MaxPrizeSection({ gameId, gameType, maxPrize, loading, o
             </p>
           </div>
           {!isEditing && (
-            <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
+            <Button onClick={() => setIsEditing(true)} variant="outline" size="sm" className="shrink-0 self-start">
               <Edit2 className="w-4 h-4 mr-2" />
               Edit
             </Button>
@@ -160,7 +160,7 @@ export default function MaxPrizeSection({ gameId, gameType, maxPrize, loading, o
 
         {isEditing ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3">
               {activeKeys.map((key) => (
                 <div key={key} className="space-y-1">
                   <Label htmlFor={`max-prize-${key}`}>{key}</Label>
@@ -205,7 +205,7 @@ export default function MaxPrizeSection({ gameId, gameType, maxPrize, loading, o
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-4">
             {activeKeys.map((key) => (
               <div key={key} className="p-4 bg-muted rounded-lg">
                 <div className="text-sm text-muted-foreground mb-1">{key}</div>

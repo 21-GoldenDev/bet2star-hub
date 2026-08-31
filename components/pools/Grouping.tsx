@@ -243,7 +243,7 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }:
         </div>
         <div className="lg:col-span-6">
           <div className="max-h-screen overflow-y-auto scrollbar">
-            <div className="grid grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
               {matches.map((match, index) => {
                 const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
                 const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
