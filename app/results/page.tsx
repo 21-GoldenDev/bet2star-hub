@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatLottoWeekLabel } from "@/lib/helpers";
 
-type GameTab = "lotto" | "pools" | "sports" | "sports-draw";
+type GameTab = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 type SportsMatch = {
   number: number;
@@ -44,11 +44,13 @@ type WeekResult = {
   end_time: string | null;
   results: Array<number | string>;
   matches: SportsMatch[];
+  poolsMatches?: Array<{ number: number; home: string; away: string }>;
 };
 
 const TAB_LABELS: Record<GameTab, string> = {
   lotto: "Lotto",
   pools: "Pools",
+  "daily-pools": "Daily/Mid-week Pools",
   sports: "Sports Betting",
   "sports-draw": "Football Pool",
 };
@@ -56,6 +58,7 @@ const TAB_LABELS: Record<GameTab, string> = {
 const EMPTY_DATA: Record<GameTab, WeekResult[]> = {
   lotto: [],
   pools: [],
+  "daily-pools": [],
   sports: [],
   "sports-draw": [],
 };
@@ -104,6 +107,7 @@ export default function ResultsPage() {
       setResultsByTab({
         lotto: payload.data?.lotto || [],
         pools: payload.data?.pools || [],
+        "daily-pools": payload.data?.["daily-pools"] || [],
         sports: payload.data?.sports || [],
         "sports-draw": payload.data?.["sports-draw"] || [],
       });
@@ -187,7 +191,7 @@ export default function ResultsPage() {
         <div className="text-center mb-10 animate-slide-up">
           <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-3">Game Results</h1>
           <p className="text-muted-foreground">
-            Browse results for every week across Lotto, Pools, Sports Betting, and Football Pool.
+            Browse results for every week across Lotto, Pools, Daily/Mid-week Pools, Sports Betting, and Football Pool.
           </p>
         </div>
 
@@ -257,7 +261,7 @@ export default function ResultsPage() {
                   <div className="bg-card border border-border rounded-2xl p-12 text-center">
                     <p className="text-muted-foreground">No results available for {TAB_LABELS[tab]} yet.</p>
                   </div>
-                ) : tab === "lotto" || tab === "pools" ? (
+                ) : tab === "lotto" || tab === "pools" || tab === "daily-pools" ? (
                   <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-lg font-semibold mb-4">
                       {activeTab === "lotto"
@@ -266,14 +270,22 @@ export default function ResultsPage() {
                     </h2>
                     {selectedGame.results.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {selectedGame.results.map((num, idx) => (
-                          <span
-                            key={idx}
-                            className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-semibold"
-                          >
-                            {num}
-                          </span>
-                        ))}
+                        {selectedGame.results.map((num, idx) => {
+                          const fixture = tab === "daily-pools"
+                            ? selectedGame.poolsMatches?.find((match) => String(match.number) === String(num))
+                            : undefined;
+                          const label = fixture
+                            ? `${fixture.number}. ${fixture.home} vs ${fixture.away}`
+                            : String(num);
+                          return (
+                            <span
+                              key={idx}
+                              className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-semibold"
+                            >
+                              {label}
+                            </span>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">No result set for this week yet.</p>

@@ -183,22 +183,24 @@ export default function WinnersPage() {
 
   async function fetchWeeks() {
     try {
-      const [lottoRes, poolsRes, sportsRes, sportsDrawRes] = await Promise.all([
+      const [lottoRes, poolsRes, dailyPoolsRes, sportsRes, sportsDrawRes] = await Promise.all([
         fetch("/api/admin/bets/lotto/weeks"),
         fetch("/api/admin/bets/pools/weeks"),
+        fetch("/api/admin/bets/pools/weeks?type=daily_pools"),
         fetch("/api/admin/bets/sports/weeks"),
         fetch("/api/admin/bets/sports-draw/weeks"),
       ]);
 
-      const [lottoData, poolsData, sportsData, sportsDrawData] = await Promise.all([
+      const [lottoData, poolsData, dailyPoolsData, sportsData, sportsDrawData] = await Promise.all([
         lottoRes.json(),
         poolsRes.json(),
+        dailyPoolsRes.json(),
         sportsRes.json(),
         sportsDrawRes.json(),
       ]);
 
       setWeeksLotto((lottoData.data || []) as GameWeek[]);
-      setWeeksPools((poolsData.data || []) as GameWeek[]);
+      setWeeksPools([...(poolsData.data || []), ...(dailyPoolsData.data || [])] as GameWeek[]);
       setWeeksSports((sportsData.data || []) as GameWeek[]);
       setWeeksSportsDraw((sportsDrawData.data || []) as GameWeek[]);
     } catch (error) {

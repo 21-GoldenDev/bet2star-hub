@@ -5,12 +5,16 @@ import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { getServiceClient } from "@/lib/supabase/service";
 import type { GameType } from "@/lib/types/gameMode";
 import { dedupePoolsMatchesByNumber } from "@/lib/pools/defaultMatches";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
-type ProductParam = "lotto" | "pools" | "sports" | "sports-draw" | "footballpools";
+type ProductParam = "lotto" | "pools" | "daily-pools" | "daily_pools" | "sports" | "sports-draw" | "footballpools";
 
 function toGameType(product: ProductParam): GameType {
   if (product === "sports-draw" || product === "footballpools") {
     return "sports_draw";
+  }
+  if (product === "daily-pools" || product === "daily_pools") {
+    return "daily_pools";
   }
   return product;
 }
@@ -26,7 +30,7 @@ export async function GET(
   try {
     const { product: rawProduct } = await context.params;
     const product = rawProduct as ProductParam;
-    const allowed: ProductParam[] = ["lotto", "pools", "sports", "sports-draw", "footballpools"];
+    const allowed: ProductParam[] = ["lotto", "pools", "daily-pools", "daily_pools", "sports", "sports-draw", "footballpools"];
     if (!allowed.includes(product)) {
       return addCORSHeaders(
         NextResponse.json(
@@ -57,12 +61,13 @@ export async function GET(
 
     let fixtures: unknown[] = [];
 
-    if (gameType === "pools") {
+    if (isPoolsLikeGameType(gameType)) {
       const { data: matchData } = await supabase
         .from("matches")
         .select("*")
         .eq("status", "enable")
         .eq("week", game.week)
+        .eq("game_type", gameType)
         .order("number", { ascending: true });
       fixtures = dedupePoolsMatchesByNumber(matchData || []);
     } else if (gameType === "sports" || gameType === "sports_draw") {
@@ -75,7 +80,7 @@ export async function GET(
     }
 
     let prizes: Array<{ id: string; name: string }> = [];
-    if (gameType === "lotto" || gameType === "pools") {
+    if (gameType === "lotto" || isPoolsLikeGameType(gameType)) {
       const prizeIds = Array.isArray(game.prize_ids)
         ? game.prize_ids
             .filter((p: { status?: string } | string) =>

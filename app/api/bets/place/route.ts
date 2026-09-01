@@ -15,6 +15,7 @@ import {
   buildTwoBankerPoolsMatches,
 } from '@/lib/bets/groupSelections';
 import { dedupePoolsMatchesByNumber } from '@/lib/pools/defaultMatches';
+import { isPoolsLikeGameType, type PoolsLikeGameType } from '@/lib/pools/gameType';
 import { flattenSportsMatchNumbers, validateDrawOnlySelections } from '@/lib/bets/sportsCombinations';
 import { Prize } from '@/lib/types/prize';
 import { readMaxWinAmount } from '@/lib/settings/maxWinAmount.server';
@@ -113,7 +114,8 @@ export async function POST(request: NextRequest) {
           betResult = await placeLottoBet(supabase, gameId, user.id, betAmount, betData);
           break;
         case 'pools':
-          betResult = await placePoolsBet(supabase, gameId, user.id, betAmount, betData);
+        case 'daily_pools':
+          betResult = await placePoolsBet(supabase, gameId, user.id, betAmount, betData, betType);
           break;
         default:
           throw new Error('Invalid bet type');
@@ -437,22 +439,35 @@ async function placeLottoBet(supabase: any, gameId: string, userId: string, betA
   return { betId: data.id, betNumber: nextNumber, award };
 }
 
-async function placePoolsBet(supabase: any, gameId: string, userId: string, betAmount: number, betData: any) {
+async function placePoolsBet(
+  supabase: any,
+  gameId: string,
+  userId: string,
+  betAmount: number,
+  betData: any,
+  betType: PoolsLikeGameType = "pools",
+) {
   const { selectedMatches, matchAtLeast, gameMode, prize } = betData;
+  const poolsType = isPoolsLikeGameType(betType) ? betType : "pools";
 
   const { data: gameData, error: gameError } = await supabase
     .from("games")
-    .select("week")
+    .select("week, type")
     .eq("id", gameId)
     .single();
 
   if (gameError) throw gameError;
+
+  if (!isPoolsLikeGameType(gameData?.type) || gameData.type !== poolsType) {
+    throw new Error("Invalid pools game");
+  }
 
   const { data: matchData, error: matchError } = await supabase
     .from("matches")
     .select("*")
     .eq("status", "enable")
     .eq("week", gameData.week)
+    .eq("game_type", poolsType)
     .order("number", { ascending: true });
 
   if (matchError) throw matchError;

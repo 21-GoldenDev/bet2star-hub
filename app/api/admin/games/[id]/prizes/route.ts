@@ -5,6 +5,7 @@ import {
   syncTerminalsIfPoolsGame,
 } from "@/lib/admin/gamePrizeMutations";
 import { normalizeGamePrizeEntries, validateCommission, normalizeException } from "@/lib/admin/syncTerminalPrizesFromGame";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -104,7 +105,7 @@ export async function POST(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    if (exceptionInput !== undefined && game?.type !== "pools") {
+    if (exceptionInput !== undefined && !isPoolsLikeGameType(game?.type)) {
       return NextResponse.json(
         { error: "Exception is only supported for pools games" },
         { status: 400 }
@@ -134,7 +135,7 @@ export async function POST(
       id: prize_id,
       status: status ?? "active",
       commission,
-      ...(game?.type === "pools" && exceptionInput !== undefined
+      ...(isPoolsLikeGameType(game?.type) && exceptionInput !== undefined
         ? { exception: normalizeException(exceptionInput) }
         : {}),
     };

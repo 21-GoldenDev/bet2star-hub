@@ -123,6 +123,7 @@ const Navbar = () => {
   const gameLinks = [
     { path: "/lotto", label: "Lotto" },
     { path: "/pools", label: "Pools" },
+    { path: "/daily-pools", label: "Daily/Mid-week Pools" },
     { path: "/sports", label: "Sports Betting" },
     { path: "/sports-draw", label: "Football Pool" },
   ];

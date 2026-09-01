@@ -5,17 +5,18 @@ import { betIncludesVoidSportsMatches } from "@/lib/bets/sportsMatches";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-type BetTab = "lotto" | "pools" | "sports" | "sports-draw";
+type BetTab = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 const TABLE_BY_TAB: Record<BetTab, string> = {
   lotto: "bets_lotto",
   pools: "bets_pools",
+  "daily-pools": "bets_pools",
   sports: "bets_sport",
   "sports-draw": "bets_sports_draw",
 };
 
 const isValidTab = (value: unknown): value is BetTab => {
-  return value === "lotto" || value === "pools" || value === "sports" || value === "sports-draw";
+  return value === "lotto" || value === "pools" || value === "daily-pools" || value === "sports" || value === "sports-draw";
 };
 
 export async function POST(request: NextRequest) {
@@ -76,11 +77,11 @@ export async function POST(request: NextRequest) {
           { status: 403 },
         );
       }
-    } else if (tab === "pools") {
+    } else if (tab === "pools" || tab === "daily-pools") {
       const serviceClient = getServiceClient();
       const { data: gameData, error: gameError } = await serviceClient
         .from("games")
-        .select("week")
+        .select("week, type")
         .eq("id", betData.game_id)
         .single();
 
@@ -90,11 +91,13 @@ export async function POST(request: NextRequest) {
       }
 
       const week = gameData?.week;
+      const gameType = gameData?.type === "daily_pools" ? "daily_pools" : "pools";
       if (typeof week === "number" && Number.isFinite(week)) {
         const { data: disabledMatches, error: disabledMatchesError } = await serviceClient
           .from("matches")
           .select("number")
           .eq("week", week)
+          .eq("game_type", gameType)
           .eq("status", "disable");
 
         if (disabledMatchesError) {

@@ -17,6 +17,7 @@ import { PosError, POS_ERROR_CODES } from "@/lib/pos/posErrors";
 import { resolveActiveGame } from "@/lib/pos/resolveActiveGame";
 import { deductTerminalCredit, resolvePosTerminal } from "@/lib/pos/resolvePosTerminal";
 import { getNextBetNumber } from "@/lib/bets/nextBetNumber";
+import type { PoolsLikeGameType } from "@/lib/pools/gameType";
 
 export type PlacePoolsPosBetInput = {
   tsn: string;
@@ -168,11 +169,12 @@ function shapeMatches(
 export async function placePoolsPosBet(
   supabase: SupabaseClient,
   input: PlacePoolsPosBetInput,
+  product: PoolsLikeGameType = "pools",
 ): Promise<PlacePoolsPosBetResult> {
   const { tsn, gameId, gameMode, stake, under, prizeId } = input;
 
-  const terminal = await resolvePosTerminal(supabase, tsn, "pools", stake);
-  const game = await resolveActiveGame(supabase, "pools", gameId);
+  const terminal = await resolvePosTerminal(supabase, tsn, product, stake);
+  const game = await resolveActiveGame(supabase, product, gameId);
   const resolvedGameId = game.id;
 
   const { data: matchData, error: matchError } = await supabase
@@ -180,6 +182,7 @@ export async function placePoolsPosBet(
     .select("*")
     .eq("status", "enable")
     .eq("week", game.week)
+    .eq("game_type", product)
     .order("number", { ascending: true });
 
   if (matchError) {

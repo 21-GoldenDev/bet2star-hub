@@ -1,14 +1,17 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
+    const requestedType = request.nextUrl.searchParams.get("type");
+    const gameType = isPoolsLikeGameType(requestedType) ? requestedType : "pools";
 
     const { data, error } = await supabase
       .from("games")
       .select("id, week, results")
-      .eq("type", "pools")
+      .eq("type", gameType)
       .order("week", { ascending: false });
 
     if (error) {

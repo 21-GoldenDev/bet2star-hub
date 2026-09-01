@@ -10,9 +10,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { calcAplGrouping } from "@/lib/helpers";
 import PrizeTable from "../PrizeTable";
+import MatchPickerGrid from "./MatchPickerGrid";
 import { Prize } from "@/lib/types/prize";
+import { poolsMatchLabel } from "@/lib/pools/formatMatch";
+import { PoolsPlayExtraProps } from "@/lib/pools/playProps";
 
-interface Props {
+interface Props extends PoolsPlayExtraProps {
   matches: string[];
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
@@ -22,7 +25,17 @@ interface Props {
   maxStakes?: { "1"?: number; "2"?: number; "3"?: number };
 }
 
-const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: Props) => {
+const OneBanker = ({
+  matches,
+  gameMode,
+  gameId,
+  prizes,
+  setGameMode,
+  maxStakes,
+  matchLabels,
+  betType = "pools",
+  playPath = "/pools",
+}: Props) => {
   const [groupAMatches, setGroupAMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
@@ -75,7 +88,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          betType: 'pools',
+          betType,
           gameId,
           betAmount,
           betData: {
@@ -91,7 +104,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }
       const data = await response.json();
 
       if (!response.ok) {
-        if (handleUnauthorizedBet(response, "/pools")) return;
+        if (handleUnauthorizedBet(response, playPath)) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }
@@ -162,24 +175,17 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }
           )}
         </div>
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
-            {matches.map((match) => {
-              const inGroupA = groupAMatches.includes(match);
-              return (
-                <button
-                  key={match}
-                  onClick={() => toggleMatchForGroupA(match)}
-                  className={clsx(
-                    "p-3 rounded-xl font-medium text-sm transition-all duration-300",
-                    inGroupA
-                      ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                      : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                  )}
-                >
-                  {match}
-                </button>
-              );
-            })}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <MatchPickerGrid
+              matches={matches}
+              matchLabels={matchLabels}
+              onToggle={toggleMatchForGroupA}
+              classNameFor={(match) =>
+                groupAMatches.includes(match)
+                  ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                  : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+              }
+            />
           </div>
         </div>
         <div className="lg:col-span-3 flex flex-col gap-4">
@@ -215,7 +221,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }
                   ) : (
                     groupAMatches.sort((a, b) => compareMatches(a, b)).map((n) => (
                       <div key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
-                        {n}
+                        {poolsMatchLabel(n, matchLabels)}
                       </div>
                     ))
                   )}
@@ -235,7 +241,7 @@ const OneBanker = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }
                   ) : (
                     groupBMatches.sort((a, b) => compareMatches(a, b)).map((n) => (
                       <div key={n} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
-                        {n}
+                        {poolsMatchLabel(n, matchLabels)}
                       </div>
                     ))
                   )}

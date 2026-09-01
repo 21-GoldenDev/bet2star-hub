@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildDefaultPoolsMatches } from "@/lib/pools/defaultMatches";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 import { syncTerminalsIfPoolsGame } from "@/lib/admin/gamePrizeMutations";
 import { normalizeGamePrizeEntries } from "@/lib/admin/syncTerminalPrizesFromGame";
 
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     if (
       type === "lotto" ||
-      type === "pools" ||
+      isPoolsLikeGameType(type) ||
       type === "sports" ||
       type === "sports_draw"
     ) {
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
     };
 
     const resolvePrizeIds = () => {
-      if (type === "lotto" || type === "pools") {
+      if (type === "lotto" || isPoolsLikeGameType(type)) {
         const previousPrizes = normalizeGamePrizeEntries(previousGame?.prize_ids);
         return previousPrizes.length > 0 ? previousPrizes : null;
       }
@@ -222,7 +223,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    if (type === "pools") {
+    if (isPoolsLikeGameType(type)) {
       let latestWeekTemplates: Array<{
         number: number;
         home: string;
@@ -235,6 +236,7 @@ export async function POST(request: NextRequest) {
           .from("matches")
           .select("number, home, away, status")
           .eq("week", previousGame.week)
+          .eq("game_type", type)
           .order("number", { ascending: true });
 
         latestWeekTemplates = (previousWeekMatches || []).map((match) => ({
@@ -245,12 +247,13 @@ export async function POST(request: NextRequest) {
         }));
       }
 
-      const defaultMatches = buildDefaultPoolsMatches(week, latestWeekTemplates);
+      const defaultMatches = buildDefaultPoolsMatches(week, latestWeekTemplates, type);
 
       const { error: clearMatchesError } = await supabase
         .from("matches")
         .delete()
-        .eq("week", week);
+        .eq("week", week)
+        .eq("game_type", type);
 
       if (clearMatchesError) {
         console.error("Error clearing matches for new pools game:", clearMatchesError);

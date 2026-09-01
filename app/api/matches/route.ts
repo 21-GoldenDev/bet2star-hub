@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { dedupePoolsMatchesByNumber } from "@/lib/pools/defaultMatches";
+import { isPoolsLikeGameType, toPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -16,12 +17,16 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
+    const requestedType = request.nextUrl.searchParams.get("type");
+    const gameType = isPoolsLikeGameType(requestedType)
+      ? requestedType
+      : toPoolsLikeGameType(requestedType);
     const now = new Date().toISOString();
 
     const { data: activeGame } = await supabase
       .from("games")
       .select("week")
-      .eq("type", "pools")
+      .eq("type", gameType)
       .lte("start_time", now)
       .gte("end_time", now)
       .order("start_time", { ascending: false })
@@ -31,7 +36,8 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("matches")
       .select("*")
-      .eq("status", "enable");
+      .eq("status", "enable")
+      .eq("game_type", gameType);
 
     if (activeGame?.week !== undefined) {
       query = query.eq("week", activeGame.week);

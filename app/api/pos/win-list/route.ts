@@ -41,9 +41,9 @@ export async function GET(request: NextRequest) {
     if (!product) {
       throw new PosError(
         POS_ERROR_CODES.INVALID_REQUEST,
-        "product is required (lotto, pools, sports, or sports-draw).",
+        "product is required (lotto, pools, daily-pools, sports, or sports-draw).",
         {
-          supported_products: ["lotto", "pools", "sports", "sports-draw", "footballpools"],
+          supported_products: ["lotto", "pools", "daily-pools", "sports", "sports-draw", "footballpools"],
           default_page_size: POS_WIN_LIST_DEFAULT_PAGE_SIZE,
           max_page_size: POS_WIN_LIST_MAX_PAGE_SIZE,
         },

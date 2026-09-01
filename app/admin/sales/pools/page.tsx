@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -124,6 +125,8 @@ const buildSummary = (results: TerminalResult[]): TabSummary => {
 };
 
 export default function PoolsSalesPage() {
+  const pathname = usePathname();
+  const poolsType = pathname?.includes("daily-pools") ? "daily_pools" : "pools";
   const [weeks, setWeeks] = useState<GameWeek[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>();
   const [activeTab, setActiveTab] = useState("total");
@@ -151,7 +154,7 @@ export default function PoolsSalesPage() {
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
-        const res = await fetch("/api/admin/bets/pools/weeks");
+        const res = await fetch(`/api/admin/bets/pools/weeks?type=${poolsType}`);
         if (res.ok) {
           const data = await res.json();
           setWeeks(data.data);
@@ -168,7 +171,7 @@ export default function PoolsSalesPage() {
       }
     };
     fetchWeeks();
-  }, []);
+  }, [poolsType]);
 
   useEffect(() => {
     const fetchSalesData = async () => {

@@ -18,10 +18,11 @@ import {
 import { Edit2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { MaxStake } from "@/lib/types/maxStake";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 interface Props {
   gameId: string;
-  gameType: "lotto" | "pools" | "sports" | "sports_draw";
+  gameType: "lotto" | "pools" | "daily_pools" | "sports" | "sports_draw";
   maxStakes: MaxStake[];
   loading: boolean;
   onRefresh: () => void;
@@ -31,7 +32,7 @@ function buildMultipleMaxStakes(
   gameType: Props["gameType"],
   maxStakes: MaxStake[]
 ): Record<string, string> {
-  if (gameType === "pools") {
+  if (isPoolsLikeGameType(gameType)) {
     return {
       match1: maxStakes.find((s) => s.match_at_least === 1)?.max_amount?.toString() || "",
       match2: maxStakes.find((s) => s.match_at_least === 2)?.max_amount?.toString() || "",
@@ -90,9 +91,9 @@ export default function MaxStakeSection({
 
       let stakesToUpdate: any[] = [];
 
-      if (gameType === "pools" || isSportsLike) {
+      if (isPoolsLikeGameType(gameType) || isSportsLike) {
         const stakes = multipleMaxStakes as any;
-        const requiredFields = gameType === "pools"
+        const requiredFields = isPoolsLikeGameType(gameType)
           ? ["match1", "match2", "match3plus"]
           : ["match1", "match2", "match3", "match4plus"];
 
@@ -106,7 +107,7 @@ export default function MaxStakeSection({
           return;
         }
 
-        if (gameType === "pools") {
+        if (isPoolsLikeGameType(gameType)) {
           stakesToUpdate = [
             { match_at_least: 1, max_amount: Number(stakes.match1) },
             { match_at_least: 2, max_amount: Number(stakes.match2) },
@@ -183,7 +184,7 @@ export default function MaxStakeSection({
           <div>
             <h2 className="text-xl font-semibold">Maximum Stake Management</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {gameType === "pools"
+              {isPoolsLikeGameType(gameType)
                 ? "Set maximum stake amounts for different match requirements"
                   : isSportsLike
                     ? "Set maximum stake amounts for different match requirements"
@@ -204,7 +205,7 @@ export default function MaxStakeSection({
 
         {isEditing ? (
           <div className="space-y-4">
-            {gameType === "pools" ? (
+            {isPoolsLikeGameType(gameType) ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="match1">Maximum Stake (Match At Least = 1)</Label>
@@ -380,7 +381,7 @@ export default function MaxStakeSection({
           </div>
         ) : (
           <div className="space-y-4">
-            {gameType === "pools" ? (
+            {isPoolsLikeGameType(gameType) ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-muted rounded-lg">
@@ -466,7 +467,7 @@ export default function MaxStakeSection({
             <AlertDialogTitle>Confirm Update</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to update the maximum stake
-              {gameType === "pools" ? "s" : ""} for this game? This will affect
+              {isPoolsLikeGameType(gameType) ? "s" : ""} for this game? This will affect
               all future bets.
             </AlertDialogDescription>
           </AlertDialogHeader>

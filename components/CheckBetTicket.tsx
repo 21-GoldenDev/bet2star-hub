@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type PublicBetProduct = "lotto" | "pools" | "sports" | "sports-draw";
+type PublicBetProduct = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 type SportsMatchInfo = {
   league?: string;
@@ -54,11 +54,13 @@ type PublicBet = {
   option: string | null;
   weekResult: Array<number | string>;
   sportsMatches: SportsMatchInfo[];
+  poolsMatches?: Array<{ number: number; home: string; away: string }>;
 };
 
 const PRODUCT_LABELS: Record<PublicBetProduct, string> = {
   lotto: "Lotto",
   pools: "Pools",
+  "daily-pools": "Daily/Mid-week Pools",
   sports: "Sports",
   "sports-draw": "Football Pool",
 };
@@ -174,7 +176,7 @@ const resolveApl = (bet: PublicBet) => {
     }
   }
 
-  if (bet.product === "pools") {
+  if (bet.product === "pools" || bet.product === "daily-pools") {
     if (Array.isArray(bet.matches)) {
       return calcAplDirect(staked, Array.isArray(bet.under) ? (bet.under as number[]) : [], bet.matches.length);
     }
@@ -206,7 +208,12 @@ const renderStatus = (status?: string) => {
 };
 
 const renderDetailedSelection = (bet: PublicBet) => {
-  const value = bet.product === "lotto" ? bet.numbers : bet.product === "pools" ? bet.matches : bet.selections;
+  const value = bet.product === "lotto" ? bet.numbers : bet.product === "pools" || bet.product === "daily-pools" ? bet.matches : bet.selections;
+  const labelFor = (item: unknown) => {
+    if (bet.product !== "daily-pools") return String(item);
+    const match = bet.poolsMatches?.find((entry) => String(entry.number) === String(item));
+    return match ? `${match.number}. ${match.home} vs ${match.away}` : String(item);
+  };
 
   if (Array.isArray(value)) {
     const sorted = [...value].sort((a, b) => compareMixed(a as string | number, b as string | number));
@@ -217,7 +224,7 @@ const renderDetailedSelection = (bet: PublicBet) => {
             key={`${item}-${index}`}
             className="px-3 py-1 rounded bg-primary/10 border border-primary/20 text-sm font-medium"
           >
-            {String(item)}
+            {labelFor(item)}
           </span>
         ))}
       </div>
@@ -242,7 +249,7 @@ const renderDetailedSelection = (bet: PublicBet) => {
                     key={`${gid}-${item}-${itemIndex}`}
                     className="px-2 py-1 rounded bg-primary/10 border border-primary/20 text-sm"
                   >
-                    {String(item)}
+                    {labelFor(item)}
                   </span>
                 ))}
               </div>
@@ -581,7 +588,7 @@ export default function CheckBetTicket({
                 <Label className="text-xs font-semibold text-muted-foreground block mb-3">
                   {bet.product === "lotto"
                     ? "Numbers"
-                    : bet.product === "pools"
+                    : bet.product === "pools" || bet.product === "daily-pools"
                       ? "Matches"
                       : "Selections"}
                 </Label>
@@ -601,7 +608,7 @@ export default function CheckBetTicket({
                 </div>
               </div>
 
-              {(bet.product === "lotto" || bet.product === "pools") && isClosed && (
+              {(bet.product === "lotto" || bet.product === "pools" || bet.product === "daily-pools") && isClosed && (
                 <div className="border-t border-border pt-4">
                   <Label className="text-xs font-semibold text-muted-foreground block mb-3">
                     Week Result
@@ -613,7 +620,11 @@ export default function CheckBetTicket({
                           key={idx}
                           className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium"
                         >
-                          {num}
+                          {bet.product === "daily-pools"
+                            ? (bet.poolsMatches?.find((entry) => String(entry.number) === String(num))
+                              ? `${num}. ${bet.poolsMatches.find((entry) => String(entry.number) === String(num))?.home} vs ${bet.poolsMatches.find((entry) => String(entry.number) === String(num))?.away}`
+                              : String(num))
+                            : num}
                         </span>
                       ))
                     ) : (
@@ -640,7 +651,7 @@ export default function CheckBetTicket({
                 <div>
                   <Label className="text-xs font-semibold text-muted-foreground">Option</Label>
                   <p className="mt-1 font-medium text-nowrap">
-                    {bet.product === "lotto" || bet.product === "pools"
+                    {bet.product === "lotto" || bet.product === "pools" || bet.product === "daily-pools"
                       ? bet.option || "-"
                       : formatMode(bet.mode)}
                   </p>

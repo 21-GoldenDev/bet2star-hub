@@ -9,7 +9,7 @@ export const gameModes = {
 }
 export type GameModeType = keyof typeof gameModes;
 
-export type GameType = "lotto" | "pools" | "sports" | "sports_draw";
+export type GameType = "lotto" | "pools" | "daily_pools" | "sports" | "sports_draw";
 
 export interface PrizeInfo {
   id: string;

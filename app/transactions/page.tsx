@@ -60,6 +60,7 @@ const resolveBetDomain = (tx: TransactionRecord) => {
 
   const normalized = raw.toLowerCase();
   if (normalized === "sports_draw") return "sports";
+  if (normalized === "daily_pools") return "daily/mid-week pools";
   if (["sports", "lotto", "pools"].includes(normalized)) return normalized;
   return normalized;
 };

@@ -35,6 +35,7 @@ import useAdminRole from "@/hooks/use-admin-role";
 import { GameModeType } from "@/lib/types/gameMode";
 import { Game } from "@/lib/types/game";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 import { canVoidBetWithinWindow } from "@/lib/bets/voidWindow";
 import {
   formatSelectionGroupLabel,
@@ -58,6 +59,8 @@ function getPrizeName(prize: unknown): string {
 }
 
 export default function PoolsPage() {
+  const pathname = usePathname();
+  const poolsType = pathname?.includes("daily-pools") ? "daily_pools" : "pools";
   const { toast } = useToast();
   const [allData, setAllData] = useState<PoolsBet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,7 +92,7 @@ export default function PoolsPage() {
   useEffect(() => {
     const fetchWeeks = async () => {
       try {
-        const response = await fetch(`/api/admin/bets/pools/weeks`);
+        const response = await fetch(`/api/admin/bets/pools/weeks?type=${poolsType}`);
         const result = await response.json();
         const weekValues = result.data || [];
         setWeeksAll(weekValues);
@@ -109,7 +112,7 @@ export default function PoolsPage() {
       }
     }
     fetchWeeks();
-  }, []);
+  }, [poolsType]);
 
   useEffect(() => {
     if (!weekFilter) {

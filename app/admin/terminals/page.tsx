@@ -128,6 +128,7 @@ export default function TerminalsPage() {
   const gameModeOptions: Array<{ value: GameType; label: string }> = [
     { value: "lotto", label: "Lotto" },
     { value: "pools", label: "Pools" },
+    { value: "daily_pools", label: "Daily/Mid-week Pools" },
     { value: "sports", label: "Sports" },
     { value: "sports_draw", label: "Football Pool" },
   ];
@@ -421,6 +422,8 @@ export default function TerminalsPage() {
       ? "Lotto"
       : value === "pools"
         ? "Pools"
+        : value === "daily_pools"
+          ? "Daily/Mid-week Pools"
         : value === "sports"
           ? "Sports"
           : "Football Pool";

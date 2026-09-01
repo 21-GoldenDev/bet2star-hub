@@ -24,7 +24,7 @@ export default function GameInfoCard({ game }: Props) {
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Type</p>
-          <p className="text-lg font-semibold capitalize">{game.type?.replace("_", " ")}</p>
+          <p className="text-lg font-semibold capitalize">{game.type?.replaceAll("_", " ")}</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Start Time</p>

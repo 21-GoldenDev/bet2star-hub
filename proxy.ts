@@ -9,6 +9,7 @@ export const config = {
   matcher: [
     '/lotto/:path*',
     '/pools/:path*',
+    '/daily-pools/:path*',
     '/sports/:path*',
     '/sports-draw/:path*',
     '/profile/:path*',

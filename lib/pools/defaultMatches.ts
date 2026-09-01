@@ -1,3 +1,5 @@
+import type { PoolsLikeGameType } from "@/lib/pools/gameType";
+
 export const POOLS_MATCH_COUNT = 49;
 
 export type PoolsMatchTemplate = {
@@ -14,18 +16,21 @@ export type PoolsMatchRecord = {
   away: string;
   status: "enable" | "disable";
   week: number;
+  game_type?: PoolsLikeGameType;
   created_at?: string;
 };
 
 export function buildDefaultPoolsMatches(
   week: number,
   templates: PoolsMatchTemplate[] = [],
+  gameType: PoolsLikeGameType = "pools",
 ): Array<{
   number: number;
   home: string;
   away: string;
   status: "enable" | "disable";
   week: number;
+  game_type: PoolsLikeGameType;
 }> {
   const templateByNumber = new Map(
     templates.map((match) => [match.number, match]),
@@ -41,6 +46,7 @@ export function buildDefaultPoolsMatches(
       away: template?.away?.trim() || `Away Team ${number}`,
       status: template?.status === "disable" ? ("disable" as const) : ("enable" as const),
       week,
+      game_type: gameType,
     };
   });
 }

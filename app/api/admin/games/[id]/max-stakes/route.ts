@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,7 +38,7 @@ export async function GET(
     const maxStakes = [];
 
     if (game.max_stake) {
-      if (game.type === "pools" || game.type === "sports" || game.type === "sports_draw") {
+      if (isPoolsLikeGameType(game.type) || game.type === "sports" || game.type === "sports_draw") {
         // For pools/sports: { "1": 10000, "2": 50000, "3": 100000, "4": 150000 }
         if (game.max_stake["1"]) {
           maxStakes.push({ match_at_least: 1, max_amount: game.max_stake["1"] });
@@ -91,7 +92,7 @@ export async function POST(
 
     let maxStakeData: any;
 
-    if (game_type === "pools" || game_type === "sports" || game_type === "sports_draw") {
+    if (isPoolsLikeGameType(game_type) || game_type === "sports" || game_type === "sports_draw") {
       // For pools/sports: store as { "1": 10000, "2": 50000, "3": 100000, "4": 150000 }
       maxStakeData = {};
       max_stakes.forEach((stake: any) => {

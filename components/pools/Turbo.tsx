@@ -9,8 +9,11 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
+import MatchPickerGrid from "./MatchPickerGrid";
+import { poolsMatchLabel } from "@/lib/pools/formatMatch";
+import { PoolsPlayExtraProps } from "@/lib/pools/playProps";
 
-interface Props {
+interface Props extends PoolsPlayExtraProps {
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
   gameId: string;
@@ -19,7 +22,16 @@ interface Props {
   maxStakes?: { "1"?: number; "2"?: number; "3"?: number };
 }
 
-const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props) => {
+const Turbo = ({
+  gameMode,
+  gameId,
+  setGameMode,
+  matches = [],
+  maxStakes,
+  matchLabels,
+  betType = "pools",
+  playPath = "/pools",
+}: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [prize, setPrize] = useState<number[]>([50, 150, 300]);
@@ -96,7 +108,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          betType: 'pools',
+          betType,
           gameId,
           betAmount,
           betData: {
@@ -110,7 +122,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props
       const data = await response.json();
 
       if (!response.ok) {
-        if (handleUnauthorizedBet(response, "/pools")) return;
+        if (handleUnauthorizedBet(response, playPath)) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }
@@ -212,27 +224,24 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props
         {/* Column 2: Number Grid */}
         <div className="lg:col-span-6">
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {matches.map((match) => {
-                const selectionLimitReached = selectedMatches.length >= requiredSelectionCount && !selectedMatches.includes(match);
-                return (
-                  <button
-                    key={match}
-                    onClick={() => toggleMatch(match)}
-                    disabled={selectionLimitReached}
-                    className={clsx(
-                      "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300",
-                      selectedMatches.includes(match)
-                        ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                        : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground",
-                      selectionLimitReached && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    {match}
-                  </button>
+            <MatchPickerGrid
+              matches={matches}
+              matchLabels={matchLabels}
+              onToggle={toggleMatch}
+              isDisabled={(match) =>
+                selectedMatches.length >= requiredSelectionCount && !selectedMatches.includes(match)
+              }
+              classNameFor={(match) => {
+                const selectionLimitReached =
+                  selectedMatches.length >= requiredSelectionCount && !selectedMatches.includes(match);
+                return clsx(
+                  selectedMatches.includes(match)
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground",
+                  selectionLimitReached && "opacity-50 cursor-not-allowed",
                 );
-              })}
-            </div>
+              }}
+            />
           </div>
         </div>
 
@@ -249,7 +258,7 @@ const Turbo = ({ gameMode, gameId, setGameMode, matches = [], maxStakes }: Props
                 <div className="flex flex-wrap gap-1.5">
                   {[...selectedMatches].sort((a, b) => compareMatches(a, b)).map((n) => (
                     <span key={n} className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium">
-                      {n}
+                      {poolsMatchLabel(n, matchLabels)}
                     </span>
                   ))}
                 </div>

@@ -53,11 +53,12 @@ export async function GET(request: NextRequest) {
     const activeLottoIds =
       activeGamesData?.filter((g: any) => g.type === "lotto").map((g: any) => g.id) || [];
     const activePoolsId = activeGamesData?.find((g: any) => g.type === "pools")?.id;
+    const activeDailyPoolsId = activeGamesData?.find((g: any) => g.type === "daily_pools")?.id;
     const activeSportsId = activeGamesData?.find((g: any) => g.type === "sports")?.id;
     const activeSportsDrawId = activeGamesData?.find((g: any) => g.type === "sports_draw")?.id;
     const activeGamesCount =
       activeLottoIds.length +
-      [activePoolsId, activeSportsId, activeSportsDrawId].filter(Boolean).length;
+      [activePoolsId, activeDailyPoolsId, activeSportsId, activeSportsDrawId].filter(Boolean).length;
 
     // Fetch bets only for the current active games, respecting game type filter
     let lottoQuery = supabase
@@ -76,12 +77,14 @@ export async function GET(request: NextRequest) {
       .from("bets_sports_draw")
       .select("staked, bet_time, award, status");
 
+    const activePoolsIds = [activePoolsId, activeDailyPoolsId].filter(Boolean) as string[];
+
     // Apply filters based on gameTypeFilter
     if (gameTypeFilter === "all") {
       lottoQuery = activeLottoIds.length
         ? lottoQuery.in("game_id", activeLottoIds)
         : lottoQuery.limit(0);
-      poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
+      poolsQuery = activePoolsIds.length ? poolsQuery.in("game_id", activePoolsIds) : poolsQuery.limit(0);
       sportsQuery = activeSportsId ? sportsQuery.eq("game_id", activeSportsId) : sportsQuery.limit(0);
       sportsDrawQuery = activeSportsDrawId ? sportsDrawQuery.eq("game_id", activeSportsDrawId) : sportsDrawQuery.limit(0);
     } else if (gameTypeFilter === "lotto") {
@@ -94,6 +97,11 @@ export async function GET(request: NextRequest) {
     } else if (gameTypeFilter === "pools") {
       lottoQuery = lottoQuery.limit(0);
       poolsQuery = activePoolsId ? poolsQuery.eq("game_id", activePoolsId) : poolsQuery.limit(0);
+      sportsQuery = sportsQuery.limit(0);
+      sportsDrawQuery = sportsDrawQuery.limit(0);
+    } else if (gameTypeFilter === "daily_pools") {
+      lottoQuery = lottoQuery.limit(0);
+      poolsQuery = activeDailyPoolsId ? poolsQuery.eq("game_id", activeDailyPoolsId) : poolsQuery.limit(0);
       sportsQuery = sportsQuery.limit(0);
       sportsDrawQuery = sportsDrawQuery.limit(0);
     } else if (gameTypeFilter === "sports") {

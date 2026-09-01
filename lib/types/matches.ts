@@ -5,6 +5,7 @@ export interface Match {
   away: string;
   status: "enable" | "disable";
   week: number;
+  game_type?: "pools" | "daily_pools";
   created_at?: string;
   updated_at?: string;
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -138,7 +139,7 @@ export async function DELETE(
       }
     }
 
-    if (game.type === "pools") {
+    if (isPoolsLikeGameType(game.type)) {
       const { error: betsPoolsDeleteError } = await supabase
         .from("bets_pools")
         .delete()
@@ -151,7 +152,7 @@ export async function DELETE(
       const { count: poolsGamesForWeek, error: poolsGamesCountError } = await supabase
         .from("games")
         .select("id", { count: "exact", head: true })
-        .eq("type", "pools")
+        .eq("type", game.type)
         .eq("week", game.week);
 
       if (poolsGamesCountError) {
@@ -162,7 +163,8 @@ export async function DELETE(
         const { error: matchesDeleteError } = await supabase
           .from("matches")
           .delete()
-          .eq("week", game.week);
+          .eq("week", game.week)
+          .eq("game_type", game.type);
 
         if (matchesDeleteError) {
           return NextResponse.json({ error: matchesDeleteError.message }, { status: 500 });

@@ -156,6 +156,7 @@ export default function AdminDashboard() {
               <SelectItem value="all">All Games</SelectItem>
               <SelectItem value="lotto">Lotto</SelectItem>
               <SelectItem value="pools">Pools</SelectItem>
+              <SelectItem value="daily_pools">Daily/Mid-week Pools</SelectItem>
               <SelectItem value="sports">Sports</SelectItem>
               <SelectItem value="sports_draw">Football Pool</SelectItem>
             </SelectContent>

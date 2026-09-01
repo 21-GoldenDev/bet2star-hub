@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import clsx from "clsx"
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { handleUnauthorizedBet } from "@/lib/bets/handleUnauthorizedBet";
@@ -12,8 +11,11 @@ import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { calcAplDirect } from "@/lib/helpers";
 import { Prize } from "@/lib/types/prize";
 import PrizeTable from "../PrizeTable";
+import MatchPickerGrid from "./MatchPickerGrid";
+import { poolsMatchLabel } from "@/lib/pools/formatMatch";
+import { PoolsPlayExtraProps } from "@/lib/pools/playProps";
 
-interface Props {
+interface Props extends PoolsPlayExtraProps {
   matches: string[];
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
@@ -23,7 +25,17 @@ interface Props {
   maxStakes?: { "1"?: number; "2"?: number; "3"?: number };
 }
 
-const Direct = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: Props) => {
+const Direct = ({
+  matches,
+  gameMode,
+  gameId,
+  prizes,
+  setGameMode,
+  maxStakes,
+  matchLabels,
+  betType = "pools",
+  playPath = "/pools",
+}: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [matchAtLeast, setMatchAtLeast] = useState<number[]>([3]);
@@ -99,7 +111,7 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: P
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          betType: 'pools',
+          betType,
           gameId,
           betAmount,
           betData: {
@@ -114,7 +126,7 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: P
       const data = await response.json();
 
       if (!response.ok) {
-        if (handleUnauthorizedBet(response, "/pools")) return;
+        if (handleUnauthorizedBet(response, playPath)) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }
@@ -195,22 +207,16 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: P
         {/* Column 2: Matches Grid */}
         <div className="lg:col-span-6">
           <div className="p-4 rounded-xl bg-card border border-border">
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {matches.map((match, index) => (
-                <button
-                  key={index}
-                  onClick={() => toggleMatch(match)}
-                  className={clsx(
-                    "p-3 rounded-xl font-medium text-sm cursor-pointer transition-all duration-300 flex items-center justify-center gap-2",
-                    selectedMatches.includes(match)
-                      ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                  )}
-                >
-                  <div>{match}</div>
-                </button>
-              ))}
-            </div>
+            <MatchPickerGrid
+              matches={matches}
+              matchLabels={matchLabels}
+              onToggle={toggleMatch}
+              classNameFor={(match) =>
+                selectedMatches.includes(match)
+                  ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                  : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+              }
+            />
           </div>
         </div>
 
@@ -228,7 +234,7 @@ const Direct = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: P
                   {matches.map((m, i) => (
                     selectedMatches.includes(m) ? (
                       <div key={`${i}-${m}`} className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium">
-                        {m}
+                        {poolsMatchLabel(m, matchLabels)}
                       </div>
                     ) : null
                   ))}

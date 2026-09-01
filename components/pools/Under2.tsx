@@ -3,15 +3,17 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import clsx from "clsx"
 import { toast } from "sonner";
 import { handleUnauthorizedBet } from "@/lib/bets/handleUnauthorizedBet";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { Prize } from "@/lib/types/prize";
 import PrizeTable from "../PrizeTable";
+import MatchPickerGrid from "./MatchPickerGrid";
+import { poolsMatchLabel } from "@/lib/pools/formatMatch";
+import { PoolsPlayExtraProps } from "@/lib/pools/playProps";
 
-interface Props {
+interface Props extends PoolsPlayExtraProps {
   matches: string[];
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
@@ -21,7 +23,17 @@ interface Props {
   maxStakes?: { "1"?: number; "2"?: number; "3"?: number };
 }
 
-const Under2 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: Props) => {
+const Under2 = ({
+  gameMode,
+  gameId,
+  prizes,
+  setGameMode,
+  matches,
+  maxStakes,
+  matchLabels,
+  betType = "pools",
+  playPath = "/pools",
+}: Props) => {
   const [selectedMatches, setSelectedMatches] = useState<string[]>([]);
   const [betAmount, setBetAmount] = useState(5000);
   const [odd, setOdd] = useState<string>("");
@@ -65,7 +77,7 @@ const Under2 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: P
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          betType: 'pools',
+          betType,
           gameId,
           betAmount,
           betData: {
@@ -79,7 +91,7 @@ const Under2 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: P
       const data = await response.json();
 
       if (!response.ok) {
-        if (handleUnauthorizedBet(response, "/pools")) return;
+        if (handleUnauthorizedBet(response, playPath)) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }
@@ -146,22 +158,20 @@ const Under2 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: P
 
         {/* Column 2: Match Grid */}
         <div className="lg:col-span-6">
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
-            {matches.map((match) => (
-              <button
-                key={match}
-                onClick={() => toggleMatch(match)}
-                className={clsx(
-                  "p-3 rounded-xl font-medium text-sm transition-all duration-300",
-                  selectedMatches.includes(match)
-                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                    : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                )}
-                disabled={selectedMatches.length >= 2 && !selectedMatches.includes(match)}
-              >
-                {match}
-              </button>
-            ))}
+          <div className="bg-card border border-border rounded-xl p-4">
+            <MatchPickerGrid
+              matches={matches}
+              matchLabels={matchLabels}
+              onToggle={toggleMatch}
+              isDisabled={(match) =>
+                selectedMatches.length >= 2 && !selectedMatches.includes(match)
+              }
+              classNameFor={(match) =>
+                selectedMatches.includes(match)
+                  ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                  : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+              }
+            />
           </div>
         </div>
 
@@ -178,7 +188,7 @@ const Under2 = ({ gameMode, gameId, prizes, setGameMode, matches, maxStakes }: P
                 <div className="flex flex-wrap gap-1.5">
                   {[...selectedMatches].sort((a, b) => compareMatches(a, b)).map((n) => (
                     <span key={n} className="px-2 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium">
-                      {n}
+                      {poolsMatchLabel(n, matchLabels)}
                     </span>
                   ))}
                 </div>

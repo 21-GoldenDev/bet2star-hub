@@ -178,6 +178,19 @@ export default function AdminSidebar() {
                           </div>
                         </Link>
 
+                        <Link href="/admin/bets/daily-pools" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/bets/daily-pools"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Daily/Mid-week Pools</span>
+                          </div>
+                        </Link>
+
                         <Link href="/admin/bets/sports" onClick={() => setIsOpen(false)}>
                           <div
                             className={clsx(
@@ -298,6 +311,18 @@ export default function AdminSidebar() {
                             )}
                           >
                             <span>Pools</span>
+                          </div>
+                        </Link>
+                        <Link href="/admin/sales/daily-pools" onClick={() => setIsOpen(false)}>
+                          <div
+                            className={clsx(
+                              "flex items-center gap-3 px-10 py-2 rounded-lg transition-colors text-sm",
+                              pathname === "/admin/sales/daily-pools"
+                                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            )}
+                          >
+                            <span>Daily/Mid-week Pools</span>
                           </div>
                         </Link>
                         <Link href="/admin/sales/sports" onClick={() => setIsOpen(false)}>
@@ -618,6 +643,18 @@ export default function AdminSidebar() {
                   Pools
                 </div>
               </Link>
+              <Link href="/admin/bets/daily-pools" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/bets/daily-pools"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Daily/Mid-week Pools
+                </div>
+              </Link>
               <Link href="/admin/bets/sports" onClick={() => setIsOpen(false)}>
                 <div
                   className={clsx(
@@ -711,6 +748,18 @@ export default function AdminSidebar() {
                   )}
                 >
                   Pools
+                </div>
+              </Link>
+              <Link href="/admin/sales/daily-pools" onClick={() => setIsOpen(false)}>
+                <div
+                  className={clsx(
+                    "rounded-lg px-4 py-2 text-sm transition-colors",
+                    pathname === "/admin/sales/daily-pools"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  )}
+                >
+                  Daily/Mid-week Pools
                 </div>
               </Link>
               <Link href="/admin/sales/sports" onClick={() => setIsOpen(false)}>

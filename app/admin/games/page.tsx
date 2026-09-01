@@ -92,6 +92,8 @@ export default function GamesPage() {
     switch (type) {
       case "sports_draw":
         return "Football Pool";
+      case "daily_pools":
+        return "Daily/Mid-week Pools";
       case "lotto":
         return "Lotto";
       case "pools":
@@ -389,6 +391,7 @@ export default function GamesPage() {
                   <SelectContent>
                     <SelectItem value="lotto">Lotto</SelectItem>
                     <SelectItem value="pools">Pools</SelectItem>
+                    <SelectItem value="daily_pools">Daily/Mid-week Pools</SelectItem>
                     <SelectItem value="sports">Sports</SelectItem>
                     <SelectItem value="sports_draw">Football Pool</SelectItem>
                   </SelectContent>
@@ -503,7 +506,7 @@ export default function GamesPage() {
               label: "Type",
               render: (type) => (
                 <Badge variant="outline" className="capitalize">
-                  {type}
+                  {getGameTypeLabel(type)}
                 </Badge>
               ),
               sortable: true,
@@ -598,6 +601,7 @@ export default function GamesPage() {
                 <SelectContent>
                   <SelectItem value="lotto">Lotto</SelectItem>
                   <SelectItem value="pools">Pools</SelectItem>
+                  <SelectItem value="daily_pools">Daily/Mid-week Pools</SelectItem>
                   <SelectItem value="sports">Sports</SelectItem>
                   <SelectItem value="sports_draw">Football Pool</SelectItem>
                 </SelectContent>

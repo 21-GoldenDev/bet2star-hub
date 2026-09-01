@@ -7,6 +7,7 @@ import {
   validateCommission,
   normalizeException,
 } from "@/lib/admin/syncTerminalPrizesFromGame";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -109,7 +110,7 @@ export async function PUT(
       return NextResponse.json({ error: syncError.error }, { status: 500 });
     }
 
-    if (exception !== undefined && game?.type === "pools") {
+    if (exception !== undefined && isPoolsLikeGameType(game?.type)) {
       const recompute = await recomputePoolsAwardsForGame(supabase, id);
       if (recompute.error) {
         return NextResponse.json({ error: recompute.error }, { status: 500 });
@@ -144,7 +145,7 @@ export async function DELETE(
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
 
-    if (game?.type === "pools") {
+    if (isPoolsLikeGameType(game?.type)) {
       const deletePassword = process.env.ADMIN_GAME_DELETE_PASSWORD;
 
       if (!deletePassword) {

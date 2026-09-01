@@ -10,11 +10,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { gameModes, GameModeType } from "@/lib/types/gameMode";
 import { calcAplGrouping } from "@/lib/helpers";
 import PrizeTable from "../PrizeTable";
+import MatchPickerGrid from "./MatchPickerGrid";
 import { Prize } from "@/lib/types/prize";
+import { poolsMatchLabel } from "@/lib/pools/formatMatch";
+import { PoolsPlayExtraProps } from "@/lib/pools/playProps";
 
 const groupLabels = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
 
-interface Props {
+interface Props extends PoolsPlayExtraProps {
   matches: string[];
   activeTab: "result" | "fixtures";
   gameMode: GameModeType;
@@ -29,7 +32,17 @@ interface USelection {
   u: number;
 }
 
-const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }: Props) => {
+const Grouping = ({
+  matches,
+  gameMode,
+  gameId,
+  prizes,
+  setGameMode,
+  maxStakes,
+  matchLabels,
+  betType = "pools",
+  playPath = "/pools",
+}: Props) => {
   const [totalUnder, setTotalUnder] = useState<number>(3);
   const [selectedUs, setSelectedUs] = useState<USelection[]>([]);
   const [activeUId, setActiveUId] = useState<string | null>(null);
@@ -138,7 +151,7 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }:
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          betType: 'pools',
+          betType,
           gameId,
           betAmount,
           betData: {
@@ -154,7 +167,7 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }:
       const data = await response.json();
 
       if (!response.ok) {
-        if (handleUnauthorizedBet(response, "/pools")) return;
+        if (handleUnauthorizedBet(response, playPath)) return;
         toast.error(data.error || "Failed to place bet");
         return;
       }
@@ -243,27 +256,21 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }:
         </div>
         <div className="lg:col-span-6">
           <div className="max-h-screen overflow-y-auto scrollbar">
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 bg-card border border-border rounded-xl p-4">
-              {matches.map((match, index) => {
-                const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
-                const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
-                return (
-                  <button
-                    key={index}
-                    onClick={() => toggleMatchForActive(match)}
-                    className={clsx(
-                      "p-3 rounded-xl font-medium text-sm transition-all duration-300",
-                      inActiveGroup
-                        ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                        : inOtherGroup
-                          ? "cursor-not-allowed bg-secondary text-secondary-foreground"
-                          : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                    )}
-                  >
-                    {match}
-                  </button>
-                );
-              })}
+            <div className="bg-card border border-border rounded-xl p-4">
+              <MatchPickerGrid
+                matches={matches}
+                matchLabels={matchLabels}
+                onToggle={toggleMatchForActive}
+                classNameFor={(match) => {
+                  const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
+                  const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
+                  return inActiveGroup
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                    : inOtherGroup
+                      ? "cursor-not-allowed bg-secondary text-secondary-foreground"
+                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground";
+                }}
+              />
             </div>
           </div>
         </div>
@@ -322,7 +329,7 @@ const Grouping = ({ matches, gameMode, gameId, prizes, setGameMode, maxStakes }:
                       matches.map((m, i) => (
                         (groupSelections[sel.id] ?? []).includes(m) ? (
                           <div key={`${i}-${m}`} className="px-2 py-1 rounded bg-card border border-border text-xs font-medium">
-                            {m}
+                            {poolsMatchLabel(m, matchLabels)}
                           </div>
                         ) : null
                       ))

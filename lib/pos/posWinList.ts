@@ -10,7 +10,7 @@ import type { GameType } from "@/lib/types/gameMode";
 export const POS_WIN_LIST_DEFAULT_PAGE_SIZE = 25;
 export const POS_WIN_LIST_MAX_PAGE_SIZE = 50;
 
-export type PosWinListProduct = "lotto" | "pools" | "sports" | "sports-draw";
+export type PosWinListProduct = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 type BetTable = "bets_lotto" | "bets_pools" | "bets_sport" | "bets_sports_draw";
 
@@ -37,7 +37,15 @@ const PRODUCT_CONFIG: Record<PosWinListProduct, ProductConfig> = {
     table: "bets_pools",
     ticketColumn: "bet_id",
     selectColumns:
-      "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, prize_id, games!inner(week, game_name, results, end_time), prize:prize_id(name)",
+      "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, prize_id, games!inner(week, game_name, results, end_time, type), prize:prize_id(name)",
+  },
+  "daily-pools": {
+    product: "daily-pools",
+    gameType: "daily_pools",
+    table: "bets_pools",
+    ticketColumn: "bet_id",
+    selectColumns:
+      "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, prize_id, games!inner(week, game_name, results, end_time, type), prize:prize_id(name)",
   },
   sports: {
     product: "sports",
@@ -107,14 +115,17 @@ function normalizeProduct(raw: string): PosWinListProduct {
   if (value === "footballpools" || value === "sports_draw") {
     return "sports-draw";
   }
+  if (value === "daily_pools" || value === "daily-pools") {
+    return "daily-pools";
+  }
   if (value === "lotto" || value === "pools" || value === "sports" || value === "sports-draw") {
     return value;
   }
   throw new PosError(
     POS_ERROR_CODES.INVALID_REQUEST,
-    "Invalid or missing product. Use lotto, pools, sports, or sports-draw.",
+    "Invalid or missing product. Use lotto, pools, daily-pools, sports, or sports-draw.",
     {
-      supported_products: ["lotto", "pools", "sports", "sports-draw", "footballpools"],
+      supported_products: ["lotto", "pools", "daily-pools", "sports", "sports-draw", "footballpools"],
     },
   );
 }
@@ -199,7 +210,7 @@ function computeItemApl(
     );
   }
 
-  if (product === "pools") {
+  if (product === "pools" || product === "daily-pools") {
     return safeApl(() =>
       computeLottoApl(
         String(row.gameType || ""),
@@ -245,7 +256,8 @@ export async function fetchPosWinList(
     .gt("award", 0)
     .neq("status", "void")
     .neq("status", "deleted")
-    .lt("games.end_time", nowIso);
+    .lt("games.end_time", nowIso)
+    .eq("games.type", config.gameType);
 
   if (week !== null) {
     dbQuery = dbQuery.eq("games.week", week);
@@ -337,7 +349,7 @@ export async function fetchPosWinList(
       config.ticketColumn === "bet_id" ? Number(row.bet_id) : Number(row.number);
 
     const weekResult =
-      product === "lotto" || product === "pools"
+      product === "lotto" || product === "pools" || product === "daily-pools"
         ? Array.isArray(game?.results)
           ? (game?.results as number[])
           : []

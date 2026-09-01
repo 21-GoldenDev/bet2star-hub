@@ -3,7 +3,7 @@ import { addCORSHeaders, handleCORS } from "@/app/api/middleware/cors";
 import { formatLottoWeekLabel } from "@/lib/helpers";
 import { getServiceClient } from "@/lib/supabase/service";
 
-export type PublicBetProduct = "lotto" | "pools" | "sports" | "sports-draw";
+export type PublicBetProduct = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 type LookupHit = {
   product: PublicBetProduct;
@@ -15,6 +15,7 @@ type GameInfo = {
   game_name?: string | null;
   results?: unknown;
   end_time?: string | null;
+  type?: string | null;
 };
 
 function resolvePublicStatus(
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       supabase
         .from("bets_pools")
         .select(
-          "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week, results, end_time), prize:prize_id (name)",
+          "id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week, results, end_time, type), prize:prize_id (name)",
         )
         .eq("bet_id", betNumber)
         .maybeSingle(),
@@ -96,7 +97,17 @@ export async function GET(request: NextRequest) {
 
     const hits: LookupHit[] = [];
     if (lotto.data) hits.push({ product: "lotto", row: lotto.data as Record<string, unknown> });
-    if (pools.data) hits.push({ product: "pools", row: pools.data as Record<string, unknown> });
+    if (pools.data) {
+      const poolsGamesRaw = (pools.data as Record<string, unknown>).games;
+      const poolsGame = Array.isArray(poolsGamesRaw) ? poolsGamesRaw[0] : poolsGamesRaw;
+      const poolsType = poolsGame && typeof poolsGame === "object"
+        ? String((poolsGame as { type?: string }).type || "pools")
+        : "pools";
+      hits.push({
+        product: poolsType === "daily_pools" ? "daily-pools" : "pools",
+        row: pools.data as Record<string, unknown>,
+      });
+    }
     if (sports.data) hits.push({ product: "sports", row: sports.data as Record<string, unknown> });
     if (sportsDraw.data) {
       hits.push({ product: "sports-draw", row: sportsDraw.data as Record<string, unknown> });
@@ -139,6 +150,7 @@ export async function GET(request: NextRequest) {
     const isClosed = status === "closed";
 
     let sportsMatches: Array<Record<string, unknown>> = [];
+    let poolsMatches: Array<Record<string, unknown>> = [];
     if ((hit.product === "sports" || hit.product === "sports-draw") && hit.row.game_id) {
       const { data: matchData, error: matchError } = await supabase
         .from("sports")
@@ -160,8 +172,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (hit.product === "daily-pools" && typeof game?.week === "number") {
+      const { data: matchData, error: matchError } = await supabase
+        .from("matches")
+        .select("number, home, away")
+        .eq("week", game.week)
+        .eq("game_type", "daily_pools")
+        .order("number", { ascending: true });
+
+      if (matchError) {
+        console.error("Public bet lookup daily pools matches error:", matchError);
+      } else {
+        poolsMatches = matchData || [];
+      }
+    }
+
     const betNumberValue =
-      hit.product === "lotto" || hit.product === "pools"
+      hit.product === "lotto" || hit.product === "pools" || hit.product === "daily-pools"
         ? Number(hit.row.bet_id)
         : Number(hit.row.number);
 
@@ -184,6 +211,7 @@ export async function GET(request: NextRequest) {
           option: prizeName || null,
           weekResult: isClosed && Array.isArray(game?.results) ? game.results : [],
           sportsMatches,
+          poolsMatches,
         },
       }),
     );

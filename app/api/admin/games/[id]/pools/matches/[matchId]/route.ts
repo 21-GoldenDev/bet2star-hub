@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,7 +26,7 @@ async function fetchPoolsGame(gameId: string) {
     throw new Error("Game not found");
   }
 
-  if (data.type !== "pools") {
+  if (!isPoolsLikeGameType(data.type)) {
     throw new Error("Matches can only be managed for pools games");
   }
 

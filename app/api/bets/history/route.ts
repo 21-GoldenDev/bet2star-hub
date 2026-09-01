@@ -5,17 +5,18 @@ import { betIncludesVoidSportsMatches } from "@/lib/bets/sportsMatches";
 import { getServiceClient } from "@/lib/supabase/service";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-type BetTab = "lotto" | "pools" | "sports" | "sports-draw";
+type BetTab = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 const GAME_TYPE_BY_TAB: Record<BetTab, string> = {
   lotto: "lotto",
   pools: "pools",
+  "daily-pools": "daily_pools",
   sports: "sports",
   "sports-draw": "sports_draw",
 };
 
 const isValidTab = (value: string | null): value is BetTab => {
-  return value === "lotto" || value === "pools" || value === "sports" || value === "sports-draw";
+  return value === "lotto" || value === "pools" || value === "daily-pools" || value === "sports" || value === "sports-draw";
 };
 
 const resolveDefaultWeek = async (supabase: Awaited<ReturnType<typeof createSupabaseServer>>, tab: BetTab) => {
@@ -329,24 +330,28 @@ export async function GET(request: NextRequest) {
           totalPages: Math.max(1, Math.ceil((count || 0) / pageSize)),
         },
       });
-    } else if (tabParam === "pools") {
+    } else if (tabParam === "pools" || tabParam === "daily-pools") {
+      const poolsGameType = GAME_TYPE_BY_TAB[tabParam];
       query = supabase
         .from("bets_pools")
-        .select("id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id (week), prize:prize_id (name)", { count: "exact" })
+        .select("id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id!inner (week, type), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
+        .eq("games.type", poolsGameType)
         .order("bet_time", { ascending: false })
         .range(from, to);
 
       weeksQuery = supabase
         .from("bets_pools")
-        .select("games:game_id (week)")
-        .eq("player", user.id);
+        .select("games:game_id!inner (week, type)")
+        .eq("player", user.id)
+        .eq("games.type", poolsGameType);
 
       // Exclude deleted (void) bets from sales/winnings summary only
       summaryQuery = supabase
         .from("bets_pools")
-        .select("gameType, under, staked, award, games:game_id (week), prize:prize_id (name)")
+        .select("gameType, under, staked, award, games:game_id!inner (week, type), prize:prize_id (name)")
         .eq("player", user.id)
+        .eq("games.type", poolsGameType)
         .or("status.is.null,status.neq.void");
 
       if (Number.isFinite(effectiveWeekFilter)) query = query.eq("games.week", effectiveWeekFilter);
@@ -426,7 +431,7 @@ export async function GET(request: NextRequest) {
     }
 
     const summaryMap = new Map<string, { option: string; sales: number; winnings: number }>();
-    if (tabParam === "pools") {
+    if (tabParam === "pools" || tabParam === "daily-pools") {
       for (const row of summaryRows || []) {
         let option = "-";
         if (!(row as any).prize && row.gameType === "turbo") {
@@ -470,6 +475,40 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (tabParam === "daily-pools" && Array.isArray(data) && data.length > 0) {
+      const serviceClient = getServiceClient();
+      const gameIds = Array.from(new Set(data.map((row: any) => row.game_id).filter(Boolean)));
+      if (gameIds.length > 0) {
+        const { data: gamesData } = await serviceClient
+          .from("games")
+          .select("id, week")
+          .in("id", gameIds);
+        const weekByGameId: Record<string, number> = {};
+        const weeks = new Set<number>();
+        for (const game of gamesData || []) {
+          if (typeof game.week === "number") {
+            weekByGameId[game.id] = game.week;
+            weeks.add(game.week);
+          }
+        }
+        if (weeks.size > 0) {
+          const { data: matchData } = await serviceClient
+            .from("matches")
+            .select("week, number, home, away")
+            .eq("game_type", "daily_pools")
+            .in("week", Array.from(weeks));
+          const byWeek: Record<number, any[]> = {};
+          for (const match of matchData || []) {
+            if (!byWeek[match.week]) byWeek[match.week] = [];
+            byWeek[match.week].push(match);
+          }
+          for (const [gameId, week] of Object.entries(weekByGameId)) {
+            matches[gameId] = byWeek[week] || [];
+          }
+        }
+      }
+    }
+
     const betWeeks = extractWeeks(weekRows || []);
     const appliedWeek = effectiveWeekFilter ?? betWeeks[0] ?? null;
     const weeks = Array.from(
@@ -484,7 +523,7 @@ export async function GET(request: NextRequest) {
     let disabledMatchNumbers: Record<number, number[]> = {};
     let responseData = data || [];
 
-    if (tabParam === "pools" && Array.isArray(data)) {
+    if ((tabParam === "pools" || tabParam === "daily-pools") && Array.isArray(data)) {
       const serviceClient = getServiceClient();
       const gameIds = Array.from(new Set(data.map((bet: any) => bet.game_id).filter(Boolean)));
       const gameWeekById: Record<string, number> = {};
@@ -519,6 +558,7 @@ export async function GET(request: NextRequest) {
           .from("matches")
           .select("number, week")
           .eq("status", "disable")
+          .eq("game_type", GAME_TYPE_BY_TAB[tabParam])
           .in("week", Array.from(weeksToCheck));
 
         if (disabledMatchesError) {

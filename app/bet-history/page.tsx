@@ -51,8 +51,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-type BetTab = "lotto" | "pools" | "sports" | "sports-draw";
+type BetTab = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 const PAGE_SIZE = 20;
+const isPoolsHistoryTab = (tab: BetTab) => tab === "pools" || tab === "daily-pools";
 
 type BetRow = {
   id: string;
@@ -99,6 +100,7 @@ type BetRecord = {
 const TAB_LABELS: Record<BetTab, string> = {
   lotto: "Lotto",
   pools: "Pools",
+  "daily-pools": "Daily/Mid-week Pools",
   sports: "Sports",
   "sports-draw": "Football Pool",
 };
@@ -106,6 +108,7 @@ const TAB_LABELS: Record<BetTab, string> = {
 const EMPTY_BETS: Record<BetTab, BetRow[]> = {
   lotto: [],
   pools: [],
+  "daily-pools": [],
   sports: [],
   "sports-draw": [],
 };
@@ -113,6 +116,7 @@ const EMPTY_BETS: Record<BetTab, BetRow[]> = {
 const EMPTY_TOTALS: Record<BetTab, number> = {
   lotto: 0,
   pools: 0,
+  "daily-pools": 0,
   sports: 0,
   "sports-draw": 0,
 };
@@ -120,6 +124,7 @@ const EMPTY_TOTALS: Record<BetTab, number> = {
 const INITIAL_PAGES: Record<BetTab, number> = {
   lotto: 1,
   pools: 1,
+  "daily-pools": 1,
   sports: 1,
   "sports-draw": 1,
 };
@@ -127,6 +132,7 @@ const INITIAL_PAGES: Record<BetTab, number> = {
 const EMPTY_WEEKS: Record<BetTab, number[]> = {
   lotto: [],
   pools: [],
+  "daily-pools": [],
   sports: [],
   "sports-draw": [],
 };
@@ -149,6 +155,7 @@ type LottoGameOption = {
 const EMPTY_WEEK_GAMES: Record<BetTab, Record<number, WeekGameInfo>> = {
   lotto: {},
   pools: {},
+  "daily-pools": {},
   sports: {},
   "sports-draw": {},
 };
@@ -180,7 +187,7 @@ const getWeekResultForBet = (
   weekGamesByTab: Record<BetTab, Record<number, WeekGameInfo>>,
   gameOptionsByTab: Record<BetTab, LottoGameOption[]>,
 ): Array<number | string> => {
-  if (!bet || (bet.tab !== "lotto" && bet.tab !== "pools")) return [];
+  if (!bet || (bet.tab !== "lotto" && !isPoolsHistoryTab(bet.tab))) return [];
 
   if (bet.tab === "lotto" && bet.gameId) {
     const game = gameOptionsByTab.lotto.find((g) => g.id === bet.gameId);
@@ -318,7 +325,7 @@ const resolveApl = (bet: BetRecord, tab: BetTab) => {
     }
   }
 
-  if (tab === "pools") {
+  if (isPoolsHistoryTab(tab)) {
     if (Array.isArray(bet.matches)) {
       return calcAplDirect(staked, Array.isArray(bet.under) ? (bet.under as number[]) : [], bet.matches.length);
     }
@@ -342,7 +349,7 @@ const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
         : "-";
   const gameList = tab === "lotto"
     ? formatGameListAdminStyle(bet.numbers)
-    : tab === "pools"
+    : isPoolsHistoryTab(tab)
       ? formatGameListAdminStyle(bet.matches)
       : formatGameListAdminStyle(bet.selections);
 
@@ -358,7 +365,7 @@ const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
     selections: bet.selections,
     week: weekLabel,
     betId: String(bet.bet_id ?? bet.number ?? bet.id),
-    option: tab === "lotto" || tab === "pools" ? formatPrize(bet.prize) : formatMode(bet.mode),
+    option: tab === "lotto" || isPoolsHistoryTab(tab) ? formatPrize(bet.prize) : formatMode(bet.mode),
     under: getUnderValue(bet.gameType || "", bet.under),
     gameList,
     apl: resolveApl(bet, tab),
@@ -474,8 +481,16 @@ const renderStatus = (status?: string) => {
   );
 };
 
-const renderDetailedSelection = (row: BetRow) => {
-  const value = row.tab === "lotto" ? row.numbers : row.tab === "pools" ? row.matches : row.selections;
+const formatDailyPoolsItem = (item: unknown, fixtures?: MatchInfo[]) => {
+  const raw = String(item);
+  const match = fixtures?.find((entry) => String(entry.number) === raw);
+  if (!match) return raw;
+  return `${match.number}. ${match.home} vs ${match.away}`;
+};
+
+const renderDetailedSelection = (row: BetRow, fixtures?: MatchInfo[]) => {
+  const value = row.tab === "lotto" ? row.numbers : isPoolsHistoryTab(row.tab) ? row.matches : row.selections;
+  const showEvents = row.tab === "daily-pools";
 
   if (Array.isArray(value)) {
     const sorted = [...value].sort((a, b) => compareMixed(a as string | number, b as string | number));
@@ -486,7 +501,7 @@ const renderDetailedSelection = (row: BetRow) => {
             key={`${item}-${index}`}
             className="px-3 py-1 rounded bg-primary/10 border border-primary/20 text-sm font-medium"
           >
-            {String(item)}
+            {showEvents ? formatDailyPoolsItem(item, fixtures) : String(item)}
           </span>
         ))}
       </div>
@@ -509,7 +524,7 @@ const renderDetailedSelection = (row: BetRow) => {
                     key={`${gid}-${item}-${itemIndex}`}
                     className="px-2 py-1 rounded bg-primary/10 border border-primary/20 text-sm"
                   >
-                    {String(item)}
+                    {String(showEvents ? formatDailyPoolsItem(item, fixtures) : item)}
                   </span>
                 ))}
               </div>
@@ -667,6 +682,7 @@ export default function BetHistoryPage() {
   const [gameOptionsByTab, setGameOptionsByTab] = useState<Record<BetTab, LottoGameOption[]>>({
     lotto: [],
     pools: [],
+    "daily-pools": [],
     sports: [],
     "sports-draw": [],
   });
@@ -674,12 +690,14 @@ export default function BetHistoryPage() {
   const [summaryByTab, setSummaryByTab] = useState<Record<BetTab, { option: string; sales: number; winnings: number }[]>>({
     lotto: [],
     pools: [],
+    "daily-pools": [],
     sports: [],
     "sports-draw": [],
   });
   const [matchesByTab, setMatchesByTab] = useState<Record<BetTab, Record<string, MatchInfo[]>>>({
     lotto: {},
     pools: {},
+    "daily-pools": {},
     sports: {},
     "sports-draw": {},
   });
@@ -763,9 +781,9 @@ export default function BetHistoryPage() {
       subs.push({ table: "games", filter: "type=eq.lotto" });
     }
 
-    if (activeTab === "pools") {
+    if (isPoolsHistoryTab(activeTab)) {
       subs.push({ table: "matches" });
-      subs.push({ table: "games", filter: "type=eq.pools" });
+      subs.push({ table: "games", filter: `type=eq.${activeTab === "daily-pools" ? "daily_pools" : "pools"}` });
     }
 
     if (activeTab === "sports" || activeTab === "sports-draw") {
@@ -944,6 +962,7 @@ export default function BetHistoryPage() {
           <TabsList className="mb-4 h-auto flex-wrap">
             <TabsTrigger value="lotto">Lotto</TabsTrigger>
             <TabsTrigger value="pools">Pools</TabsTrigger>
+            <TabsTrigger value="daily-pools">Daily/Mid-week Pools</TabsTrigger>
             <TabsTrigger value="sports">Sports</TabsTrigger>
             <TabsTrigger value="sports-draw">Football Pool</TabsTrigger>
           </TabsList>
@@ -1198,11 +1217,16 @@ export default function BetHistoryPage() {
 
                 <div className="border-t border-gray-600 pt-4">
                   <Label className="text-xs font-semibold text-muted-foreground block mb-3">
-                    {selectedBet.tab === "lotto" ? "Numbers" : selectedBet.tab === "pools" ? "Matches" : "Selections"}
+                    {selectedBet.tab === "lotto" ? "Numbers" : isPoolsHistoryTab(selectedBet.tab) ? "Matches" : "Selections"}
                   </Label>
                   {selectedBet.tab === "sports" || selectedBet.tab === "sports-draw"
                     ? renderSportsSelectionDetails(selectedBet, matchesByTab[selectedBet.tab] || {})
-                    : renderDetailedSelection(selectedBet)}
+                    : renderDetailedSelection(
+                      selectedBet,
+                      selectedBet.tab === "daily-pools"
+                        ? (matchesByTab[selectedBet.tab]?.[selectedBet.gameId || ""] || [])
+                        : undefined,
+                    )}
                 </div>
 
                 <div className="border-t border-gray-600 pt-4 grid grid-cols-2 gap-4">
@@ -1216,20 +1240,28 @@ export default function BetHistoryPage() {
                   </div>
                 </div>
 
-                {(selectedBet.tab === "lotto" || selectedBet.tab === "pools") &&
+                {(selectedBet.tab === "lotto" || isPoolsHistoryTab(selectedBet.tab)) &&
                   selectedBetIsClosed && (
                   <div className="border-t border-gray-600 pt-4">
                     <Label className="text-xs font-semibold text-muted-foreground block mb-3">Week Result</Label>
                     <div className="flex flex-wrap gap-2">
                       {selectedBetWeekResult.length > 0 ? (
-                        selectedBetWeekResult.map((num, idx) => (
+                        selectedBetWeekResult.map((num, idx) => {
+                          const fixtures = selectedBet.tab === "daily-pools"
+                            ? (matchesByTab[selectedBet.tab]?.[selectedBet.gameId || ""] || [])
+                            : [];
+                          const label = selectedBet.tab === "daily-pools"
+                            ? formatDailyPoolsItem(num, fixtures)
+                            : String(num);
+                          return (
                           <span
                             key={idx}
                             className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium"
                           >
-                            {num}
+                            {label}
                           </span>
-                        ))
+                          );
+                        })
                       ) : (
                         <span className="text-sm text-muted-foreground">No result set</span>
                       )}

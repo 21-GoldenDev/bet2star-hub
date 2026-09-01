@@ -19,6 +19,7 @@ import TerminalCommissionsSection from "@/components/admin/TerminalCommissionsSe
 import MaxPrizeSection from "@/components/admin/MaxPrizeSection";
 import PoolsMatchesSection from "@/components/admin/PoolsMatchesSection";
 import VoidWindowSection from "@/components/admin/VoidWindowSection";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 interface GamePrizeWithInfo {
   id: string;
@@ -115,7 +116,8 @@ export default function GameSettingsPage() {
 
       const gameType = gameData.game?.type;
       if (gameType) {
-        const statsRes = await fetch(`/api/admin/games/${gameId}/${gameType}/stats`);
+        const statsType = isPoolsLikeGameType(gameType) ? "pools" : gameType;
+        const statsRes = await fetch(`/api/admin/games/${gameId}/${statsType}/stats`);
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats(statsData);
@@ -182,7 +184,8 @@ export default function GameSettingsPage() {
     }
     try {
       setApplyingResult(true);
-      const res = await fetch(`/api/admin/bets/${game.type}/result`, {
+      const resultType = isPoolsLikeGameType(game.type) ? "pools" : game.type;
+      const res = await fetch(`/api/admin/bets/${resultType}/result`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ game_id: gameId, result: weekResult }),
@@ -191,12 +194,12 @@ export default function GameSettingsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to apply result");
 
       await fetchData({ silent: true });
-      if (game.type === "pools") {
+      if (isPoolsLikeGameType(game.type)) {
         setPoolsRefreshKey((key) => key + 1);
       }
 
       const balanceMsg =
-        (game.type === "lotto" || game.type === "pools") && data.balanceUpdates > 0
+        (game.type === "lotto" || isPoolsLikeGameType(game.type)) && data.balanceUpdates > 0
           ? ` ${data.balanceUpdates} player balance(s) updated.`
           : "";
       toast({
@@ -242,7 +245,7 @@ export default function GameSettingsPage() {
         <MaxStakeSection
           key={gameId}
           gameId={gameId}
-          gameType={game.type as "lotto" | "pools" | "sports" | "sports_draw"}
+          gameType={game.type as "lotto" | "pools" | "daily_pools" | "sports" | "sports_draw"}
           maxStakes={maxStakes}
           loading={loading}
           onRefresh={fetchData}
@@ -256,9 +259,9 @@ export default function GameSettingsPage() {
           onRefresh={fetchData}
         />
       )}
-      {game && (game.type === "lotto" || game.type === "pools") && (
+      {game && (game.type === "lotto" || isPoolsLikeGameType(game.type)) && (
         <WeekResultSection
-          gameType={game.type}
+          gameType={isPoolsLikeGameType(game.type) ? "pools" : game.type}
           weekResult={weekResult}
           applying={applyingResult}
           hasPendingChanges={hasPendingResultChanges}
@@ -266,7 +269,7 @@ export default function GameSettingsPage() {
           onApplyResult={applyWeekResult}
         />
       )}
-      {game?.type === "pools" && (
+      {game && isPoolsLikeGameType(game.type) && (
         <PoolsMatchesSection gameId={gameId} gameWeek={game.week} refreshKey={poolsRefreshKey} />
       )}
       {game?.type === "lotto" && (
@@ -303,7 +306,7 @@ export default function GameSettingsPage() {
           allPrizes={allPrizes}
           loading={loading}
           onRefresh={fetchData}
-          manageCommission={game?.type === "pools"}
+          manageCommission={game ? isPoolsLikeGameType(game.type) : false}
         />
       )}
     </div>

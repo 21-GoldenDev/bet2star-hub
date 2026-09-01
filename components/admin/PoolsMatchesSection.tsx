@@ -197,7 +197,7 @@ export default function PoolsMatchesSection({ gameId, gameWeek, refreshKey = 0 }
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold">Pools Match Fixtures</h2>
+        <h2 className="text-2xl font-bold">Match Fixtures</h2>
         <p className="text-muted-foreground mt-2">
           Edit week {gameWeek} pool matches (1–49) for this game.
         </p>

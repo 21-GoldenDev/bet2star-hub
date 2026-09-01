@@ -4,13 +4,14 @@ import {
   syncAllTerminalsPrizesFromGame,
   validateCommission,
 } from "@/lib/admin/syncTerminalPrizesFromGame";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 export async function syncTerminalsIfPoolsGame(
   supabase: SupabaseClient,
   gameType: string,
   prizeIds: unknown
 ): Promise<{ error: string | null }> {
-  if (gameType !== "pools") {
+  if (!isPoolsLikeGameType(gameType)) {
     return { error: null };
   }
   const prizes = normalizeGamePrizeEntries(prizeIds);

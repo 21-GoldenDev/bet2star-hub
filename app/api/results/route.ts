@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase/server";
 
-type GameTab = "lotto" | "pools" | "sports" | "sports-draw";
+type GameTab = "lotto" | "pools" | "daily-pools" | "sports" | "sports-draw";
 
 const GAME_TYPE_BY_TAB: Record<GameTab, string> = {
   lotto: "lotto",
   pools: "pools",
+  "daily-pools": "daily_pools",
   sports: "sports",
   "sports-draw": "sports_draw",
 };
@@ -22,6 +23,12 @@ type SportsMatchRow = {
   end_time: string | null;
 };
 
+type PoolsMatchRow = {
+  number: number;
+  home: string;
+  away: string;
+};
+
 type WeekResult = {
   id: string;
   week: number;
@@ -30,6 +37,7 @@ type WeekResult = {
   end_time: string | null;
   results: Array<number | string>;
   matches: SportsMatchRow[];
+  poolsMatches: PoolsMatchRow[];
 };
 
 const normalizeResults = (value: unknown): Array<number | string> => {
@@ -99,9 +107,37 @@ export async function GET() {
 
     const matchesByGameId = await fetchSportsMatches(supabase, sportsGameIds);
 
+    const dailyPoolsGames = gameResponses.find((entry) => entry.tab === "daily-pools")?.games || [];
+    const poolsMatchesByWeek: Record<number, PoolsMatchRow[]> = {};
+    if (dailyPoolsGames.length > 0) {
+      const weeks = Array.from(new Set(dailyPoolsGames.map((game) => game.week).filter((week) => Number.isFinite(week))));
+      if (weeks.length > 0) {
+        const { data: poolMatchRows, error: poolMatchError } = await supabase
+          .from("matches")
+          .select("week, number, home, away")
+          .eq("game_type", "daily_pools")
+          .in("week", weeks)
+          .order("number", { ascending: true });
+
+        if (poolMatchError) {
+          console.error("Failed to fetch daily pools matches for results:", poolMatchError);
+        } else {
+          for (const row of poolMatchRows || []) {
+            if (!poolsMatchesByWeek[row.week]) poolsMatchesByWeek[row.week] = [];
+            poolsMatchesByWeek[row.week].push({
+              number: row.number,
+              home: row.home,
+              away: row.away,
+            });
+          }
+        }
+      }
+    }
+
     const results: Record<GameTab, WeekResult[]> = {
       lotto: [],
       pools: [],
+      "daily-pools": [],
       sports: [],
       "sports-draw": [],
     };
@@ -115,6 +151,7 @@ export async function GET() {
         end_time: game.end_time,
         results: normalizeResults(game.results),
         matches: matchesByGameId[game.id] || [],
+        poolsMatches: entry.tab === "daily-pools" ? poolsMatchesByWeek[game.week] || [] : [],
       }));
     }
 
