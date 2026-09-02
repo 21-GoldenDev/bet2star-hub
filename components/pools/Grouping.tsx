@@ -211,7 +211,7 @@ const Grouping = ({
   return (
     <div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 lg:col-start-1 lg:row-start-1 lg:row-span-2">
           <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
             <RadioGroup value={gameMode} onValueChange={setGameMode}>
               {Object.keys(gameModes).map((mode) => (
@@ -249,32 +249,12 @@ const Grouping = ({
             </div>
           </div>
           {!!prize && (
-            <div className="mt-4">
+            <div className="mt-4 hidden lg:block">
               <PrizeTable prize={prize} />
             </div>
           )}
         </div>
-        <div className="lg:col-span-6">
-          <div className="max-h-screen overflow-y-auto scrollbar">
-            <div className="bg-card border border-border rounded-xl p-4">
-              <MatchPickerGrid
-                matches={matches}
-                matchLabels={matchLabels}
-                onToggle={toggleMatchForActive}
-                classNameFor={(match) => {
-                  const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
-                  const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
-                  return inActiveGroup
-                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                    : inOtherGroup
-                      ? "cursor-not-allowed bg-secondary text-secondary-foreground"
-                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground";
-                }}
-              />
-            </div>
-          </div>
-        </div>
-        <div className="lg:col-span-3 flex flex-col gap-4">
+        <div className="lg:col-span-3 lg:col-start-10 lg:row-start-1">
           <div className="p-4 rounded-xl bg-card border border-border flex flex-col">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Matches</div>
             <div className="space-y-3 min-h-30 max-h-80 overflow-y-auto flex-1 scrollbar">
@@ -362,7 +342,33 @@ const Grouping = ({
               )}
             </div>
           </div>
-
+        </div>
+        <div className="lg:col-span-6 lg:col-start-4 lg:row-start-1 lg:row-span-2">
+          <div className="max-h-screen overflow-y-auto scrollbar">
+            <div className="bg-card border border-border rounded-xl p-4">
+              <MatchPickerGrid
+                matches={matches}
+                matchLabels={matchLabels}
+                onToggle={toggleMatchForActive}
+                classNameFor={(match) => {
+                  const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(match);
+                  const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(match));
+                  return inActiveGroup
+                    ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                    : inOtherGroup
+                      ? "cursor-not-allowed bg-secondary text-secondary-foreground"
+                      : "bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground";
+                }}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="lg:col-span-3 lg:col-start-10 lg:row-start-2 flex flex-col gap-4">
+          {!!prize && (
+            <div className="lg:hidden">
+              <PrizeTable prize={prize} />
+            </div>
+          )}
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
             <div className="flex flex-col gap-2">

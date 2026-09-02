@@ -187,7 +187,7 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], 
   return (
     <div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-2">
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3 lg:col-start-1 lg:row-start-1 lg:row-span-2">
           <div className="p-4 rounded-xl bg-card border border-border space-y-2 mb-4">
             <RadioGroup value={gameMode} onValueChange={setGameMode}>
               {Object.keys(gameModes).map((mode) => (
@@ -225,37 +225,13 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], 
             </div>
           </div>
           {!!prize && (
-            <div className="mt-4">
+            <div className="mt-4 hidden lg:block">
               <PrizeTable prize={prize} />
             </div>
           )}
         </div>
-        <div className="lg:col-span-6">
-          <div className="flex flex-wrap gap-2 bg-card border border-border rounded-xl p-4">
-            {numbers.map((num) => {
-              const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(num);
-              const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(num));
-              return (
-                <button
-                  key={num}
-                  onClick={() => toggleNumberForActive(num)}
-                  className={clsx(
-                    "aspect-square w-12 rounded-xl font-bold text-lg transition-all duration-300",
-                    inActiveGroup
-                      ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
-                      : inOtherGroup
-                        ? "cursor-not-allowed bg-secondary text-secondary-foreground"
-                        : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
-                  )}
-                >
-                  {num}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="p-4 rounded-xl bg-card border border-border flex flex-col h-full">
+        <div className="lg:col-span-3 lg:col-start-10 lg:row-start-1">
+          <div className="p-4 rounded-xl bg-card border border-border flex flex-col">
             <div className="text-sm font-semibold mb-3 text-muted-foreground">Selected Numbers</div>
             <div className="space-y-3 overflow-y-auto min-h-30 flex-1 scrollbar">
               {selectedUs.map((sel, index) => (
@@ -340,7 +316,37 @@ const Grouping = ({ gameMode, gameId, prizes, setGameMode, visibleNumbers = [], 
               )}
             </div>
           </div>
-
+        </div>
+        <div className="lg:col-span-6 lg:col-start-4 lg:row-start-1 lg:row-span-2">
+          <div className="flex flex-wrap gap-2 bg-card border border-border rounded-xl p-4">
+            {numbers.map((num) => {
+              const inActiveGroup = activeUId !== null && (groupSelections[activeUId] ?? []).includes(num);
+              const inOtherGroup = Object.entries(groupSelections).some(([id, arr]) => id !== activeUId && arr.includes(num));
+              return (
+                <button
+                  key={num}
+                  onClick={() => toggleNumberForActive(num)}
+                  className={clsx(
+                    "aspect-square w-12 rounded-xl font-bold text-lg transition-all duration-300",
+                    inActiveGroup
+                      ? "cursor-pointer bg-primary text-primary-foreground shadow-[0_0_20px_hsl(43_96%_56%/0.3)]"
+                      : inOtherGroup
+                        ? "cursor-not-allowed bg-secondary text-secondary-foreground"
+                        : "cursor-pointer bg-muted border border-border hover:border-primary/50 hover:bg-muted/80 text-foreground"
+                  )}
+                >
+                  {num}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="lg:col-span-3 lg:col-start-10 lg:row-start-2 flex flex-col gap-4">
+          {!!prize && (
+            <div className="lg:hidden">
+              <PrizeTable prize={prize} />
+            </div>
+          )}
           <div className="p-4 rounded-xl bg-card border border-border">
             <div className="text-sm font-semibold mb-4 text-muted-foreground">Odds</div>
             <div className="flex flex-col gap-2">
