@@ -6,6 +6,7 @@ import {
   loadPoolsMatchTemplates,
   resolvePoolsLikeMaxStake,
   resolvePreviousPoolsLikeGame,
+  type PreviousPoolsLikeGame,
 } from "@/lib/pools/createGameDefaults";
 import { syncTerminalsIfPoolsGame } from "@/lib/admin/gamePrizeMutations";
 import { normalizeGamePrizeEntries } from "@/lib/admin/syncTerminalPrizesFromGame";
@@ -140,15 +141,7 @@ export async function POST(request: NextRequest) {
 
     // Previous game: latest same-type week. Pools-like games also fall back
     // (daily/mid-week copies from Pools when no prior mid-week week exists).
-    let previousGame: {
-      week: number;
-      type?: string;
-      max_stake: unknown;
-      max_prize: unknown;
-      visible_numbers: number[] | null;
-      void_window_minutes: number | null;
-      prize_ids: unknown;
-    } | null = null;
+    let previousGame: PreviousPoolsLikeGame | null = null;
 
     if (isPoolsLikeGameType(type)) {
       previousGame = await resolvePreviousPoolsLikeGame(
@@ -167,7 +160,17 @@ export async function POST(request: NextRequest) {
         .limit(1)
         .maybeSingle();
 
-      previousGame = data;
+      previousGame = data
+        ? {
+            week: data.week,
+            type: data.type ?? type,
+            max_stake: data.max_stake,
+            max_prize: data.max_prize,
+            visible_numbers: data.visible_numbers ?? null,
+            void_window_minutes: data.void_window_minutes ?? null,
+            prize_ids: data.prize_ids,
+          }
+        : null;
     }
 
     const resolveMaxPrize = () => {
