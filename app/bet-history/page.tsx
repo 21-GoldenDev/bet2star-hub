@@ -342,7 +342,7 @@ const mapBetToRow = (bet: BetRecord, tab: BetTab): BetRow => {
   const games = Array.isArray(bet.games) ? bet.games[0] : bet.games;
   const week = games?.week;
   const weekLabel =
-    (tab === "lotto" || tab === "daily-pools") && typeof week === "number"
+    (tab === "lotto" || isPoolsHistoryTab(tab)) && typeof week === "number"
       ? formatLottoWeekLabel(week, games?.game_name)
       : week !== null && week !== undefined
         ? String(week)

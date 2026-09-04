@@ -378,9 +378,7 @@ export default function PoolsPage() {
                   <SelectContent>
                     {weeksAll.map((w) => (
                       <SelectItem key={w.id} value={w.id}>
-                        {poolsType === "daily_pools"
-                          ? formatLottoWeekLabel(w.week, w.game_name)
-                          : w.week}
+                        {formatLottoWeekLabel(w.week, w.game_name)}
                       </SelectItem>
                     ))}
                     {weeksAll.length === 0 && (

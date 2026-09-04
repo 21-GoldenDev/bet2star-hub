@@ -180,11 +180,9 @@ const PoolsPlayView = ({ gameType }: Props) => {
                       </div>
                     )}
                     <div className="text-muted-foreground border-l-2 border-r-2 border-border px-2">
-                      <div>{showEvents && activeGame.game_name ? "Game" : "Week"}</div>
+                      <div>{activeGame.game_name ? "Game" : "Week"}</div>
                       <div className="font-bold">
-                        {showEvents
-                          ? formatLottoWeekLabel(activeGame.week, activeGame.game_name)
-                          : activeGame.week}
+                        {formatLottoWeekLabel(activeGame.week, activeGame.game_name)}
                       </div>
                     </div>
                     {!!activeGame.end_time && (

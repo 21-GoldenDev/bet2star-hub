@@ -339,7 +339,7 @@ export async function fetchPosWinList(
     const weekValue =
       game?.week !== undefined && game?.week !== null ? Number(game.week) : null;
     const weekLabel =
-      (product === "lotto" || product === "daily-pools") && weekValue !== null
+      (product === "lotto" || product === "pools" || product === "daily-pools") && weekValue !== null
         ? formatLottoWeekLabel(weekValue, game?.game_name)
         : weekValue !== null
           ? String(weekValue)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { buildDefaultPoolsMatches } from "@/lib/pools/defaultMatches";
 import { isPoolsLikeGameType } from "@/lib/pools/gameType";
+import { supportsGameName } from "@/lib/types/gameMode";
 import {
   loadPoolsMatchTemplates,
   resolvePoolsLikeMaxStake,
@@ -137,9 +138,7 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmedGameName =
-      (type === "lotto" || type === "daily_pools") && typeof gameName === "string"
-        ? gameName.trim()
-        : "";
+      supportsGameName(type) && typeof gameName === "string" ? gameName.trim() : "";
 
     // Previous game: latest same-type week. Pools-like games also fall back
     // (daily/mid-week copies from Pools when no prior mid-week week exists).
