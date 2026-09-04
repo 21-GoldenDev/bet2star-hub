@@ -33,6 +33,7 @@ interface GameInfo {
   id: string;
   week: number;
   type: string;
+  game_name?: string | null;
   start_time: string;
   end_time: string;
   prize_ids?: GamePrizeWithInfo[];
