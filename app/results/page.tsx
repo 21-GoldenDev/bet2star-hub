@@ -219,11 +219,16 @@ export default function ResultsPage() {
                             {formatLottoWeekLabel(game.week, game.game_name)}
                           </SelectItem>
                         ))
-                      : weekNumbersForTab.map((week) => (
-                          <SelectItem key={week} value={String(week)}>
-                            Week {week}
-                          </SelectItem>
-                        ))}
+                      : weekNumbersForTab.map((week) => {
+                          const named = gamesForTab.find((game) => game.week === week);
+                          return (
+                            <SelectItem key={week} value={String(week)}>
+                              {activeTab === "daily-pools"
+                                ? formatLottoWeekLabel(week, named?.game_name)
+                                : `Week ${week}`}
+                            </SelectItem>
+                          );
+                        })}
                   </SelectContent>
                 </Select>
               </div>
@@ -264,7 +269,7 @@ export default function ResultsPage() {
                 ) : tab === "lotto" || tab === "pools" || tab === "daily-pools" ? (
                   <div className="bg-card border border-border rounded-2xl p-6">
                     <h2 className="text-lg font-semibold mb-4">
-                      {activeTab === "lotto"
+                      {activeTab === "lotto" || activeTab === "daily-pools"
                         ? `${formatLottoWeekLabel(selectedGame.week, selectedGame.game_name)} Result`
                         : `Week ${selectedGame.week} Result`}
                     </h2>

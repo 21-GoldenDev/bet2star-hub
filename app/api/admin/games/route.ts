@@ -137,7 +137,9 @@ export async function POST(request: NextRequest) {
     }
 
     const trimmedGameName =
-      type === "lotto" && typeof gameName === "string" ? gameName.trim() : "";
+      (type === "lotto" || type === "daily_pools") && typeof gameName === "string"
+        ? gameName.trim()
+        : "";
 
     // Previous game: latest same-type week. Pools-like games also fall back
     // (daily/mid-week copies from Pools when no prior mid-week week exists).

@@ -13,6 +13,7 @@ import { Game } from "@/lib/types/game";
 import Turbo from "@/components/pools/Turbo";
 import Under1 from "@/components/pools/Under1";
 import Under2 from "@/components/pools/Under2";
+import { formatLottoWeekLabel } from "@/lib/helpers";
 import { buildPoolsMatchLabels } from "@/lib/pools/formatMatch";
 import {
   getPoolsGameTypeLabel,
@@ -179,8 +180,12 @@ const PoolsPlayView = ({ gameType }: Props) => {
                       </div>
                     )}
                     <div className="text-muted-foreground border-l-2 border-r-2 border-border px-2">
-                      <div>Week</div>
-                      <div className="font-bold">{activeGame.week}</div>
+                      <div>{showEvents && activeGame.game_name ? "Game" : "Week"}</div>
+                      <div className="font-bold">
+                        {showEvents
+                          ? formatLottoWeekLabel(activeGame.week, activeGame.game_name)
+                          : activeGame.week}
+                      </div>
                     </div>
                     {!!activeGame.end_time && (
                       <div className="text-muted-foreground">

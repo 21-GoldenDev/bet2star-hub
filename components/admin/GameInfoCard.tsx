@@ -4,6 +4,7 @@ interface GameInfo {
   id: string;
   week: number;
   type: string;
+  game_name?: string | null;
   start_time: string;
   end_time: string;
   results?: string[] | number[] | null;
@@ -22,6 +23,12 @@ export default function GameInfoCard({ game }: Props) {
           <p className="text-sm text-muted-foreground">Week</p>
           <p className="text-lg font-semibold">{game.week}</p>
         </div>
+        {game.game_name ? (
+          <div>
+            <p className="text-sm text-muted-foreground">Name</p>
+            <p className="text-lg font-semibold">{game.game_name}</p>
+          </div>
+        ) : null}
         <div>
           <p className="text-sm text-muted-foreground">Type</p>
           <p className="text-lg font-semibold capitalize">{game.type?.replaceAll("_", " ")}</p>

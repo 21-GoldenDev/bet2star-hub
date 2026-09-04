@@ -28,7 +28,7 @@ import {
 import { DateRange } from "react-day-picker";
 import { Trash2, Eye, Check, ChevronsUpDown } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { calcAplDirect, calcAplGrouping } from "@/lib/helpers";
+import { calcAplDirect, calcAplGrouping, formatLottoWeekLabel } from "@/lib/helpers";
 import type { PoolsBet, Player } from "@/lib/types/pools";
 import { useToast } from "@/hooks/use-toast";
 import useAdminRole from "@/hooks/use-admin-role";
@@ -378,7 +378,9 @@ export default function PoolsPage() {
                   <SelectContent>
                     {weeksAll.map((w) => (
                       <SelectItem key={w.id} value={w.id}>
-                        {w.week}
+                        {poolsType === "daily_pools"
+                          ? formatLottoWeekLabel(w.week, w.game_name)
+                          : w.week}
                       </SelectItem>
                     ))}
                     {weeksAll.length === 0 && (

@@ -501,7 +501,9 @@ export default function WinnersPage() {
                     <SelectItem key={w.id} value={w.id}>
                       {activeTab === "lotto"
                         ? formatLottoWeekLabel(w.week, w.game_name)
-                        : `Week ${w.week}`}
+                        : w.game_name
+                          ? formatLottoWeekLabel(w.week, w.game_name)
+                          : `Week ${w.week}`}
                     </SelectItem>
                   ))}
                 </SelectContent>

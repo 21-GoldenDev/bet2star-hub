@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("games")
-      .select("id, week, results")
+      .select("id, week, results, game_name, type")
       .eq("type", gameType)
       .order("week", { ascending: false });
 

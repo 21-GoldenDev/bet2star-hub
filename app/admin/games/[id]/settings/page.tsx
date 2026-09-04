@@ -232,7 +232,8 @@ export default function GameSettingsPage() {
           <h1 className="text-3xl font-bold">Game Settings</h1>
           {game && (
             <p className="text-muted-foreground mt-2">
-              Week {game.week} • {game.type.toUpperCase()} •{" "}
+              Week {game.week}
+              {game.game_name ? ` · ${game.game_name}` : ""} • {game.type.toUpperCase()} •{" "}
               {new Date(game.start_time).toLocaleString()}
             </p>
           )}

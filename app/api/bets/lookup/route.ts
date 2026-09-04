@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
 
     const weekValue = game?.week;
     const weekLabel =
-      hit.product === "lotto" && typeof weekValue === "number"
+      (hit.product === "lotto" || hit.product === "daily-pools") && typeof weekValue === "number"
         ? formatLottoWeekLabel(weekValue, game?.game_name)
         : weekValue !== null && weekValue !== undefined
           ? String(weekValue)

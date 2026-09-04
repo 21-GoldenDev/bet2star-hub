@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GameType } from "@/lib/types/gameMode";
+import { GameType, supportsGameName } from "@/lib/types/gameMode";
 import {
   Select,
   SelectContent,
@@ -180,7 +180,7 @@ export default function GamesPage() {
         body: JSON.stringify({
           week: formData.week,
           type: formData.type,
-          gameName: formData.type === "lotto" ? formData.gameName : undefined,
+          gameName: supportsGameName(formData.type) ? formData.gameName : undefined,
           startTime: formData.startTime,
           endTime: formData.endTime,
         }),
@@ -237,7 +237,7 @@ export default function GamesPage() {
         body: JSON.stringify({
           week: formData.week,
           type: formData.type,
-          gameName: formData.type === "lotto" ? formData.gameName : undefined,
+          gameName: supportsGameName(formData.type) ? formData.gameName : undefined,
           startTime: formData.startTime,
           endTime: formData.endTime,
         }),
@@ -406,7 +406,7 @@ export default function GamesPage() {
                   );
                 })()}
               </div>
-              {formData.type === "lotto" && (
+              {supportsGameName(formData.type) && (
                 <div>
                   <Label>Game Name</Label>
                   <Input
@@ -515,7 +515,7 @@ export default function GamesPage() {
               key: "game_name",
               label: "Name",
               render: (_v, game) =>
-                game.type === "lotto" && game.game_name ? (
+                supportsGameName(game.type) && game.game_name ? (
                   <span className="text-sm">{game.game_name}</span>
                 ) : (
                   <span className="text-muted-foreground text-xs">—</span>
@@ -607,7 +607,7 @@ export default function GamesPage() {
                 </SelectContent>
               </Select>
             </div>
-            {formData.type === "lotto" && (
+            {supportsGameName(formData.type) && (
               <div>
                 <Label>Game Name</Label>
                 <Input
