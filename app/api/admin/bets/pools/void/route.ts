@@ -1,6 +1,7 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { getAdminRoleFromRequest, getManagedTerminalIds } from "@/lib/admin/role";
 import { voidBetForRole } from "@/lib/admin/voidBet";
+import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 import { Prize } from "@/lib/types/prize";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,11 +15,14 @@ const getUnderValue = (bet: any) => {
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServer();
+    const requestedType = request.nextUrl.searchParams.get("type");
+    const gameType = isPoolsLikeGameType(requestedType) ? requestedType : "pools";
 
     let query = supabase
       .from("bets_pools")
-      .select("*, games:game_id (week), terminal:terminal(serial_number, agent:agent_id(username))")
+      .select("*, games:game_id!inner (week, type), terminal:terminal(serial_number, agent:agent_id(username))")
       .eq("status", "void")
+      .eq("games.type", gameType)
       .order("updated_at", { ascending: false });
 
     const roleInfo = await getAdminRoleFromRequest(request);

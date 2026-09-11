@@ -111,6 +111,7 @@ export default function WinnersPage() {
   const [activeTab, setActiveTab] = useState("lotto");
   const [lottoBets, setLottoBets] = useState<WinningBet[]>([]);
   const [poolsBets, setPoolsBets] = useState<WinningBet[]>([]);
+  const [dailyPoolsBets, setDailyPoolsBets] = useState<WinningBet[]>([]);
   const [sportsBets, setSportsBets] = useState<WinningBet[]>([]);
   const [sportsDrawBets, setSportsDrawBets] = useState<WinningBet[]>([]);
   const [dataMatches, setDataMatches] = useState<Record<string, MatchInfo[]>>({});
@@ -121,6 +122,7 @@ export default function WinnersPage() {
   // Filters (modeled after pools/lotto bets pages)
   const [weeksLotto, setWeeksLotto] = useState<GameWeek[]>([]);
   const [weeksPools, setWeeksPools] = useState<GameWeek[]>([]);
+  const [weeksDailyPools, setWeeksDailyPools] = useState<GameWeek[]>([]);
   const [weeksSports, setWeeksSports] = useState<GameWeek[]>([]);
   const [weeksSportsDraw, setWeeksSportsDraw] = useState<GameWeek[]>([]);
   const [weekFilter, setWeekFilter] = useState<string>("all");
@@ -146,6 +148,8 @@ export default function WinnersPage() {
         return weeksLotto;
       case "pools":
         return weeksPools;
+      case "daily-pools":
+        return weeksDailyPools;
       case "sports":
         return weeksSports;
       case "sports-draw":
@@ -153,9 +157,9 @@ export default function WinnersPage() {
       default:
         return [];
     }
-  }, [activeTab, weeksLotto, weeksPools, weeksSports, weeksSportsDraw]);
+  }, [activeTab, weeksLotto, weeksPools, weeksDailyPools, weeksSports, weeksSportsDraw]);
 
-  const supportsGameTypeFilter = activeTab === "lotto" || activeTab === "pools";
+  const supportsGameTypeFilter = activeTab === "lotto" || activeTab === "pools" || activeTab === "daily-pools";
 
   const activeTabBets = useMemo(() => {
     switch (activeTab) {
@@ -163,6 +167,8 @@ export default function WinnersPage() {
         return lottoBets;
       case "pools":
         return poolsBets;
+      case "daily-pools":
+        return dailyPoolsBets;
       case "sports":
         return sportsBets;
       case "sports-draw":
@@ -170,7 +176,7 @@ export default function WinnersPage() {
       default:
         return [];
     }
-  }, [activeTab, lottoBets, poolsBets, sportsBets, sportsDrawBets]);
+  }, [activeTab, lottoBets, poolsBets, dailyPoolsBets, sportsBets, sportsDrawBets]);
 
   useEffect(() => {
     if (weeksForTab.length === 0) return;
@@ -200,7 +206,8 @@ export default function WinnersPage() {
       ]);
 
       setWeeksLotto((lottoData.data || []) as GameWeek[]);
-      setWeeksPools([...(poolsData.data || []), ...(dailyPoolsData.data || [])] as GameWeek[]);
+      setWeeksPools((poolsData.data || []) as GameWeek[]);
+      setWeeksDailyPools((dailyPoolsData.data || []) as GameWeek[]);
       setWeeksSports((sportsData.data || []) as GameWeek[]);
       setWeeksSportsDraw((sportsDrawData.data || []) as GameWeek[]);
     } catch (error) {
@@ -310,6 +317,11 @@ export default function WinnersPage() {
     [poolsBets, weekFilter, gameFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
   );
 
+  const filteredDailyPoolsBets = useMemo(
+    () => dailyPoolsBets.filter((b: any) => matchesWeek(b) && matchesGameType(b) && matchesDateRange(b) && matchesExtraFilters(b)),
+    [dailyPoolsBets, weekFilter, gameFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
+  );
+
   const filteredSportsBets = useMemo(
     () => sportsBets.filter((b: any) => matchesWeek(b) && matchesDateRange(b) && matchesExtraFilters(b)),
     [sportsBets, weekFilter, fromTime, toTime, activeTab, sameBetFilter, tsnFilter, betIdFilter, betAboveFilter, statusFilter, agentFilter, terminalFilter, optionFilter]
@@ -326,6 +338,8 @@ export default function WinnersPage() {
         return filteredLottoBets.length;
       case "pools":
         return filteredPoolsBets.length;
+      case "daily-pools":
+        return filteredDailyPoolsBets.length;
       case "sports":
         return filteredSportsBets.length;
       case "sports-draw":
@@ -333,20 +347,22 @@ export default function WinnersPage() {
       default:
         return 0;
     }
-  }, [activeTab, filteredLottoBets.length, filteredPoolsBets.length, filteredSportsBets.length, filteredSportsDrawBets.length]);
+  }, [activeTab, filteredLottoBets.length, filteredPoolsBets.length, filteredDailyPoolsBets.length, filteredSportsBets.length, filteredSportsDrawBets.length]);
 
   async function fetchWinningBets() {
     setLoading(true);
     try {
-      const [lottoRes, poolsRes, sportsRes, sportsDrawRes] = await Promise.all([
+      const [lottoRes, poolsRes, dailyPoolsRes, sportsRes, sportsDrawRes] = await Promise.all([
         fetch("/api/admin/bets/lotto/winners"),
         fetch("/api/admin/bets/pools/winners"),
+        fetch("/api/admin/bets/pools/winners?type=daily_pools"),
         fetch("/api/admin/bets/sports/winners"),
         fetch("/api/admin/bets/sports-draw/winners"),
       ]);
 
       const lottoData = await lottoRes.json();
       const poolsData = await poolsRes.json();
+      const dailyPoolsData = await dailyPoolsRes.json();
       const sportsData = await sportsRes.json();
       const sportsDrawData = await sportsDrawRes.json();
 
@@ -361,8 +377,14 @@ export default function WinnersPage() {
         betId: bet.betId ? BigInt(bet.betId) : undefined,
       }));
 
+      const transformedDailyPools = (dailyPoolsData.data || []).map((bet: any) => ({
+        ...bet,
+        betId: bet.betId ? BigInt(bet.betId) : undefined,
+      }));
+
       setLottoBets(transformedLotto);
       setPoolsBets(transformedPools);
+      setDailyPoolsBets(transformedDailyPools);
       setSportsBets(sportsData.data || []);
       setSportsDrawBets(sportsDrawData.data || []);
 
@@ -735,12 +757,15 @@ export default function WinnersPage() {
       </section>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
-        <TabsList className="grid h-auto w-full max-w-2xl grid-cols-2 sm:grid-cols-4 gap-1">
+        <TabsList className="grid h-auto w-full max-w-4xl grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1">
           <TabsTrigger value="lotto" className="text-xs sm:text-sm whitespace-normal">
             Lotto ({lottoBets.length})
           </TabsTrigger>
           <TabsTrigger value="pools" className="text-xs sm:text-sm whitespace-normal">
             Pools ({poolsBets.length})
+          </TabsTrigger>
+          <TabsTrigger value="daily-pools" className="text-xs sm:text-sm whitespace-normal">
+            Daily/Mid-week Pools ({dailyPoolsBets.length})
           </TabsTrigger>
           <TabsTrigger value="sports" className="text-xs sm:text-sm whitespace-normal">
             Sports ({sportsBets.length})
@@ -880,6 +905,71 @@ export default function WinnersPage() {
           />
         </TabsContent>
 
+        <TabsContent value="daily-pools" className="mt-4">
+          <DataTable
+            title="Winning Daily/Mid-week Pools Bets"
+            data={filteredDailyPoolsBets}
+            itemsPerPage={10}
+            columns={[
+              { key: "week", label: "Week" },
+              // { key: "gameType", label: "Game", render: (value: string) => getGameLabel(value) },
+              { key: "betId", label: "Bet#", render: (value: bigint) => value?.toString() || "" },
+              {
+                key: "player",
+                label: "Player",
+                render: (_: any | undefined, row) =>
+                  row.player ? (
+                    <div>
+                      <div className="font-medium">{row.player.fullName}</div>
+                      <div className="text-xs text-muted-foreground">{row.player.userName}</div>
+                    </div>
+                  ) : (
+                    <div>Agent</div>
+                  ),
+              },
+              {
+                key: "prize",
+                label: "Option",
+                render: (value: { name?: string } | undefined) => value?.name || "",
+              },
+              {
+                key: "under",
+                label: "Under",
+                render: (value: string | string[] | undefined) =>
+                  Array.isArray(value) ? (value.length ? value.join(", ") : "") : (value || ""),
+              },
+              {
+                key: "matches",
+                label: "Matches",
+                render: (value: string[] | Record<string, string[]> | undefined) => {
+                  if (!value) return "";
+                  if (Array.isArray(value)) {
+                    const display = value.slice(0, 3).sort((a, b) => compareStringOrNumber(a, b)).join(", ");
+                    return <div className="text-sm text-muted-foreground">{display}{value.length > 3 ? "..." : ""}</div>;
+                  }
+                  const groups = Object.keys(value).length;
+                  return <div className="text-sm text-muted-foreground">{groups} group{groups !== 1 ? "s" : ""}</div>;
+                },
+              },
+              {
+                key: "id",
+                label: "APL",
+                render: (_: string, row: WinningBet) => calculateAplForWinningBet(row).toFixed(2),
+              },
+              { key: "staked", label: "Staked", render: (value: number) => value.toFixed(0) },
+              { key: "award", label: "Winning", render: (value: number) => (
+                <span className="text-red-600 font-medium">{(value ?? 0).toFixed(2)}</span>
+              ) },
+              { key: "tsn", label: "TSN", render: (value) => value || "" },
+              { key: "terminal", label: "Terminal", render: (value) => value || "" },
+              { key: "agent", label: "Agent", render: (value) => value || "" },
+              { key: "betTime", label: "Bet Time", render: (value: string) => formatDateIso(value) },
+              { key: "same", label: "SameBet", render: (value?: number) => value ?? 0 },
+            ]}
+            actions={(row) => renderActions(row, "daily-pools")}
+          />
+        </TabsContent>
+
         <TabsContent value="sports" className="mt-4">
           <DataTable
             title="Winning Sports Bets"
@@ -974,6 +1064,7 @@ export default function WinnersPage() {
               {(() => {
                 const bet = selectedBet.bet;
                 const isSportsType = selectedBet.type === "sports" || selectedBet.type === "sports-draw";
+                const isPoolsType = selectedBet.type === "pools" || selectedBet.type === "daily-pools";
 
                 return (
                   <>
@@ -1012,7 +1103,7 @@ export default function WinnersPage() {
                       )}
                     </div>
 
-                    {(selectedBet.type === "lotto" || selectedBet.type === "pools") && (
+                    {(selectedBet.type === "lotto" || isPoolsType) && (
                       <div className="border-t pt-4">
                         <Label className="text-xs font-semibold text-muted-foreground block mb-3">
                           {selectedBet.type === "lotto" ? "Numbers" : "Matches"}
