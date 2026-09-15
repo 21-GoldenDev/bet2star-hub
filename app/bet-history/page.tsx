@@ -436,8 +436,29 @@ async function fetchTabBets(
   };
 }
 
-const canDeleteBet = (_tab: BetTab, row: BetRow) =>
-  row.canDelete !== false && String(row.status || "").toLowerCase() !== "void";
+const getBetGameInfo = (
+  bet: BetRow | null,
+  weekGamesByTab: Record<BetTab, Record<number, WeekGameInfo>>,
+  gameOptionsByTab: Record<BetTab, LottoGameOption[]>,
+): WeekGameInfo | LottoGameOption | null => {
+  if (!bet) return null;
+  if (bet.tab === "lotto") {
+    return gameOptionsByTab.lotto.find((g) => g.id === bet.gameId) ?? null;
+  }
+  if (bet.week && weekGamesByTab[bet.tab]) {
+    return weekGamesByTab[bet.tab][Number(bet.week)] ?? null;
+  }
+  return null;
+};
+
+const canDeleteBet = (
+  row: BetRow,
+  weekGamesByTab: Record<BetTab, Record<number, WeekGameInfo>>,
+  gameOptionsByTab: Record<BetTab, LottoGameOption[]>,
+) =>
+  row.canDelete !== false &&
+  String(row.status || "").toLowerCase() !== "void" &&
+  resolveWeekGameStatus(getBetGameInfo(row, weekGamesByTab, gameOptionsByTab)) !== "closed";
 
 const getUnderValue = (gameType: string, under: any) => {
   if (gameType === "under1" || gameType === "under2") {
@@ -832,13 +853,7 @@ export default function BetHistoryPage() {
     const status = (selectedBet.status || "active").toLowerCase();
     if (status === "void") return false;
     if (status === "closed") return true;
-    const weekGame =
-      selectedBet.tab === "lotto"
-        ? gameOptionsByTab.lotto.find((g) => g.id === selectedBet.gameId)
-        : selectedBet.week && weekGamesByTab[selectedBet.tab]
-          ? weekGamesByTab[selectedBet.tab][Number(selectedBet.week)]
-          : null;
-    return resolveWeekGameStatus(weekGame) === "closed";
+    return resolveWeekGameStatus(getBetGameInfo(selectedBet, weekGamesByTab, gameOptionsByTab)) === "closed";
   }, [selectedBet, weekGamesByTab, gameOptionsByTab]);
 
   const handleTabChange = (value: string) => {
@@ -895,7 +910,10 @@ export default function BetHistoryPage() {
       toast({ title: "Bet deleted" });
     } catch (error) {
       console.error("Failed to delete bet:", error);
-      toast({ title: "Failed to delete bet", variant: "destructive" });
+      toast({
+        title: error instanceof Error ? error.message : "Failed to delete bet",
+        variant: "destructive",
+      });
     } finally {
       setDeletingKey(null);
     }
@@ -1118,7 +1136,7 @@ export default function BetHistoryPage() {
                                 >
                                   <Eye className="w-4 h-4" />
                                 </Button>
-                                {canDeleteBet(tab, row) && (
+                                {canDeleteBet(row, weekGamesByTab, gameOptionsByTab) && (
                                   <Button
                                     variant="outline"
                                     size="sm"

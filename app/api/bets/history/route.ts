@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canPlayerDeleteBet, joinedGameEndTime, joinedGameWeek } from "@/lib/bets/gameClosed";
 import { betIncludesInvisibleNumbers } from "@/lib/bets/lottoNumbers";
 import { betIncludesDisabledMatches, resolvePoolsBetWeek } from "@/lib/bets/poolsMatches";
 import { betIncludesVoidSportsMatches } from "@/lib/bets/sportsMatches";
@@ -225,7 +226,7 @@ export async function GET(request: NextRequest) {
 
       query = supabase
         .from("bets_lotto")
-        .select("id, game_id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name), prize:prize_id (name)", { count: "exact" })
+        .select("id, game_id, bet_id, gameType, under, numbers, staked, award, bet_time, status, games:game_id (week, game_name, end_time), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
         .order("bet_time", { ascending: false })
         .range(from, to);
@@ -289,11 +290,12 @@ export async function GET(request: NextRequest) {
         const serviceClient = getServiceClient();
         const gameIds = Array.from(new Set(data.map((bet: any) => bet.game_id).filter(Boolean)));
         const visibleNumbersByGameId: Record<string, unknown> = {};
+        const endTimeByGameId: Record<string, string | null> = {};
 
         if (gameIds.length > 0) {
           const { data: gamesData, error: gamesError } = await serviceClient
             .from("games")
-            .select("id, visible_numbers")
+            .select("id, visible_numbers, end_time")
             .in("id", gameIds);
 
           if (gamesError) {
@@ -301,17 +303,20 @@ export async function GET(request: NextRequest) {
           } else {
             for (const game of gamesData || []) {
               visibleNumbersByGameId[game.id] = game.visible_numbers;
+              endTimeByGameId[game.id] = game.end_time ?? null;
             }
           }
         }
 
         lottoResponseData = data.map((bet: any) => {
-          const isVoid = String(bet.status || "").toLowerCase() === "void";
-          const canDelete = isVoid
+          const extraBlocked = !bet.game_id
             ? false
-            : !bet.game_id
-              ? true
-              : !betIncludesInvisibleNumbers(bet.numbers, visibleNumbersByGameId[bet.game_id]);
+            : betIncludesInvisibleNumbers(bet.numbers, visibleNumbersByGameId[bet.game_id]);
+          const canDelete = canPlayerDeleteBet(
+            bet.status,
+            endTimeByGameId[bet.game_id] ?? joinedGameEndTime(bet.games),
+            extraBlocked,
+          );
 
           return { ...bet, canDelete };
         });
@@ -334,7 +339,7 @@ export async function GET(request: NextRequest) {
       const poolsGameType = GAME_TYPE_BY_TAB[tabParam];
       query = supabase
         .from("bets_pools")
-        .select("id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id!inner (week, type), prize:prize_id (name)", { count: "exact" })
+        .select("id, game_id, bet_id, gameType, under, matches, staked, award, bet_time, status, games:game_id!inner (week, type, end_time), prize:prize_id (name)", { count: "exact" })
         .eq("player", user.id)
         .eq("games.type", poolsGameType)
         .order("bet_time", { ascending: false })
@@ -365,7 +370,7 @@ export async function GET(request: NextRequest) {
     } else if (tabParam === "sports") {
       query = supabase
         .from("bets_sport")
-        .select("id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week)", { count: "exact" })
+        .select("id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week, end_time)", { count: "exact" })
         .eq("player", user.id)
         .order("bet_time", { ascending: false })
         .range(from, to);
@@ -386,7 +391,7 @@ export async function GET(request: NextRequest) {
     } else {
       query = supabase
         .from("bets_sports_draw")
-        .select("id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week)", { count: "exact" })
+        .select("id, game_id, number, mode, under, selections, staked, award, bet_time, status, games:game_id (week, end_time)", { count: "exact" })
         .eq("player", user.id)
         .order("bet_time", { ascending: false })
         .range(from, to);
@@ -527,11 +532,12 @@ export async function GET(request: NextRequest) {
       const serviceClient = getServiceClient();
       const gameIds = Array.from(new Set(data.map((bet: any) => bet.game_id).filter(Boolean)));
       const gameWeekById: Record<string, number> = {};
+      const endTimeByGameId: Record<string, string | null> = {};
 
       if (gameIds.length > 0) {
         const { data: gamesData, error: gamesError } = await serviceClient
           .from("games")
-          .select("id, week")
+          .select("id, week, end_time")
           .in("id", gameIds);
 
         if (gamesError) {
@@ -541,6 +547,7 @@ export async function GET(request: NextRequest) {
             if (typeof game.week === "number" && Number.isFinite(game.week)) {
               gameWeekById[game.id] = game.week;
             }
+            endTimeByGameId[game.id] = game.end_time ?? null;
           }
         }
       }
@@ -580,13 +587,14 @@ export async function GET(request: NextRequest) {
       }
 
       responseData = data.map((bet: any) => {
-        const isVoid = String(bet.status || "").toLowerCase() === "void";
         const week = resolvePoolsBetWeek(bet) ?? gameWeekById[bet.game_id] ?? null;
-        const canDelete = isVoid
-          ? false
-          : week == null
-            ? true
-            : !betIncludesDisabledMatches(bet.matches, week, disabledMatchNumbers);
+        const extraBlocked =
+          week == null ? false : betIncludesDisabledMatches(bet.matches, week, disabledMatchNumbers);
+        const canDelete = canPlayerDeleteBet(
+          bet.status,
+          endTimeByGameId[bet.game_id] ?? joinedGameEndTime(bet.games),
+          extraBlocked,
+        );
 
         return { ...bet, canDelete };
       });
@@ -594,6 +602,23 @@ export async function GET(request: NextRequest) {
 
     if ((tabParam === "sports" || tabParam === "sports-draw") && Array.isArray(data)) {
       const voidMatchNumbersByGameId: Record<string, number[]> = {};
+      const endTimeByGameId: Record<string, string | null> = {};
+      const gameIds = Array.from(new Set(data.map((bet: any) => bet.game_id).filter(Boolean)));
+
+      if (gameIds.length > 0) {
+        const { data: gamesData, error: gamesError } = await getServiceClient()
+          .from("games")
+          .select("id, end_time")
+          .in("id", gameIds);
+
+        if (gamesError) {
+          console.error("Failed to fetch sports game end times:", gamesError);
+        } else {
+          for (const game of gamesData || []) {
+            endTimeByGameId[game.id] = game.end_time ?? null;
+          }
+        }
+      }
 
       for (const [gameId, matchList] of Object.entries(matches)) {
         if (!Array.isArray(matchList)) continue;
@@ -604,14 +629,19 @@ export async function GET(request: NextRequest) {
       }
 
       responseData = data.map((bet: any) => {
-        const isVoid = String(bet.status || "").toLowerCase() === "void";
-        const canDelete = isVoid
-          ? false
-          : !betIncludesVoidSportsMatches(
-            bet.selections,
-            bet.game_id,
-            voidMatchNumbersByGameId,
-          );
+        const extraBlocked = betIncludesVoidSportsMatches(
+          bet.selections,
+          bet.game_id,
+          voidMatchNumbersByGameId,
+        );
+        const week = joinedGameWeek(bet.games);
+        const canDelete = canPlayerDeleteBet(
+          bet.status,
+          endTimeByGameId[bet.game_id] ??
+            joinedGameEndTime(bet.games) ??
+            (week != null ? weekGames[week]?.end_time : undefined),
+          extraBlocked,
+        );
 
         return { ...bet, canDelete };
       });

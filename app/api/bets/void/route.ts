@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GAME_CLOSED_DELETE_MESSAGE, isGameClosed } from "@/lib/bets/gameClosed";
 import { betIncludesInvisibleNumbers } from "@/lib/bets/lottoNumbers";
 import { betIncludesDisabledMatches } from "@/lib/bets/poolsMatches";
 import { betIncludesVoidSportsMatches } from "@/lib/bets/sportsMatches";
@@ -58,19 +59,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bet is already deleted" }, { status: 400 });
     }
 
-    if (tab === "lotto") {
-      const serviceClient = getServiceClient();
-      const { data: gameData, error: gameError } = await serviceClient
+    const serviceClient = getServiceClient();
+    let gameData: { end_time?: string | null; visible_numbers?: unknown; week?: number | null; type?: string | null } | null =
+      null;
+
+    if (typeof betData.game_id === "string" && betData.game_id.trim()) {
+      const { data: fetchedGame, error: gameError } = await serviceClient
         .from("games")
-        .select("visible_numbers")
+        .select("end_time, visible_numbers, week, type")
         .eq("id", betData.game_id)
-        .single();
+        .maybeSingle();
 
       if (gameError) {
-        console.error("Failed to fetch lotto game for bet:", gameError);
+        console.error("Failed to fetch game for bet:", gameError);
         return NextResponse.json({ error: "Failed to validate bet" }, { status: 500 });
       }
 
+      gameData = fetchedGame;
+
+      if (isGameClosed(gameData?.end_time)) {
+        return NextResponse.json({ error: GAME_CLOSED_DELETE_MESSAGE }, { status: 403 });
+      }
+    }
+
+    if (tab === "lotto") {
       if (betIncludesInvisibleNumbers(betData.numbers, gameData?.visible_numbers)) {
         return NextResponse.json(
           { error: "This bet cannot be deleted because it includes invisible numbers" },
@@ -78,18 +90,6 @@ export async function POST(request: NextRequest) {
         );
       }
     } else if (tab === "pools" || tab === "daily-pools") {
-      const serviceClient = getServiceClient();
-      const { data: gameData, error: gameError } = await serviceClient
-        .from("games")
-        .select("week, type")
-        .eq("id", betData.game_id)
-        .single();
-
-      if (gameError) {
-        console.error("Failed to fetch pools game for bet:", gameError);
-        return NextResponse.json({ error: "Failed to validate bet" }, { status: 500 });
-      }
-
       const week = gameData?.week;
       const gameType = gameData?.type === "daily_pools" ? "daily_pools" : "pools";
       if (typeof week === "number" && Number.isFinite(week)) {
@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (tab === "sports" || tab === "sports-draw") {
-      const serviceClient = getServiceClient();
       const gameId = betData.game_id;
 
       if (typeof gameId === "string" && gameId.trim()) {
