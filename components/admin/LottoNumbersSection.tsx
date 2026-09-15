@@ -6,6 +6,11 @@ import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import clsx from "clsx";
+import {
+  DEFAULT_LOTTO_VISIBLE_NUMBERS,
+  toDisabledLottoNumbers,
+  toVisibleLottoNumbers,
+} from "@/lib/bets/lottoNumbers";
 
 interface Props {
   gameId: string;
@@ -13,50 +18,61 @@ interface Props {
 }
 
 export default function LottoNumbersSection({ gameId, loading }: Props) {
-  const [visibleNumbers, setVisibleNumbers] = useState<number[]>([]);
+  const [disabledNumbers, setDisabledNumbers] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const { toast } = useToast();
 
-  const numbers = Array.from({ length: 99 }, (_, i) => i + 1);
+  const numbers = DEFAULT_LOTTO_VISIBLE_NUMBERS;
 
   useEffect(() => {
-    fetchVisibleNumbers();
+    fetchDisabledNumbers();
   }, [gameId]);
 
-  const fetchVisibleNumbers = async () => {
+  const fetchDisabledNumbers = async () => {
     try {
       setInitialLoading(true);
       const res = await fetch(`/api/admin/games/${gameId}/lotto/numbers`);
       if (res.ok) {
         const data = await res.json();
-        setVisibleNumbers(data.visibleNumbers || numbers);
+        setDisabledNumbers(toDisabledLottoNumbers(data.visibleNumbers));
       } else {
-        setVisibleNumbers(numbers);
+        setDisabledNumbers([]);
       }
     } catch (error) {
-      console.error("Error fetching visible numbers:", error);
-      setVisibleNumbers(numbers);
+      console.error("Error fetching disabled numbers:", error);
+      setDisabledNumbers([]);
     } finally {
       setInitialLoading(false);
     }
   };
 
   const toggleNumber = (num: number) => {
-    setVisibleNumbers((prev) =>
+    setDisabledNumbers((prev) =>
       prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
     );
   };
 
-  const handleSelectAll = () => {
-    setVisibleNumbers(numbers);
+  const handleDisableAll = () => {
+    setDisabledNumbers(numbers);
   };
 
-  const handleDeselectAll = () => {
-    setVisibleNumbers([]);
+  const handleEnableAll = () => {
+    setDisabledNumbers([]);
   };
 
   const handleSave = async () => {
+    const visibleNumbers = toVisibleLottoNumbers(disabledNumbers);
+
+    if (visibleNumbers.length === 0) {
+      toast({
+        title: "Error",
+        description: "At least one number must remain enabled",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setSubmitting(true);
       const res = await fetch(`/api/admin/games/${gameId}/lotto/numbers`, {
@@ -70,7 +86,10 @@ export default function LottoNumbersSection({ gameId, loading }: Props) {
 
       toast({
         title: "Success",
-        description: `${visibleNumbers.length} numbers are now visible`,
+        description:
+          disabledNumbers.length === 0
+            ? "All numbers are enabled"
+            : `${disabledNumbers.length} number${disabledNumbers.length === 1 ? "" : "s"} disabled`,
       });
     } catch (error) {
       console.error("Error updating numbers:", error);
@@ -97,43 +116,43 @@ export default function LottoNumbersSection({ gameId, loading }: Props) {
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Lotto Numbers</h2>
+            <h2 className="text-lg font-semibold">Disable Numbers</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Show or hide numbers for players. {visibleNumbers.length} of {numbers.length} visible
+              Select numbers to disable for players. {disabledNumbers.length} of {numbers.length} disabled
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSelectAll}
+              onClick={handleDisableAll}
               disabled={submitting}
             >
-              Select All
+              Disable All
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDeselectAll}
+              onClick={handleEnableAll}
               disabled={submitting}
             >
-              Deselect All
+              Enable All
             </Button>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-2 bg-muted/50 rounded-lg p-4">
           {numbers.map((num) => {
-            const isVisible = visibleNumbers.includes(num);
+            const isDisabled = disabledNumbers.includes(num);
             return (
               <button
                 key={num}
                 onClick={() => toggleNumber(num)}
                 className={clsx(
                   "aspect-square w-12 rounded-lg font-bold text-sm transition-all duration-200",
-                  isVisible
-                    ? "cursor-pointer bg-primary text-primary-foreground shadow-md"
-                    : "cursor-pointer bg-muted border border-border hover:bg-muted/80 text-muted-foreground line-through"
+                  isDisabled
+                    ? "cursor-pointer bg-destructive text-destructive-foreground shadow-md line-through"
+                    : "cursor-pointer bg-primary text-primary-foreground shadow-md"
                 )}
                 disabled={submitting}
               >
@@ -155,7 +174,7 @@ export default function LottoNumbersSection({ gameId, loading }: Props) {
                 Saving...
               </>
             ) : (
-              "Save Visible Numbers"
+              "Save Disabled Numbers"
             )}
           </Button>
         </div>
