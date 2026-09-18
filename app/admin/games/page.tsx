@@ -1,10 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import DataTable from "@/components/admin/DataTable";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +41,7 @@ import { Plus, Edit2, Trash2, Loader2, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Game } from "@/lib/types/game";
+import { getLatestGameIdsByType, LATEST_GAME_DELETE_ERROR } from "@/lib/admin/latestGame";
 
 // Helper function to get next Monday at 8:00 AM
 const getNextMonday = (): string => {
@@ -104,6 +110,20 @@ export default function GamesPage() {
         return type;
     }
   };
+
+  const latestGameIds = useMemo(
+    () =>
+      getLatestGameIdsByType(
+        games.map((game) => ({
+          id: game.id,
+          type: game.type,
+          week: game.week,
+          start_time: game.startTime || game.start_time,
+          created_at: game.created_at,
+        }))
+      ),
+    [games]
+  );
 
   const getActiveGameForType = (type: GameType, week?: number) => {
     const now = new Date();
@@ -273,6 +293,15 @@ export default function GamesPage() {
   };
 
   const openDeleteDialog = (gameId: string) => {
+    if (latestGameIds.has(gameId)) {
+      toast({
+        title: "Cannot delete game",
+        description: LATEST_GAME_DELETE_ERROR,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGameToDelete(gameId);
     setDeletePassword("");
     setIsDeleteAlertOpen(true);
@@ -569,13 +598,28 @@ export default function GamesPage() {
               >
                 <Edit2 className="w-4 h-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openDeleteDialog(game.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {latestGameIds.has(game.id) ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button variant="outline" size="sm" disabled>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    The latest {getGameTypeLabel(game.type)} game cannot be deleted. Create a new game first.
+                  </TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openDeleteDialog(game.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           )}
         />

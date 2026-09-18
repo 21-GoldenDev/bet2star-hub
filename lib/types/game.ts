@@ -10,6 +10,7 @@ export interface Game {
   end_time?: string; // from database
   startTime?: string; // for form compatibility
   endTime?: string; // for form compatibility
+  created_at?: string;
   prizes?: Prize[];
   results?: number[] | string[] | object[] | null;
   max_stake?: any; // JSONB field

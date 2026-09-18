@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { findLatestGameIdOfType, LATEST_GAME_DELETE_ERROR } from "@/lib/admin/latestGame";
 import { isPoolsLikeGameType } from "@/lib/pools/gameType";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -126,6 +127,19 @@ export async function DELETE(
 
     if (!game) {
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    }
+
+    const { id: latestGameId, error: latestGameError } = await findLatestGameIdOfType(
+      supabase,
+      game.type
+    );
+
+    if (latestGameError) {
+      return NextResponse.json({ error: latestGameError }, { status: 500 });
+    }
+
+    if (latestGameId === id) {
+      return NextResponse.json({ error: LATEST_GAME_DELETE_ERROR }, { status: 409 });
     }
 
     if (game.type === "lotto") {
